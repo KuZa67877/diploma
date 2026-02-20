@@ -1,0 +1,19 @@
+{
+  "filters": [
+    {"id": "all", "labelKey": "all"},
+    {"id": "summary", "labelKey": "summary"},
+    {"id": "aiReports", "labelKey": "aiReports"},
+    {"id": "trends", "labelKey": "trends"}
+  ],
+  "exportOptions": [
+    {"id": "pdf", "labelKey": "PDF", "useLocalization": false, "iconKey": "fileDown", "colorKey": "primary"},
+    {"id": "csv", "labelKey": "CSV", "useLocalization": false, "iconKey": "fileText", "colorKey": "secondary"},
+    {"id": "share", "labelKey": "share", "useLocalization": true, "iconKey": "share2", "colorKey": "accent"}
+  ],
+  "reports": [
+    {"id": 1, "titleKey": "weeklyHealthSummary", "date": "Dec 8 - Dec 14, 2024", "type": "summary", "status": "ready"},
+    {"id": 2, "titleKey": "aiDiagnosticsReport", "date": "Dec 10, 2024", "type": "diagnostics", "status": "ready"},
+    {"id": 3, "titleKey": "monthlyTrendsAnalysis", "date": "November 2024", "type": "trends", "status": "ready"},
+    {"id": 4, "titleKey": "heartRateAnalysis", "date": "Dec 12, 2024", "type": "heart", "status": "processing"}
+  ]
+}

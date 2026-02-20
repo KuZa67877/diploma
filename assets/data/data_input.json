@@ -1,0 +1,12 @@
+{
+  "symptoms": [
+    {"id": "headache", "labelKey": "headache"},
+    {"id": "fatigue", "labelKey": "fatigue"},
+    {"id": "dizziness", "labelKey": "dizziness"},
+    {"id": "chestPain", "labelKey": "chestPain"},
+    {"id": "shortnessOfBreath", "labelKey": "shortnessOfBreath"},
+    {"id": "nausea", "labelKey": "nausea"},
+    {"id": "musclePain", "labelKey": "musclePain"},
+    {"id": "fever", "labelKey": "fever"}
+  ]
+}

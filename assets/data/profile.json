@@ -1,0 +1,10 @@
+{
+  "user": {
+    "name": "Alex Johnson",
+    "email": "alex.johnson@email.com"
+  },
+  "services": [
+    {"id": "apple", "nameKey": "appleHealth", "iconKey": "heart", "colorKey": "danger", "connected": true},
+    {"id": "google", "nameKey": "googleHealth", "iconKey": "activity", "colorKey": "secondary", "connected": true}
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "sources": [
+    {
+      "id": "local_manual",
+      "name": "Manual Input",
+      "description": "Local JSON data",
+      "type": "local",
+      "iconKey": "manual",
+      "supportedMetrics": [
+        "heartRate",
+        "steps",
+        "sleep",
+        "bloodOxygen",
+        "weight"
+      ]
+    },
+    {
+      "id": "apple_health",
+      "name": "Apple Health",
+      "description": "HealthKit integration placeholder",
+      "type": "appleHealth",
+      "iconKey": "apple",
+      "supportedMetrics": [
+        "heartRate",
+        "steps",
+        "sleep",
+        "bloodOxygen",
+        "weight"
+      ]
+    },
+    {
+      "id": "google_fit",
+      "name": "Health Connect",
+      "description": "Google Health Connect integration",
+      "type": "googleFit",
+      "iconKey": "google",
+      "supportedMetrics": [
+        "heartRate",
+        "steps",
+        "sleep",
+        "bloodOxygen",
+        "weight"
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "id": "sample_heart_1",
+      "type": "heartRate",
+      "value": 72,
+      "unit": "bpm",
+      "timestamp": "2026-02-10T08:30:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_heart_2",
+      "type": "heartRate",
+      "value": 78,
+      "unit": "bpm",
+      "timestamp": "2026-02-11T08:35:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_steps_1",
+      "type": "steps",
+      "value": 5320,
+      "unit": "steps",
+      "timestamp": "2026-02-10T20:00:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_sleep_1",
+      "type": "sleep",
+      "value": 7.3,
+      "unit": "hours",
+      "timestamp": "2026-02-10T06:45:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_weight_1",
+      "type": "weight",
+      "value": 71.4,
+      "unit": "kg",
+      "timestamp": "2026-02-12T07:10:00Z",
+      "sourceId": "local_manual"
+    }
+  ]
+}

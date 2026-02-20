@@ -1,0 +1,39 @@
+{
+  "user": {
+    "name": "Alex Johnson"
+  },
+  "summary": {
+    "healthScore": 87,
+    "status": "stable",
+    "insight": {
+      "titleKey": "aiInsight",
+      "descKey": "sleepImproved"
+    }
+  },
+  "metrics": [
+    {
+      "id": "heart",
+      "labelKey": "heartRate",
+      "value": "72",
+      "unit": "bpm",
+      "trend": "stable",
+      "data": [68, 72, 75, 71, 69, 72, 74, 72]
+    },
+    {
+      "id": "sleep",
+      "labelKey": "sleep",
+      "value": "7.5",
+      "unit": "hrs",
+      "trend": "up",
+      "data": [6.5, 7, 6.8, 7.2, 7.5, 7.3, 7.5, 7.5]
+    },
+    {
+      "id": "steps",
+      "labelKey": "activity",
+      "value": "8,432",
+      "unit": "steps",
+      "trend": "down",
+      "data": [9200, 8500, 7800, 8100, 9000, 8432, 7500, 8432]
+    }
+  ]
+}

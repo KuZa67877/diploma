@@ -1,0 +1,92 @@
+name: medi_ai
+description: "AI-powered health diagnostics application"
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  
+  # State Management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+  
+  # Dependency Injection
+  get_it: ^8.0.2
+  
+  # Functional Programming
+  dartz: ^0.10.1
+  
+  # Code Generation
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  
+  # UI
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10+1
+  cached_network_image: ^3.4.1
+  
+  # Charts
+  fl_chart: ^0.69.2
+  
+  # Routing
+  go_router: ^14.6.2
+  
+  # Localization
+  intl: ^0.20.2
+  
+  # Storage
+  shared_preferences: ^2.3.3
+  health: ^12.1.0
+  permission_handler: ^12.0.1
+
+  # Auth backend (Supabase)
+  supabase_flutter: ^2.5.2
+
+  # Env
+  flutter_dotenv: ^5.1.0
+  
+  # Animations
+  animations: ^2.0.11
+  
+  # Utils
+  lucide_icons: ^0.257.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  
+  # Code Generation
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  
+  # App Icons
+  flutter_launcher_icons: ^0.14.2
+  image: ^4.3.0
+
+flutter:
+  uses-material-design: true
+  
+  # Note: Inter font will be provided by google_fonts package
+  # No need to bundle font files
+  
+  assets:
+    - assets/images/
+    - assets/data/
+    - .env
+
+# Flutter Launcher Icons Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#1F7A71"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+  remove_alpha_ios: true

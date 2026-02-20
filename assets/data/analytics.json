@@ -1,0 +1,100 @@
+{
+  "filters": [
+    {"id": "day", "labelKey": "day"},
+    {"id": "week", "labelKey": "week"},
+    {"id": "month", "labelKey": "month"},
+    {"id": "year", "labelKey": "year"}
+  ],
+  "insights": [
+    {
+      "type": "anomaly",
+      "titleKey": "elevatedHeartRate",
+      "descKey": "elevatedHeartRateDesc",
+      "severity": "warning"
+    },
+    {
+      "type": "positive",
+      "titleKey": "sleepQualityImproving",
+      "descKey": "sleepQualityDesc",
+      "severity": "success"
+    },
+    {
+      "type": "prediction",
+      "titleKey": "activityGoalAtRisk",
+      "descKey": "activityGoalDesc",
+      "severity": "info"
+    }
+  ],
+  "series": {
+    "day": {
+      "heartRate": [
+        {"hour": 0, "bpm": 62},
+        {"hour": 4, "bpm": 58},
+        {"hour": 8, "bpm": 75},
+        {"hour": 12, "bpm": 82},
+        {"hour": 16, "bpm": 78},
+        {"hour": 20, "bpm": 72},
+        {"hour": 24, "bpm": 65}
+      ],
+      "activity": [
+        {"label": "Mon", "steps": 9200},
+        {"label": "Tue", "steps": 8500},
+        {"label": "Wed", "steps": 7800},
+        {"label": "Thu", "steps": 10200},
+        {"label": "Fri", "steps": 8432},
+        {"label": "Sat", "steps": 11500},
+        {"label": "Sun", "steps": 6200}
+      ]
+    },
+    "week": {
+      "heartRate": [
+        {"hour": 0, "bpm": 64},
+        {"hour": 4, "bpm": 60},
+        {"hour": 8, "bpm": 72},
+        {"hour": 12, "bpm": 80},
+        {"hour": 16, "bpm": 76},
+        {"hour": 20, "bpm": 70},
+        {"hour": 24, "bpm": 66}
+      ],
+      "activity": [
+        {"label": "Mon", "steps": 9200},
+        {"label": "Tue", "steps": 8500},
+        {"label": "Wed", "steps": 7800},
+        {"label": "Thu", "steps": 10200},
+        {"label": "Fri", "steps": 8432},
+        {"label": "Sat", "steps": 11500},
+        {"label": "Sun", "steps": 6200}
+      ]
+    },
+    "month": {
+      "heartRate": [
+        {"hour": 0, "bpm": 68},
+        {"hour": 6, "bpm": 70},
+        {"hour": 12, "bpm": 74},
+        {"hour": 18, "bpm": 69},
+        {"hour": 24, "bpm": 66}
+      ],
+      "activity": [
+        {"label": "W1", "steps": 62000},
+        {"label": "W2", "steps": 70500},
+        {"label": "W3", "steps": 66400},
+        {"label": "W4", "steps": 71200}
+      ]
+    },
+    "year": {
+      "heartRate": [
+        {"hour": 0, "bpm": 72},
+        {"hour": 6, "bpm": 71},
+        {"hour": 12, "bpm": 73},
+        {"hour": 18, "bpm": 70},
+        {"hour": 24, "bpm": 68}
+      ],
+      "activity": [
+        {"label": "Q1", "steps": 210000},
+        {"label": "Q2", "steps": 198000},
+        {"label": "Q3", "steps": 221000},
+        {"label": "Q4", "steps": 205000}
+      ]
+    }
+  }
+}

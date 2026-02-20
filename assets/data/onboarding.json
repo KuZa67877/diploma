@@ -1,0 +1,22 @@
+{
+  "slides": [
+    {
+      "iconKey": "brain",
+      "titleKey": "aiHealthAnalysis",
+      "descriptionKey": "aiHealthAnalysisDesc",
+      "gradientKeys": ["primary", "primaryGlow"]
+    },
+    {
+      "iconKey": "activity",
+      "titleKey": "smartDataSync",
+      "descriptionKey": "smartDataSyncDesc",
+      "gradientKeys": ["secondary", "success"]
+    },
+    {
+      "iconKey": "shield",
+      "titleKey": "secureReports",
+      "descriptionKey": "secureReportsDesc",
+      "gradientKeys": ["aiPurple", "accent"]
+    }
+  ]
+}

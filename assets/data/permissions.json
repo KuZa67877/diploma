@@ -1,0 +1,60 @@
+{
+  "sources": [
+    {
+      "id": "apple",
+      "nameKey": "appleHealth",
+      "descKey": "iosDevices",
+      "iconKey": "heart",
+      "gradientKeys": ["appleRed", "applePink"]
+    },
+    {
+      "id": "google",
+      "nameKey": "googleHealth",
+      "descKey": "androidDevices",
+      "iconKey": "activity",
+      "gradientKeys": ["googleGreen", "googleGreenDark"]
+    }
+  ],
+  "permissions": [
+    {
+      "id": "heart_rate",
+      "labelKey": "heartRate",
+      "descKey": "heartRateDesc",
+      "iconKey": "heart"
+    },
+    {
+      "id": "steps",
+      "labelKey": "steps",
+      "descKey": "stepsDesc",
+      "iconKey": "footprints"
+    },
+    {
+      "id": "sleep",
+      "labelKey": "sleep",
+      "descKey": "sleepDesc",
+      "iconKey": "moon"
+    },
+    {
+      "id": "blood_oxygen",
+      "labelKey": "bloodOxygen",
+      "descKey": "bloodOxygenDesc",
+      "iconKey": "activity"
+    },
+    {
+      "id": "weight",
+      "labelKey": "weight",
+      "descKey": "weightDesc",
+      "iconKey": "scale"
+    }
+  ],
+  "defaultSelection": {
+    "sourceId": null,
+    "permissions": {
+      "heart_rate": true,
+      "steps": true,
+      "sleep": true,
+      "blood_oxygen": false,
+      "weight": false
+    }
+  }
+}
