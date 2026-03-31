@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/custom_button.dart';
 import '../models/health_source_ui_model.dart';
 import 'health_source_card.dart';
 import 'health_sources_header.dart';
@@ -19,6 +20,10 @@ class HealthSourcesLoadedContent extends StatelessWidget {
 
   /// Коллбек переключения подключения.
   final ValueChanged<String> onToggle;
+  final VoidCallback onComplete;
+  final VoidCallback onSkip;
+  final bool showSkipAction;
+  final bool showContinueAction;
 
   /// Создает контент со списком источников.
   const HealthSourcesLoadedContent({
@@ -26,6 +31,10 @@ class HealthSourcesLoadedContent extends StatelessWidget {
     required this.sources,
     required this.updatingSourceId,
     required this.onBack,
+    required this.onComplete,
+    required this.onSkip,
+    required this.showSkipAction,
+    required this.showContinueAction,
     required this.onToggle,
   });
 
@@ -81,6 +90,25 @@ class HealthSourcesLoadedContent extends StatelessWidget {
                   ),
                 );
               }),
+              const SizedBox(height: AppConstants.spacingLg),
+              if (showSkipAction) ...[
+                CustomButton(
+                  text: localizations.get('skipForNow'),
+                  onPressed: onSkip,
+                  variant: ButtonVariant.secondary,
+                  fullWidth: true,
+                  size: ButtonSize.large,
+                ),
+                const SizedBox(height: AppConstants.spacingMd),
+              ],
+              if (showContinueAction)
+                CustomButton(
+                  text: localizations.get('continue'),
+                  onPressed: onComplete,
+                  variant: ButtonVariant.primary,
+                  fullWidth: true,
+                  size: ButtonSize.large,
+                ),
             ],
           ),
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/widgets/custom_button.dart';
 
 class PermissionsErrorState extends StatelessWidget {
@@ -17,19 +18,20 @@ class PermissionsErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.spacingLg,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingLg),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               LucideIcons.alertTriangle,
               size: 32,
-              color: isDark ? AppColors.darkMutedForeground : AppColors.mutedForeground,
+              color: isDark
+                  ? AppColors.darkMutedForeground
+                  : AppColors.mutedForeground,
             ),
             const SizedBox(height: AppConstants.spacingMd),
             Text(
@@ -43,7 +45,7 @@ class PermissionsErrorState extends StatelessWidget {
             ),
             const SizedBox(height: AppConstants.spacingLg),
             CustomButton(
-              text: 'Retry',
+              text: localizations.get('retry'),
               onPressed: onRetry,
               variant: ButtonVariant.secondary,
               size: ButtonSize.medium,

@@ -42,6 +42,7 @@ class HealthDataSource extends Equatable {
 
   /// Возвращает копию сущности с измененными полями.
   HealthDataSource copyWith({
+    List<HealthMetricType>? supportedMetrics,
     bool? isConnected,
     bool? isAvailable,
   }) {
@@ -51,7 +52,7 @@ class HealthDataSource extends Equatable {
       description: description,
       type: type,
       iconKey: iconKey,
-      supportedMetrics: supportedMetrics,
+      supportedMetrics: supportedMetrics ?? this.supportedMetrics,
       isConnected: isConnected ?? this.isConnected,
       isAvailable: isAvailable ?? this.isAvailable,
     );
@@ -59,13 +60,13 @@ class HealthDataSource extends Equatable {
 
   @override
   List<Object> get props => [
-        id,
-        name,
-        description,
-        type,
-        iconKey,
-        supportedMetrics,
-        isConnected,
-        isAvailable,
-      ];
+    id,
+    name,
+    description,
+    type,
+    iconKey,
+    supportedMetrics,
+    isConnected,
+    isAvailable,
+  ];
 }

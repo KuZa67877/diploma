@@ -15,6 +15,16 @@ class ConnectedService extends Equatable {
     required this.connected,
   });
 
+  ConnectedService copyWith({bool? connected}) {
+    return ConnectedService(
+      id: id,
+      nameKey: nameKey,
+      iconKey: iconKey,
+      colorKey: colorKey,
+      connected: connected ?? this.connected,
+    );
+  }
+
   @override
   List<Object> get props => [id, nameKey, iconKey, colorKey, connected];
 }

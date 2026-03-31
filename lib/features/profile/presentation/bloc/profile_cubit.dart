@@ -16,16 +16,16 @@ part 'profile_state.dart';
 class ProfileCubit extends Cubit<ProfileState> {
   final GetProfileData getProfileData;
 
-  ProfileCubit({
-    required this.getProfileData,
-  }) : super(const ProfileState.initial());
+  ProfileCubit({required this.getProfileData})
+    : super(const ProfileState.initial());
 
   Future<void> load() async {
     emit(const ProfileState.loading());
 
     final result = await getProfileData(const NoParams());
     result.fold(
-      (failure) => emit(ProfileState.error(message: _mapFailureMessage(failure))),
+      (failure) =>
+          emit(ProfileState.error(message: _mapFailureMessage(failure))),
       (data) => emit(ProfileState.loaded(data: _mapToViewData(data))),
     );
   }
@@ -34,6 +34,13 @@ class ProfileCubit extends Cubit<ProfileState> {
     return ProfileViewData(
       userName: data.user.name,
       email: data.user.email,
+      healthScore: data.user.healthScore,
+      recordsCount: data.user.recordsCount,
+      streakDays: data.user.streakDays,
+      age: data.user.age,
+      sex: data.user.sex,
+      heightCm: data.user.heightCm,
+      weightKg: data.user.weightKg,
       services: _mapServices(data.services),
     );
   }

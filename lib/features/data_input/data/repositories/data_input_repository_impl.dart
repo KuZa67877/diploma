@@ -1,15 +1,19 @@
+import '../../../../core/config/app_env.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/data_input_config.dart';
 import '../../domain/entities/data_input_entry.dart';
 import '../../domain/repositories/data_input_repository.dart';
 import '../datasources/data_input_local_data_source.dart';
+import '../datasources/data_input_remote_data_source.dart';
 
 class DataInputRepositoryImpl implements DataInputRepository {
   final DataInputLocalDataSource localDataSource;
+  final DataInputRemoteDataSource remoteDataSource;
 
-  const DataInputRepositoryImpl({
+  DataInputRepositoryImpl({
     required this.localDataSource,
+    required this.remoteDataSource,
   });
 
   @override
@@ -25,16 +29,30 @@ class DataInputRepositoryImpl implements DataInputRepository {
   @override
   Future<Either<Failure, Unit>> submitEntry(DataInputEntry entry) async {
     try {
-      await localDataSource.saveEntry({
+      final payload = {
         'recordedAt': entry.recordedAt.toIso8601String(),
+        'firstName': entry.firstName,
+        'lastName': entry.lastName,
+        'height': entry.height,
+        'age': entry.age,
+        'sex': entry.sex,
         'systolic': entry.systolic,
         'diastolic': entry.diastolic,
         'glucose': entry.glucose,
         'weight': entry.weight,
         'temperature': entry.temperature,
         'symptoms': entry.symptoms,
-      });
+      };
+
+      await localDataSource.saveEntry(payload);
+
+      if (AppEnv.isSupabaseConfigured) {
+        await remoteDataSource.saveEntry(entry);
+      }
+
       return const Right(unit);
+    } on Failure catch (failure) {
+      return Left(failure);
     } catch (_) {
       return const Left(CacheFailure());
     }

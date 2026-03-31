@@ -15,9 +15,8 @@ part 'analytics_state.dart';
 class AnalyticsCubit extends Cubit<AnalyticsState> {
   final GetAnalyticsData getAnalyticsData;
 
-  AnalyticsCubit({
-    required this.getAnalyticsData,
-  }) : super(const AnalyticsState.initial());
+  AnalyticsCubit({required this.getAnalyticsData})
+    : super(const AnalyticsState.initial());
 
   Future<void> load({String? filterId}) async {
     emit(const AnalyticsState.loading());
@@ -26,7 +25,8 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
     );
 
     result.fold(
-      (failure) => emit(AnalyticsState.error(message: _mapFailureMessage(failure))),
+      (failure) =>
+          emit(AnalyticsState.error(message: _mapFailureMessage(failure))),
       (data) => emit(AnalyticsState.loaded(data: _mapToViewData(data))),
     );
   }
@@ -42,6 +42,11 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       heartRate: _mapHeartRate(data.heartRate),
       activity: _mapActivity(data.activity),
       insights: _mapInsights(data.insights),
+      recordsCount: data.recordsCount,
+      sourceCount: data.sourceCount,
+      metricTypeCount: data.metricTypeCount,
+      averageHeartRate: data.averageHeartRate,
+      averageSteps: data.averageSteps,
     );
   }
 
@@ -50,10 +55,8 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
   ) {
     return filters
         .map(
-          (filter) => AnalyticsFilterUiModel(
-            id: filter.id,
-            labelKey: filter.labelKey,
-          ),
+          (filter) =>
+              AnalyticsFilterUiModel(id: filter.id, labelKey: filter.labelKey),
         )
         .toList(growable: false);
   }
@@ -72,10 +75,8 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
   List<AnalyticsBarData> _mapActivity(List<ActivitySample> data) {
     return data
         .map(
-          (sample) => AnalyticsBarData(
-            label: sample.label,
-            steps: sample.steps,
-          ),
+          (sample) =>
+              AnalyticsBarData(label: sample.label, steps: sample.steps),
         )
         .toList(growable: false);
   }

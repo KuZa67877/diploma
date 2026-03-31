@@ -3,21 +3,28 @@
     {
       "id": "local_manual",
       "name": "Manual Input",
-      "description": "Local JSON data",
+      "description": "Local fallback dataset for offline testing",
       "type": "local",
       "iconKey": "manual",
       "supportedMetrics": [
-        "heartRate",
         "steps",
+        "heartRate",
         "sleep",
+        "weight",
+        "bloodPressureSystolic",
+        "bloodPressureDiastolic",
+        "bloodGlucose",
         "bloodOxygen",
-        "weight"
+        "activeEnergyBurned",
+        "distanceWalkingRunning",
+        "respiratoryRate",
+        "bodyTemperature"
       ]
     },
     {
       "id": "apple_health",
       "name": "Apple Health",
-      "description": "HealthKit integration placeholder",
+      "description": "HealthKit integration",
       "type": "appleHealth",
       "iconKey": "apple",
       "supportedMetrics": [
@@ -45,43 +52,123 @@
   ],
   "samples": [
     {
+      "id": "sample_steps_1",
+      "type": "steps",
+      "value": 5320,
+      "unit": "COUNT",
+      "timestamp": "2026-03-18T20:00:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_steps_2",
+      "type": "steps",
+      "value": 7840,
+      "unit": "COUNT",
+      "timestamp": "2026-03-19T20:00:00Z",
+      "sourceId": "local_manual"
+    },
+    {
       "id": "sample_heart_1",
       "type": "heartRate",
       "value": 72,
-      "unit": "bpm",
-      "timestamp": "2026-02-10T08:30:00Z",
+      "unit": "BEATS_PER_MINUTE",
+      "timestamp": "2026-03-20T08:30:00Z",
       "sourceId": "local_manual"
     },
     {
       "id": "sample_heart_2",
       "type": "heartRate",
       "value": 78,
-      "unit": "bpm",
-      "timestamp": "2026-02-11T08:35:00Z",
-      "sourceId": "local_manual"
-    },
-    {
-      "id": "sample_steps_1",
-      "type": "steps",
-      "value": 5320,
-      "unit": "steps",
-      "timestamp": "2026-02-10T20:00:00Z",
+      "unit": "BEATS_PER_MINUTE",
+      "timestamp": "2026-03-21T08:35:00Z",
       "sourceId": "local_manual"
     },
     {
       "id": "sample_sleep_1",
       "type": "sleep",
-      "value": 7.3,
-      "unit": "hours",
-      "timestamp": "2026-02-10T06:45:00Z",
+      "value": 420,
+      "unit": "MINUTE",
+      "timestamp": "2026-03-20T06:45:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_sleep_2",
+      "type": "sleepDeep",
+      "value": 95,
+      "unit": "MINUTE",
+      "timestamp": "2026-03-20T06:45:00Z",
       "sourceId": "local_manual"
     },
     {
       "id": "sample_weight_1",
       "type": "weight",
       "value": 71.4,
-      "unit": "kg",
-      "timestamp": "2026-02-12T07:10:00Z",
+      "unit": "KILOGRAM",
+      "timestamp": "2026-03-21T07:10:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_bp_sys_1",
+      "type": "bloodPressureSystolic",
+      "value": 118,
+      "unit": "MILLIMETER_OF_MERCURY",
+      "timestamp": "2026-03-21T07:12:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_bp_dia_1",
+      "type": "bloodPressureDiastolic",
+      "value": 76,
+      "unit": "MILLIMETER_OF_MERCURY",
+      "timestamp": "2026-03-21T07:12:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_glucose_1",
+      "type": "bloodGlucose",
+      "value": 91,
+      "unit": "MILLIGRAM_PER_DECILITER",
+      "timestamp": "2026-03-21T08:00:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_oxygen_1",
+      "type": "bloodOxygen",
+      "value": 97,
+      "unit": "PERCENT",
+      "timestamp": "2026-03-21T08:05:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_energy_1",
+      "type": "activeEnergyBurned",
+      "value": 420,
+      "unit": "KILOCALORIE",
+      "timestamp": "2026-03-21T20:00:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_distance_1",
+      "type": "distanceWalkingRunning",
+      "value": 5.8,
+      "unit": "KILOMETER",
+      "timestamp": "2026-03-21T20:00:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_resp_1",
+      "type": "respiratoryRate",
+      "value": 14,
+      "unit": "RESPIRATIONS_PER_MINUTE",
+      "timestamp": "2026-03-21T08:10:00Z",
+      "sourceId": "local_manual"
+    },
+    {
+      "id": "sample_temp_1",
+      "type": "bodyTemperature",
+      "value": 36.6,
+      "unit": "DEGREE_CELSIUS",
+      "timestamp": "2026-03-21T08:15:00Z",
       "sourceId": "local_manual"
     }
   ]

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_constants.dart';
+import 'app_shimmer.dart';
 
 enum ButtonVariant { primary, secondary, ghost, ai, medical }
 
@@ -49,13 +50,12 @@ class CustomButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (isLoading)
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    _getForegroundColor(isDark),
+              const SizedBox(
+                width: 56,
+                height: 12,
+                child: AppShimmer(
+                  child: AppShimmerBox(
+                    borderRadius: BorderRadius.all(Radius.circular(999)),
                   ),
                 ),
               )
@@ -138,4 +138,3 @@ class CustomButton extends StatelessWidget {
     }
   }
 }
-

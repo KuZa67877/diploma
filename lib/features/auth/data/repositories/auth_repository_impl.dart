@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../domain/entities/auth_credentials.dart';
 import '../../domain/entities/auth_result.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -11,14 +12,17 @@ import '../models/auth_credentials_model.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final AuthLocalDataSource localDataSource;
   final AuthRemoteDataSource remoteDataSource;
+  final _logger = AppLogger.instance;
 
-  const AuthRepositoryImpl({
+  AuthRepositoryImpl({
     required this.localDataSource,
     required this.remoteDataSource,
   });
 
   @override
-  Future<Either<Failure, AuthResult>> submit(AuthCredentials credentials) async {
+  Future<Either<Failure, AuthResult>> submit(
+    AuthCredentials credentials,
+  ) async {
     try {
       final model = AuthCredentialsModel(
         email: credentials.email,
@@ -30,8 +34,21 @@ class AuthRepositoryImpl implements AuthRepository {
           : await localDataSource.submit(model);
       return Right(result);
     } on Failure catch (failure) {
+      _logger.warning(
+        'auth.repository',
+        'Submit auth returned failure',
+        payload: {'message': failure.message},
+      );
       return Left(failure);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.error(
+        'auth.repository',
+        'Submit auth failed with unexpected error',
+        payload: {
+          'error': error.toString(),
+          'stackTrace': stackTrace.toString(),
+        },
+      );
       return const Left(AuthFailure());
     }
   }
@@ -46,8 +63,21 @@ class AuthRepositoryImpl implements AuthRepository {
       final result = await remoteDataSource.signInWithGoogle();
       return Right(result);
     } on Failure catch (failure) {
+      _logger.warning(
+        'auth.repository',
+        'Google auth returned failure',
+        payload: {'message': failure.message},
+      );
       return Left(failure);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.error(
+        'auth.repository',
+        'Google auth failed with unexpected error',
+        payload: {
+          'error': error.toString(),
+          'stackTrace': stackTrace.toString(),
+        },
+      );
       return const Left(AuthFailure());
     }
   }
@@ -62,8 +92,21 @@ class AuthRepositoryImpl implements AuthRepository {
       final result = await remoteDataSource.signInWithApple();
       return Right(result);
     } on Failure catch (failure) {
+      _logger.warning(
+        'auth.repository',
+        'Apple auth returned failure',
+        payload: {'message': failure.message},
+      );
       return Left(failure);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.error(
+        'auth.repository',
+        'Apple auth failed with unexpected error',
+        payload: {
+          'error': error.toString(),
+          'stackTrace': stackTrace.toString(),
+        },
+      );
       return const Left(AuthFailure());
     }
   }

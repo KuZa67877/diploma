@@ -9,11 +9,19 @@ import '../widgets/health_sources_content.dart';
 class HealthSourcesPage extends StatelessWidget {
   /// Коллбек возврата назад.
   final VoidCallback onBack;
+  final VoidCallback onComplete;
+  final VoidCallback onSkip;
+  final bool showSkipAction;
+  final bool showContinueAction;
 
   /// Создает экран источников данных здоровья.
   const HealthSourcesPage({
     super.key,
     required this.onBack,
+    required this.onComplete,
+    required this.onSkip,
+    required this.showSkipAction,
+    required this.showContinueAction,
   });
 
   @override
@@ -28,9 +36,14 @@ class HealthSourcesPage extends StatelessWidget {
                 child: HealthSourcesContent(
                   state: state,
                   onBack: onBack,
+                  onComplete: onComplete,
+                  onSkip: onSkip,
+                  showSkipAction: showSkipAction,
+                  showContinueAction: showContinueAction,
                   onRetry: () => context.read<HealthSourcesCubit>().load(),
-                  onToggle: (sourceId) =>
-                      context.read<HealthSourcesCubit>().toggleConnection(sourceId),
+                  onToggle: (sourceId) => context
+                      .read<HealthSourcesCubit>()
+                      .toggleConnection(sourceId),
                 ),
               ),
             ),

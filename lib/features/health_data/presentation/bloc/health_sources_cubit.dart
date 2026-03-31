@@ -41,7 +41,8 @@ class HealthSourcesCubit extends Cubit<HealthSourcesState> {
 
     final result = await getSources(const NoParams());
     result.fold(
-      (failure) => emit(HealthSourcesState.error(message: _mapFailureMessage(failure))),
+      (failure) =>
+          emit(HealthSourcesState.error(message: _mapFailureMessage(failure))),
       (sources) => emit(
         HealthSourcesState.loaded(
           sources: _mapSources(sources),
@@ -89,11 +90,14 @@ class HealthSourcesCubit extends Cubit<HealthSourcesState> {
     );
 
     final result = source.isConnected
-        ? await disconnectSource(HealthSourceConnectionParams(sourceId: sourceId))
+        ? await disconnectSource(
+            HealthSourceConnectionParams(sourceId: sourceId),
+          )
         : await connectSource(HealthSourceConnectionParams(sourceId: sourceId));
 
     result.fold(
-      (failure) => emit(HealthSourcesState.error(message: _mapFailureMessage(failure))),
+      (failure) =>
+          emit(HealthSourcesState.error(message: _mapFailureMessage(failure))),
       (_) {
         final updated = current.sources
             .map(
@@ -103,10 +107,7 @@ class HealthSourcesCubit extends Cubit<HealthSourcesState> {
             )
             .toList(growable: false);
         emit(
-          HealthSourcesState.loaded(
-            sources: updated,
-            updatingSourceId: null,
-          ),
+          HealthSourcesState.loaded(sources: updated, updatingSourceId: null),
         );
       },
     );
@@ -173,20 +174,10 @@ class HealthSourcesCubit extends Cubit<HealthSourcesState> {
   }
 
   String _metricKeyForType(HealthMetricType type) {
-    switch (type) {
-      case HealthMetricType.heartRate:
-        return 'heartRate';
-      case HealthMetricType.steps:
-        return 'steps';
-      case HealthMetricType.sleep:
-        return 'sleep';
-      case HealthMetricType.bloodOxygen:
-        return 'bloodOxygen';
-      case HealthMetricType.weight:
-        return 'weight';
-      case HealthMetricType.unknown:
-        return '';
+    if (type == HealthMetricType.unknown) {
+      return '';
     }
+    return type.key;
   }
 
   String _mapFailureMessage(Failure failure) {
@@ -198,8 +189,5 @@ class _LoadedStateCache {
   final List<HealthSourceUiModel> sources;
   final String? updatingSourceId;
 
-  _LoadedStateCache({
-    required this.sources,
-    required this.updatingSourceId,
-  });
+  _LoadedStateCache({required this.sources, required this.updatingSourceId});
 }

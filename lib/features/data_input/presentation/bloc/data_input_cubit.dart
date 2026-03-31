@@ -17,17 +17,16 @@ class DataInputCubit extends Cubit<DataInputState> {
   final GetDataInputConfig getConfig;
   final SubmitDataInput submitDataInput;
 
-  DataInputCubit({
-    required this.getConfig,
-    required this.submitDataInput,
-  }) : super(const DataInputState.initial());
+  DataInputCubit({required this.getConfig, required this.submitDataInput})
+    : super(const DataInputState.initial());
 
   Future<void> load() async {
     emit(const DataInputState.loading());
 
     final result = await getConfig(const NoParams());
     result.fold(
-      (failure) => emit(DataInputState.error(message: _mapFailureMessage(failure))),
+      (failure) =>
+          emit(DataInputState.error(message: _mapFailureMessage(failure))),
       (config) {
         emit(
           DataInputState.ready(
@@ -70,6 +69,11 @@ class DataInputCubit extends Cubit<DataInputState> {
     required String glucoseText,
     required String weightText,
     required String temperatureText,
+    String? firstNameText,
+    String? lastNameText,
+    String? heightText,
+    String? ageText,
+    String? sex,
   }) async {
     final data = _currentData();
     if (data == null) return;
@@ -84,6 +88,11 @@ class DataInputCubit extends Cubit<DataInputState> {
         data.selectedTime.hour,
         data.selectedTime.minute,
       ),
+      firstName: _parseString(firstNameText),
+      lastName: _parseString(lastNameText),
+      height: _parseDouble(heightText ?? ''),
+      age: _parseInt(ageText ?? ''),
+      sex: sex,
       systolic: _parseInt(systolicText),
       diastolic: _parseInt(diastolicText),
       glucose: _parseInt(glucoseText),
@@ -92,18 +101,16 @@ class DataInputCubit extends Cubit<DataInputState> {
       symptoms: data.selectedSymptoms.toList(growable: false),
     );
 
-    final result = await submitDataInput(
-      SubmitDataInputParams(entry: entry),
-    );
+    final result = await submitDataInput(SubmitDataInputParams(entry: entry));
 
     result.fold(
       (failure) {
         if (failure is DataInputValidationFailure) {
           emit(
             DataInputState.ready(
-              data: data.copyWith(errors: Map<String, String>.from(
-                failure.fieldErrors,
-              )),
+              data: data.copyWith(
+                errors: Map<String, String>.from(failure.fieldErrors),
+              ),
             ),
           );
           return;
@@ -114,10 +121,7 @@ class DataInputCubit extends Cubit<DataInputState> {
       (_) {
         emit(
           DataInputState.success(
-            data: data.copyWith(
-              errors: const {},
-              selectedSymptoms: const {},
-            ),
+            data: data.copyWith(errors: const {}, selectedSymptoms: const {}),
           ),
         );
       },
@@ -147,7 +151,10 @@ class DataInputCubit extends Cubit<DataInputState> {
 
   List<SymptomUiModel> _mapSymptoms(List<SymptomOption> symptoms) {
     return symptoms
-        .map((symptom) => SymptomUiModel(id: symptom.id, labelKey: symptom.labelKey))
+        .map(
+          (symptom) =>
+              SymptomUiModel(id: symptom.id, labelKey: symptom.labelKey),
+        )
         .toList(growable: false);
   }
 
@@ -161,6 +168,12 @@ class DataInputCubit extends Cubit<DataInputState> {
     final value = text.trim();
     if (value.isEmpty) return null;
     return double.tryParse(value.replaceAll(',', '.'));
+  }
+
+  String? _parseString(String? text) {
+    final value = text?.trim() ?? '';
+    if (value.isEmpty) return null;
+    return value;
   }
 
   String _mapFailureMessage(Failure failure) {

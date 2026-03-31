@@ -8,15 +8,19 @@ class DashboardSummaryModel extends DashboardSummary {
     required super.userName,
     required super.healthScore,
     required super.status,
+    super.recommendationKeys = const <String>[],
+    super.hasInsufficientModelData = false,
     required super.insight,
     required super.metrics,
   });
 
   factory DashboardSummaryModel.fromJson(Map<String, dynamic> json) {
-    final metrics = (json['metrics'] as List<dynamic>?)
-            ?.map((item) => DashboardMetricModel.fromJson(
-                  item as Map<String, dynamic>,
-                ))
+    final metrics =
+        (json['metrics'] as List<dynamic>?)
+            ?.map(
+              (item) =>
+                  DashboardMetricModel.fromJson(item as Map<String, dynamic>),
+            )
             .toList() ??
         const <DashboardMetricModel>[];
 
@@ -36,6 +40,12 @@ class DashboardSummaryModel extends DashboardSummary {
           ? json['healthScore'] as int
           : int.tryParse('${json['healthScore']}') ?? 0,
       status: json['status']?.toString() ?? 'stable',
+      recommendationKeys:
+          (json['recommendationKeys'] as List<dynamic>?)
+              ?.map((item) => item.toString())
+              .toList(growable: false) ??
+          const <String>[],
+      hasInsufficientModelData: json['hasInsufficientModelData'] == true,
       insight: insight,
       metrics: metrics,
     );
@@ -47,6 +57,8 @@ class DashboardSummaryModel extends DashboardSummary {
       'userName': userName,
       'healthScore': healthScore,
       'status': status,
+      'recommendationKeys': recommendationKeys,
+      'hasInsufficientModelData': hasInsufficientModelData,
       'insight': (insight as DashboardInsightModel).toJson(),
       'metrics': metrics
           .map((item) => (item as DashboardMetricModel).toJson())

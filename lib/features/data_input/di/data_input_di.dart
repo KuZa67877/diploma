@@ -1,5 +1,8 @@
 import 'package:get_it/get_it.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/supabase/supabase_subject_resolver.dart';
 import '../data/datasources/data_input_local_data_source.dart';
+import '../data/datasources/data_input_remote_data_source.dart';
 import '../data/repositories/data_input_repository_impl.dart';
 import '../domain/repositories/data_input_repository.dart';
 import '../domain/usecases/get_data_input_config.dart';
@@ -11,11 +14,18 @@ void registerDataInput(GetIt getIt) {
   getIt.registerLazySingleton<DataInputLocalDataSource>(
     () => DataInputLocalDataSourceImpl(),
   );
+  getIt.registerLazySingleton<DataInputRemoteDataSource>(
+    () => DataInputRemoteDataSourceImpl(
+      clientProvider: getIt<SupabaseClient Function()>(),
+      subjectResolver: getIt<SupabaseSubjectResolver>(),
+    ),
+  );
 
   // Repository
   getIt.registerLazySingleton<DataInputRepository>(
     () => DataInputRepositoryImpl(
       localDataSource: getIt<DataInputLocalDataSource>(),
+      remoteDataSource: getIt<DataInputRemoteDataSource>(),
     ),
   );
 

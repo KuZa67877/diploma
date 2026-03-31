@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 /// Отображает ошибку загрузки источников данных.
 class HealthSourcesErrorState extends StatelessWidget {
@@ -20,6 +21,7 @@ class HealthSourcesErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
@@ -40,7 +42,7 @@ class HealthSourcesErrorState extends StatelessWidget {
             const SizedBox(height: AppConstants.spacingMd),
             ElevatedButton(
               onPressed: onRetry,
-              child: const Text('Retry'),
+              child: Text(localizations.get('retry')),
             ),
           ],
         ),

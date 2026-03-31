@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
 import 'auth_divider.dart';
 import 'auth_form.dart';
-import 'auth_header.dart';
 import 'auth_logo_section.dart';
 import 'auth_mode_switch.dart';
 import 'auth_privacy_note.dart';
@@ -15,7 +14,6 @@ class AuthContent extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController emailController;
   final TextEditingController passwordController;
-  final VoidCallback onBack;
   final VoidCallback onSubmit;
   final VoidCallback onToggleMode;
   final VoidCallback onTogglePasswordVisibility;
@@ -32,7 +30,6 @@ class AuthContent extends StatelessWidget {
     required this.formKey,
     required this.emailController,
     required this.passwordController,
-    required this.onBack,
     required this.onSubmit,
     required this.onToggleMode,
     required this.onTogglePasswordVisibility,
@@ -46,11 +43,13 @@ class AuthContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AuthHeader(onBack: onBack),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.spacingLg,
+            padding: const EdgeInsets.fromLTRB(
+              AppConstants.spacingLg,
+              AppConstants.spacingXl,
+              AppConstants.spacingLg,
+              0,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,16 +71,10 @@ class AuthContent extends StatelessWidget {
                 if (showSocialButtons) ...[
                   const AuthDivider(),
                   const SizedBox(height: AppConstants.spacingLg),
-                  AuthSocialButtons(
-                    onGoogle: onGoogle,
-                    onApple: onApple,
-                  ),
+                  AuthSocialButtons(onGoogle: onGoogle, onApple: onApple),
                   const SizedBox(height: AppConstants.spacingLg),
                 ],
-                AuthModeSwitch(
-                  isLogin: isLogin,
-                  onToggleMode: onToggleMode,
-                ),
+                AuthModeSwitch(isLogin: isLogin, onToggleMode: onToggleMode),
                 const SizedBox(height: AppConstants.spacingLg),
                 const AuthPrivacyNote(),
                 const SizedBox(height: AppConstants.spacingXl),

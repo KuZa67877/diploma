@@ -1,0 +1,72 @@
+{
+  "mean": [
+    29.408096280087527,
+    0.47346827133479213,
+    169.87959518599564,
+    70.61146061269146,
+    180.2464207355705,
+    91.25082125026667,
+    5.783917291154706,
+    0.0842355881946289,
+    6.123774920238811,
+    6.05341412627655,
+    68.37461337815196,
+    -0.1277951856831167,
+    22.876207872114716,
+    0.18643215657811302,
+    5.732890609439629,
+    39.661894184703335
+  ],
+  "std": [
+    9.036685509482705,
+    0.49929557115403683,
+    10.426915833396677,
+    14.122566499000433,
+    269.40106553254185,
+    26.749508280912444,
+    7.2775178680251615,
+    0.13688635109039243,
+    0.2156764166247663,
+    0.17678048521383033,
+    11.927962998883698,
+    0.49624165863371494,
+    23.964308606314685,
+    0.1941868666705213,
+    7.5987762002436865,
+    112.39436735406679
+  ],
+  "feature_names": [
+    "age",
+    "gender",
+    "height",
+    "weight",
+    "Applewatch.Steps_LE",
+    "Applewatch.Heart_LE",
+    "Applewatch.Calories_LE",
+    "Applewatch.Distance_LE",
+    "EntropyApplewatchHeartPerDay_LE",
+    "EntropyApplewatchStepsPerDay_LE",
+    "RestingApplewatchHeartrate_LE",
+    "CorrelationApplewatchHeartrateSteps_LE",
+    "NormalizedApplewatchHeartrate_LE",
+    "ApplewatchIntensity_LE",
+    "SDNormalizedApplewatchHR_LE",
+    "ApplewatchStepsXDistance_LE"
+  ],
+  "target_mapping": {
+    "Lying": 0,
+    "Running 3 METs": 1,
+    "Running 5 METs": 2,
+    "Running 7 METs": 3,
+    "Self Pace walk": 4,
+    "Sitting": 5
+  },
+  "inverse_target_mapping": {
+    "0": "Lying",
+    "1": "Running 3 METs",
+    "2": "Running 5 METs",
+    "3": "Running 7 METs",
+    "4": "Self Pace walk",
+    "5": "Sitting"
+  }
+}

@@ -1,49 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import '../../../../injection_container.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/gradient_background.dart';
+import '../../../../injection_container.dart';
 import '../bloc/data_input_cubit.dart';
-import '../models/data_input_ui_models.dart';
 
 class DataInputPage extends StatefulWidget {
-  const DataInputPage({super.key});
+  final VoidCallback? onComplete;
+
+  const DataInputPage({super.key, this.onComplete});
 
   @override
   State<DataInputPage> createState() => _DataInputPageState();
 }
 
 class _DataInputPageState extends State<DataInputPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _systolicController = TextEditingController();
-  final _diastolicController = TextEditingController();
-  final _glucoseController = TextEditingController();
-  final _weightController = TextEditingController();
-  final _temperatureController = TextEditingController();
+  final _firstNameController = TextEditingController(text: 'Alex');
+  final _lastNameController = TextEditingController(text: 'Johnson');
+  final _heightController = TextEditingController(text: '178');
+  final _weightController = TextEditingController(text: '72');
+  final _ageController = TextEditingController(text: '29');
+  String _sex = 'male';
 
   @override
   void dispose() {
-    _systolicController.dispose();
-    _diastolicController.dispose();
-    _glucoseController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _heightController.dispose();
     _weightController.dispose();
-    _temperatureController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
-  void _handleSubmit() {
-    context.read<DataInputCubit>().submit(
-          systolicText: _systolicController.text,
-          diastolicText: _diastolicController.text,
-          glucoseText: _glucoseController.text,
-          weightText: _weightController.text,
-          temperatureText: _temperatureController.text,
-        );
+  void _handleSubmit(BuildContext blocContext) {
+    blocContext.read<DataInputCubit>().submit(
+      systolicText: '',
+      diastolicText: '',
+      glucoseText: '',
+      weightText: _weightController.text,
+      temperatureText: '',
+      firstNameText: _firstNameController.text,
+      lastNameText: _lastNameController.text,
+      heightText: _heightController.text,
+      ageText: _ageController.text,
+      sex: _sex,
+    );
   }
 
   @override
@@ -51,33 +58,18 @@ class _DataInputPageState extends State<DataInputPage> {
     return BlocProvider(
       create: (_) => getIt<DataInputCubit>()..load(),
       child: BlocListener<DataInputCubit, DataInputState>(
-        listenWhen: (previous, current) =>
+        listenWhen: (_, current) =>
             current.maybeWhen(success: (_) => true, orElse: () => false),
         listener: (context, state) {
           context.showSnackBar(
             AppLocalizations.of(context).get('dataSaved'),
             duration: const Duration(seconds: 2),
           );
-          _systolicController.clear();
-          _diastolicController.clear();
-          _glucoseController.clear();
-          _weightController.clear();
-          _temperatureController.clear();
+          widget.onComplete?.call();
           context.read<DataInputCubit>().resetStatus();
         },
         child: BlocBuilder<DataInputCubit, DataInputState>(
           builder: (context, state) {
-            final localizations = AppLocalizations.of(context);
-            final isDark = context.isDarkMode;
-            final isSubmitting =
-                state.maybeWhen(submitting: (_) => true, orElse: () => false);
-
-            final viewData = state.whenOrNull(
-              ready: (data) => data,
-              submitting: (data) => data,
-              success: (data) => data,
-            );
-
             final errorMessage = state.whenOrNull(error: (message) => message);
             if (errorMessage != null) {
               return Scaffold(
@@ -92,180 +84,204 @@ class _DataInputPageState extends State<DataInputPage> {
               );
             }
 
-            if (viewData == null) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(),
+            final readyData = state.whenOrNull(
+              ready: (data) => data,
+              submitting: (data) => data,
+              success: (data) => data,
+            );
+            if (readyData == null) {
+              return Scaffold(
+                body: GradientBackground(
+                  child: SafeArea(child: _DataInputLoadingShimmer()),
                 ),
               );
             }
 
+            final isSubmitting = state.maybeWhen(
+              submitting: (_) => true,
+              orElse: () => false,
+            );
+
+            final localizations = AppLocalizations.of(context);
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final titleColor = isDark
+                ? AppColors.darkForeground
+                : AppColors.lightForeground;
+            final subtitleColor = isDark
+                ? AppColors.darkMutedForeground
+                : AppColors.mutedForeground;
+            final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+            final borderColor = isDark
+                ? AppColors.darkBorder
+                : AppColors.border;
+
             return Scaffold(
               body: GradientBackground(
                 child: SafeArea(
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Header
-                              Padding(
-                                padding: const EdgeInsets.all(
-                                  AppConstants.spacingLg,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      localizations.get('manualInput'),
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark
-                                            ? AppColors.darkForeground
-                                            : AppColors.lightForeground,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      localizations.get('recordMeasurements'),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: isDark
-                                            ? AppColors.darkMutedForeground
-                                            : AppColors.mutedForeground,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryLight,
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Text(
+                              localizations.get('step3of4'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondary,
                               ),
-
-                              Form(
-                                key: _formKey,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppConstants.spacingLg,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          localizations.get('basicHealthData'),
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          localizations.get('basicHealthDataDesc'),
+                          style: TextStyle(fontSize: 13, color: subtitleColor),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _DataCardInput(
+                                      label: localizations.get('firstName'),
+                                      controller: _firstNameController,
+                                    ),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      // Blood Pressure Card
-                                      _buildAnimatedCard(
-                                        delay: 100,
-                                        child: _buildBloodPressureCard(
-                                          localizations,
-                                          isDark,
-                                          viewData.errors,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingMd),
-
-                                      // Blood Glucose Card
-                                      _buildAnimatedCard(
-                                        delay: 150,
-                                        child: _buildGlucoseCard(
-                                          localizations,
-                                          isDark,
-                                          viewData.errors,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingMd),
-
-                                      // Weight & Temperature Row
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _buildAnimatedCard(
-                                              delay: 200,
-                                              child: _buildWeightCard(
-                                                localizations,
-                                                isDark,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                            width: AppConstants.spacingMd,
-                                          ),
-                                          Expanded(
-                                            child: _buildAnimatedCard(
-                                              delay: 250,
-                                              child: _buildTemperatureCard(
-                                                localizations,
-                                                isDark,
-                                                viewData.errors,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingMd),
-
-                                      // Date & Time Row
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: _buildAnimatedCard(
-                                              delay: 300,
-                                              child: _buildDateCard(
-                                                localizations,
-                                                isDark,
-                                                viewData.selectedDate,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                            width: AppConstants.spacingMd,
-                                          ),
-                                          Expanded(
-                                            child: _buildAnimatedCard(
-                                              delay: 350,
-                                              child: _buildTimeCard(
-                                                localizations,
-                                                isDark,
-                                                viewData.selectedTime,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingLg),
-
-                                      // Symptoms
-                                      _buildAnimatedCard(
-                                        delay: 400,
-                                        child: _buildSymptomsSection(
-                                          localizations,
-                                          isDark,
-                                          viewData.symptoms,
-                                          viewData.selectedSymptoms,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingLg),
-
-                                      // Submit Button
-                                      _buildAnimatedCard(
-                                        delay: 450,
-                                        child: CustomButton(
-                                          text: localizations.get('saveData'),
-                                          onPressed: isSubmitting ? null : _handleSubmit,
-                                          variant: ButtonVariant.primary,
-                                          size: ButtonSize.large,
-                                          fullWidth: true,
-                                          isLoading: isSubmitting,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingLg),
-                                    ],
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _DataCardInput(
+                                      label: localizations.get('lastName'),
+                                      controller: _lastNameController,
+                                    ),
                                   ),
-                                ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _DataCardInput(
+                                      label: localizations.get('height'),
+                                      controller: _heightController,
+                                      suffix: 'cm',
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _DataCardInput(
+                                      label: localizations.get('weight'),
+                                      controller: _weightController,
+                                      suffix: 'kg',
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _DataCardInput(
+                                      label: localizations.get('age'),
+                                      controller: _ageController,
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _SexCard(
+                                      selectedSex: _sex,
+                                      onTap: () {
+                                        setState(
+                                          () => _sex = _sex == 'male'
+                                              ? 'female'
+                                              : 'male',
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Text(
+                            localizations.get('updateValuesLater'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: subtitleColor,
+                            ),
+                          ),
+                        ),
+                        if (readyData.errors.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          ...readyData.errors.values.map(
+                            (key) => Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                AppLocalizations.of(context).get(key),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.danger,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        CustomButton(
+                          text: localizations.get('continue'),
+                          onPressed: isSubmitting
+                              ? null
+                              : () => _handleSubmit(context),
+                          variant: ButtonVariant.primary,
+                          fullWidth: true,
+                          size: ButtonSize.large,
+                          isLoading: isSubmitting,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -275,477 +291,168 @@ class _DataInputPageState extends State<DataInputPage> {
       ),
     );
   }
+}
 
-  Widget _buildAnimatedCard({required int delay, required Widget child}) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 500 + delay),
-      curve: Curves.easeOut,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, (1 - value) * 10),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: child,
-    );
-  }
-
-  Widget _buildBloodPressureCard(
-    AppLocalizations localizations,
-    bool isDark,
-    Map<String, String> errors,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+class _DataInputLoadingShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AppShimmer(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.dangerLight,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusXl),
-                  ),
-                  child: const Icon(
-                    LucideIcons.activity,
-                    size: 20,
-                    color: AppColors.danger,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingMd),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localizations.get('bloodPressure'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.darkForeground
-                              : AppColors.lightForeground,
-                        ),
-                      ),
-                      Text(
-                        'mmHg',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark
-                              ? AppColors.darkMutedForeground
-                              : AppColors.mutedForeground,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppShimmerBox(width: 72, height: 24),
             ),
-            const SizedBox(height: AppConstants.spacingMd),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _systolicController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: localizations.get('systolic'),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    '/',
-                    style: TextStyle(
-                      fontSize: 24,
-                      color: isDark
-                          ? AppColors.darkMutedForeground
-                          : AppColors.mutedForeground,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: TextFormField(
-                    controller: _diastolicController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      hintText: localizations.get('diastolic'),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            SizedBox(height: 12),
+            AppShimmerBox(height: 30, width: 180),
+            SizedBox(height: 8),
+            AppShimmerBox(height: 14, width: 240),
+            SizedBox(height: 16),
+            AppShimmerBox(
+              height: 290,
+              borderRadius: BorderRadius.all(Radius.circular(20)),
             ),
-    if (errors['bloodPressure'] != null) ...[
-      const SizedBox(height: 8),
-      Row(
-        children: [
-                  const Icon(
-                    LucideIcons.alertCircle,
-                    size: 12,
-                    color: AppColors.danger,
-                  ),
-          const SizedBox(width: 4),
-          Text(
-            localizations.get(errors['bloodPressure']!),
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.danger,
+            SizedBox(height: 16),
+            AppShimmerBox(
+              height: 52,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
             ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildGlucoseCard(
-    AppLocalizations localizations,
-    bool isDark,
-    Map<String, String> errors,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.warningLight,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusXl),
-                  ),
-                  child: const Icon(
-                    LucideIcons.droplet,
-                    size: 20,
-                    color: AppColors.warning,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingMd),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localizations.get('bloodGlucose'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppColors.darkForeground
-                              : AppColors.lightForeground,
-                        ),
-                      ),
-                      Text(
-                        'mg/dL',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark
-                              ? AppColors.darkMutedForeground
-                              : AppColors.mutedForeground,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _glucoseController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: localizations.get('enterValue'),
-              ),
-            ),
-    if (errors['glucose'] != null) ...[
-      const SizedBox(height: 8),
-      Row(
-        children: [
-                  const Icon(
-                    LucideIcons.alertCircle,
-                    size: 12,
-                    color: AppColors.danger,
-                  ),
-          const SizedBox(width: 4),
-          Text(
-            localizations.get(errors['glucose']!),
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.danger,
-            ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
+class _DataCardInput extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String? suffix;
+  final TextInputType? keyboardType;
+
+  const _DataCardInput({
+    required this.label,
+    required this.controller,
+    this.suffix,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final valueColor = isDark
+        ? AppColors.darkForeground
+        : AppColors.lightForeground;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkMuted : AppColors.muted,
+        borderRadius: BorderRadius.circular(14),
       ),
-    );
-  }
-
-  Widget _buildWeightCard(AppLocalizations localizations, bool isDark) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingMd),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(LucideIcons.scale, size: 20, color: AppColors.secondary),
-                const SizedBox(width: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? AppColors.darkMutedForeground
+                  : AppColors.mutedForeground,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: keyboardType,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: valueColor,
+                  ),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              if (suffix != null)
                 Text(
-                  localizations.get('weight'),
+                  suffix!,
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
+                    color: isDark
+                        ? AppColors.darkMutedForeground
+                        : AppColors.mutedForeground,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _weightController,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(hintText: 'kg'),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildTemperatureCard(
-    AppLocalizations localizations,
-    bool isDark,
-    Map<String, String> errors,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.spacingMd),
+class _SexCard extends StatelessWidget {
+  final String selectedSex;
+  final VoidCallback onTap;
+
+  const _SexCard({required this.selectedSex, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final valueColor = isDark
+        ? AppColors.darkForeground
+        : AppColors.lightForeground;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkMuted : AppColors.muted,
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Icon(LucideIcons.thermometer, size: 20, color: AppColors.accent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    localizations.get('temperature'),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _temperatureController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(hintText: '°C'),
-            ),
-            if (errors['temperature'] != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                localizations.get(errors['temperature']!),
-                style: const TextStyle(fontSize: 10, color: AppColors.danger),
-                textAlign: TextAlign.center,
+            Text(
+              localizations.get('sex'),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? AppColors.darkMutedForeground
+                    : AppColors.mutedForeground,
               ),
-            ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              selectedSex == 'female'
+                  ? localizations.get('female')
+                  : localizations.get('male'),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: valueColor,
+              ),
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDateCard(
-    AppLocalizations localizations,
-    bool isDark,
-    DateTime selectedDate,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () async {
-          final date = await showDatePicker(
-            context: context,
-            initialDate: selectedDate,
-            firstDate: DateTime(2020),
-            lastDate: DateTime.now(),
-          );
-          if (!mounted) return;
-          if (date != null) {
-            context.read<DataInputCubit>().setDate(date);
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.spacingMd),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Icon(LucideIcons.calendar, size: 20, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    localizations.get('date'),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppConstants.spacingMd),
-              Text(
-                '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTimeCard(
-    AppLocalizations localizations,
-    bool isDark,
-    TimeOfDay selectedTime,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () async {
-          final time = await showTimePicker(
-            context: context,
-            initialTime: selectedTime,
-          );
-          if (!mounted) return;
-          if (time != null) {
-            context.read<DataInputCubit>().setTime(time);
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(AppConstants.spacingMd),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Icon(LucideIcons.clock, size: 20, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    localizations.get('time'),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppConstants.spacingMd),
-              Text(
-                '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSymptomsSection(
-    AppLocalizations localizations,
-    bool isDark,
-    List<SymptomUiModel> symptoms,
-    Set<String> selectedSymptoms,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          localizations.get('symptoms'),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
-          ),
-        ),
-        const SizedBox(height: AppConstants.spacingMd),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: symptoms.map((symptom) {
-            final isSelected = selectedSymptoms.contains(symptom.id);
-            return FilterChip(
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isSelected) ...[
-                    const Icon(LucideIcons.check, size: 12),
-                    const SizedBox(width: 4),
-                  ],
-                  Text(localizations.get(symptom.labelKey)),
-                ],
-              ),
-              selected: isSelected,
-              onSelected: (selected) {
-                context.read<DataInputCubit>().toggleSymptom(symptom.id);
-              },
-              backgroundColor: isDark ? AppColors.darkMuted : AppColors.muted,
-              selectedColor: isDark ? AppColors.darkPrimary : AppColors.primary,
-              labelStyle: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isSelected
-                    ? Colors.white
-                    : (isDark ? AppColors.darkMutedForeground : AppColors.mutedForeground),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 }
@@ -754,45 +461,33 @@ class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final localizations = AppLocalizations.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.spacingLg,
-        ),
+        padding: const EdgeInsets.all(AppConstants.spacingLg),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              LucideIcons.alertTriangle,
-              size: 32,
-              color: isDark ? AppColors.darkMutedForeground : AppColors.mutedForeground,
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
+            const Icon(Icons.error_outline, size: 48, color: AppColors.danger),
+            const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isDark
-                    ? AppColors.darkMutedForeground
-                    : AppColors.mutedForeground,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.mutedForeground,
               ),
             ),
-            const SizedBox(height: AppConstants.spacingLg),
+            const SizedBox(height: 12),
             CustomButton(
-              text: 'Retry',
+              text: localizations.get('retry'),
               onPressed: onRetry,
-              variant: ButtonVariant.secondary,
+              variant: ButtonVariant.primary,
               size: ButtonSize.medium,
-              fullWidth: false,
             ),
           ],
         ),

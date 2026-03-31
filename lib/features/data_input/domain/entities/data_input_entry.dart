@@ -2,6 +2,11 @@ import 'package:equatable/equatable.dart';
 
 class DataInputEntry extends Equatable {
   final DateTime recordedAt;
+  final String? firstName;
+  final String? lastName;
+  final double? height;
+  final int? age;
+  final String? sex;
   final int? systolic;
   final int? diastolic;
   final int? glucose;
@@ -11,6 +16,11 @@ class DataInputEntry extends Equatable {
 
   const DataInputEntry({
     required this.recordedAt,
+    this.firstName,
+    this.lastName,
+    this.height,
+    this.age,
+    this.sex,
     required this.systolic,
     required this.diastolic,
     required this.glucose,
@@ -21,12 +31,17 @@ class DataInputEntry extends Equatable {
 
   @override
   List<Object?> get props => [
-        recordedAt,
-        systolic,
-        diastolic,
-        glucose,
-        weight,
-        temperature,
-        symptoms,
-      ];
+    recordedAt,
+    firstName,
+    lastName,
+    height,
+    age,
+    sex,
+    systolic,
+    diastolic,
+    glucose,
+    weight,
+    temperature,
+    symptoms,
+  ];
 }

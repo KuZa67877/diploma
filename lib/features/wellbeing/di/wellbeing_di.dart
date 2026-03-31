@@ -1,0 +1,46 @@
+import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/supabase/supabase_subject_resolver.dart';
+import '../data/datasources/wellbeing_local_data_source.dart';
+import '../data/datasources/wellbeing_remote_data_source.dart';
+import '../data/repositories/wellbeing_repository_impl.dart';
+import '../domain/repositories/wellbeing_repository.dart';
+import '../domain/usecases/get_wellbeing_entries.dart';
+import '../domain/usecases/save_wellbeing_entry.dart';
+import '../presentation/bloc/wellbeing_cubit.dart';
+
+void registerWellbeing(GetIt getIt) {
+  getIt.registerLazySingleton<WellbeingLocalDataSource>(
+    () => WellbeingLocalDataSourceImpl(
+      sharedPreferences: getIt<SharedPreferences>(),
+    ),
+  );
+  getIt.registerLazySingleton<WellbeingRemoteDataSource>(
+    () => WellbeingRemoteDataSourceImpl(
+      clientProvider: getIt<SupabaseClient Function()>(),
+      subjectResolver: getIt<SupabaseSubjectResolver>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<WellbeingRepository>(
+    () => WellbeingRepositoryImpl(
+      localDataSource: getIt<WellbeingLocalDataSource>(),
+      remoteDataSource: getIt<WellbeingRemoteDataSource>(),
+    ),
+  );
+
+  getIt.registerLazySingleton<GetWellbeingEntries>(
+    () => GetWellbeingEntries(getIt<WellbeingRepository>()),
+  );
+  getIt.registerLazySingleton<SaveWellbeingEntry>(
+    () => SaveWellbeingEntry(getIt<WellbeingRepository>()),
+  );
+
+  getIt.registerLazySingleton<WellbeingCubit>(
+    () => WellbeingCubit(
+      getWellbeingEntries: getIt<GetWellbeingEntries>(),
+      saveWellbeingEntry: getIt<SaveWellbeingEntry>(),
+    ),
+  );
+}

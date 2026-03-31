@@ -1,0 +1,630 @@
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
+
+import 'package:flutter/services.dart';
+import 'package:onnxruntime/onnxruntime.dart';
+
+import '../../../../core/supabase/onboarding_profile_snapshot.dart';
+import '../../../health_data/domain/entities/health_metric_sample.dart';
+import '../../../health_data/domain/entities/health_metric_type.dart';
+
+enum HarvardActivityClass {
+  insufficientData,
+  lying,
+  sitting,
+  selfPaceWalk,
+  running3Met,
+  running5Met,
+  running7Met,
+}
+
+class HarvardActivityRecommendationResult {
+  final HarvardActivityClass activityClass;
+  final double confidence;
+  final List<String> recommendationKeys;
+  final String modelVersion;
+
+  const HarvardActivityRecommendationResult({
+    required this.activityClass,
+    required this.confidence,
+    required this.recommendationKeys,
+    required this.modelVersion,
+  });
+}
+
+/// Real notebook-backed inference:
+/// - ONNX model: assets/models/harvard_aw/model_harvardAWData_xgboost.onnx
+/// - Scaler/labels: assets/models/harvard_aw/preprocessor_v1.json
+///
+/// If assets are unavailable, data is insufficient, or inference fails, the
+/// service returns explicit insufficient-data state.
+class HarvardActivityRecommendationModel {
+  static const String _modelAssetPath =
+      'assets/models/harvard_aw/model_harvardAWData_xgboost.onnx';
+  static const String _preprocessorAssetPath =
+      'assets/models/harvard_aw/preprocessor_v1.json';
+  static const String _modelVersion = 'harvard-aw-xgb-v1';
+  static const int _windowDays = 30;
+
+  bool _initialized = false;
+  bool _initFailed = false;
+  OrtSession? _session;
+  OrtSessionOptions? _sessionOptions;
+  String _inputName = 'float_input';
+
+  List<double> _mean = const [];
+  List<double> _std = const [];
+  List<String> _featureNames = const [];
+  Map<int, String> _inverseTargetMapping = const {};
+
+  Future<HarvardActivityRecommendationResult> infer({
+    required OnboardingProfileSnapshot profile,
+    required List<HealthMetricSample> samples,
+    DateTime? now,
+  }) async {
+    final current = (now ?? DateTime.now()).toUtc();
+    final stats = _buildStats(samples: samples, now: current);
+    if (stats.availableSignals < 2) {
+      return _insufficientResult();
+    }
+
+    await _ensureInitialized();
+
+    if (_initFailed ||
+        _session == null ||
+        _featureNames.isEmpty ||
+        _featureNames.length != _mean.length ||
+        _featureNames.length != _std.length) {
+      return _insufficientResult();
+    }
+
+    try {
+      final rawVector = _buildNotebookFeatureVector(profile, stats);
+      final scaled = _scale(rawVector);
+      final classId = await _runOnnx(scaled);
+      if (classId == null) {
+        return _insufficientResult();
+      }
+      final label = _inverseTargetMapping[classId];
+      final activityClass = _mapLabelToClass(label);
+      if (activityClass == HarvardActivityClass.insufficientData) {
+        return _insufficientResult();
+      }
+      return HarvardActivityRecommendationResult(
+        activityClass: activityClass,
+        confidence: _confidenceFromSignals(stats.availableSignals),
+        recommendationKeys: _recommendationsForClass(activityClass),
+        modelVersion: _modelVersion,
+      );
+    } catch (_) {
+      return _insufficientResult();
+    }
+  }
+
+  Future<void> _ensureInitialized() async {
+    if (_initialized) {
+      return;
+    }
+    _initialized = true;
+
+    try {
+      OrtEnv.instance.init();
+
+      final modelData = await rootBundle.load(_modelAssetPath);
+      _sessionOptions = OrtSessionOptions();
+      _session = OrtSession.fromBuffer(
+        modelData.buffer.asUint8List(),
+        _sessionOptions!,
+      );
+      if (_session!.inputNames.isNotEmpty) {
+        _inputName = _session!.inputNames.first;
+      }
+
+      final preprocessorRaw = await rootBundle.loadString(
+        _preprocessorAssetPath,
+      );
+      final payload = jsonDecode(preprocessorRaw) as Map<String, dynamic>;
+      _mean = (payload['mean'] as List<dynamic>)
+          .map((item) => (item as num).toDouble())
+          .toList(growable: false);
+      _std = (payload['std'] as List<dynamic>)
+          .map((item) => (item as num).toDouble())
+          .toList(growable: false);
+      _featureNames = (payload['feature_names'] as List<dynamic>)
+          .map((item) => item.toString())
+          .toList(growable: false);
+
+      final inverse =
+          payload['inverse_target_mapping'] as Map<String, dynamic>? ??
+          const <String, dynamic>{};
+      _inverseTargetMapping = inverse.map(
+        (key, value) => MapEntry(int.tryParse(key) ?? -1, value.toString()),
+      )..remove(-1);
+    } catch (_) {
+      _initFailed = true;
+      _session = null;
+    }
+  }
+
+  Future<int?> _runOnnx(List<double> scaledInput) async {
+    final session = _session;
+    if (session == null) {
+      return null;
+    }
+
+    final input = OrtValueTensor.createTensorWithDataList(
+      Float32List.fromList(scaledInput),
+      [1, scaledInput.length],
+    );
+    final runOptions = OrtRunOptions();
+    final outputs = session.run(runOptions, {_inputName: input});
+
+    try {
+      if (outputs.isEmpty) {
+        return null;
+      }
+      final first = outputs.first;
+      if (first == null) {
+        return null;
+      }
+      return _extractClassId(first.value);
+    } finally {
+      input.release();
+      runOptions.release();
+      for (final value in outputs) {
+        value?.release();
+      }
+    }
+  }
+
+  int? _extractClassId(dynamic value) {
+    if (value is Int64List && value.isNotEmpty) {
+      return value.first;
+    }
+    if (value is Int32List && value.isNotEmpty) {
+      return value.first;
+    }
+    if (value is Uint8List && value.isNotEmpty) {
+      return value.first;
+    }
+    if (value is List && value.isNotEmpty) {
+      final first = value.first;
+      if (first is num) {
+        return first.toInt();
+      }
+      if (first is List && first.isNotEmpty && first.first is num) {
+        return (first.first as num).toInt();
+      }
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return null;
+  }
+
+  HarvardActivityClass _mapLabelToClass(String? label) {
+    switch (label) {
+      case 'Lying':
+        return HarvardActivityClass.lying;
+      case 'Sitting':
+        return HarvardActivityClass.sitting;
+      case 'Self Pace walk':
+        return HarvardActivityClass.selfPaceWalk;
+      case 'Running 3 METs':
+        return HarvardActivityClass.running3Met;
+      case 'Running 5 METs':
+        return HarvardActivityClass.running5Met;
+      case 'Running 7 METs':
+        return HarvardActivityClass.running7Met;
+      default:
+        return HarvardActivityClass.insufficientData;
+    }
+  }
+
+  List<double> _buildNotebookFeatureVector(
+    OnboardingProfileSnapshot profile,
+    _ModelStats stats,
+  ) {
+    final base = <String, double>{
+      'age': (profile.age ?? 0).toDouble(),
+      'gender': _mapSexToGender(profile.sex),
+      'height': profile.heightCm ?? 0,
+      'weight': profile.weightKg ?? 0,
+      'Applewatch.Steps_LE': stats.stepsLatest,
+      'Applewatch.Heart_LE': stats.heartLatest,
+      'Applewatch.Calories_LE': stats.caloriesLatest,
+      'Applewatch.Distance_LE': stats.distanceLatest,
+      'EntropyApplewatchHeartPerDay_LE': stats.heartEntropy,
+      'EntropyApplewatchStepsPerDay_LE': stats.stepsEntropy,
+      'RestingApplewatchHeartrate_LE': stats.restingLatest,
+    };
+
+    final normalizedHeart =
+        base['Applewatch.Heart_LE']! - base['RestingApplewatchHeartrate_LE']!;
+    base['NormalizedApplewatchHeartrate_LE'] = normalizedHeart;
+
+    final sdNormalized = _ewmStd(stats.normalizedHeartSeries, span: 3);
+    base['SDNormalizedApplewatchHR_LE'] = sdNormalized;
+
+    base['ApplewatchIntensity_LE'] = _calculateIntensity(
+      normalizedHeart: normalizedHeart,
+      steps: base['Applewatch.Steps_LE']!,
+    );
+
+    base['CorrelationApplewatchHeartrateSteps_LE'] = _rollingPearsonLast(
+      stats.heartSeries,
+      stats.stepsSeries,
+      window: 30,
+    );
+
+    base['ApplewatchStepsXDistance_LE'] =
+        base['Applewatch.Steps_LE']! * base['Applewatch.Distance_LE']!;
+
+    return _featureNames
+        .map((name) => base[name] ?? 0.0)
+        .toList(growable: false);
+  }
+
+  List<double> _scale(List<double> values) {
+    final out = List<double>.filled(values.length, 0);
+    for (var i = 0; i < values.length; i++) {
+      final std = _std[i] == 0 ? 1.0 : _std[i];
+      out[i] = (values[i] - _mean[i]) / std;
+    }
+    return out;
+  }
+
+  double _mapSexToGender(String? sex) {
+    final normalized = (sex ?? '').trim().toLowerCase();
+    if (normalized == 'male' || normalized == 'm' || normalized == 'man') {
+      return 1.0;
+    }
+    if (normalized == 'female' || normalized == 'f' || normalized == 'woman') {
+      return 0.0;
+    }
+    return 0.0;
+  }
+
+  double _calculateIntensity({
+    required double normalizedHeart,
+    required double steps,
+  }) {
+    const weightHr = 0.90;
+    const hrMax = 80.0;
+    const stepsMax = 50.0;
+    const scale = 0.791;
+    const offset = -0.079;
+
+    final hrDelta = max(0.0, normalizedHeart);
+    final stepsLog = log(steps + 1);
+    final hrNorm = (hrDelta / hrMax).clamp(0.0, 1.0);
+    final stepsNorm = (stepsLog / log(stepsMax + 1)).clamp(0.0, 1.0);
+    final intensityRaw = (weightHr * hrNorm) + ((1 - weightHr) * stepsNorm);
+    return (intensityRaw * scale + offset).clamp(0.0, 1.0);
+  }
+
+  double _ewmStd(List<double> values, {required int span}) {
+    if (values.length < 2) {
+      return 0;
+    }
+    final alpha = 2 / (span + 1);
+    var mean = values.first;
+    var variance = 0.0;
+    for (var i = 1; i < values.length; i++) {
+      final current = values[i];
+      final delta = current - mean;
+      mean += alpha * delta;
+      variance = (1 - alpha) * (variance + alpha * delta * delta);
+    }
+    return sqrt(max(variance, 0.0));
+  }
+
+  double _rollingPearsonLast(
+    List<double> heartSeries,
+    List<double> stepsSeries, {
+    required int window,
+  }) {
+    if (heartSeries.isEmpty || stepsSeries.isEmpty) {
+      return 1.0;
+    }
+    final length = min(heartSeries.length, stepsSeries.length);
+    final start = max(0, length - window);
+    final x = heartSeries.sublist(start, length);
+    final y = stepsSeries.sublist(start, length);
+    if (x.length < 3) {
+      return 1.0;
+    }
+    final meanX = x.reduce((a, b) => a + b) / x.length;
+    final meanY = y.reduce((a, b) => a + b) / y.length;
+    var num = 0.0;
+    var denX = 0.0;
+    var denY = 0.0;
+    for (var i = 0; i < x.length; i++) {
+      final dx = x[i] - meanX;
+      final dy = y[i] - meanY;
+      num += dx * dy;
+      denX += dx * dx;
+      denY += dy * dy;
+    }
+    if (denX < 1e-6 || denY < 1e-6) {
+      return 1.0;
+    }
+    final corr = num / sqrt(denX * denY);
+    if (corr.isNaN || corr.isInfinite) {
+      return 1.0;
+    }
+    return corr.clamp(-1.0, 1.0);
+  }
+
+  _ModelStats _buildStats({
+    required List<HealthMetricSample> samples,
+    required DateTime now,
+  }) {
+    final start = now.subtract(const Duration(days: _windowDays));
+    final relevant = samples
+        .where((sample) {
+          if (sample.timestamp.isBefore(start) ||
+              sample.timestamp.isAfter(now)) {
+            return false;
+          }
+          switch (sample.type) {
+            case HealthMetricType.steps:
+            case HealthMetricType.heartRate:
+            case HealthMetricType.walkingHeartRate:
+            case HealthMetricType.activeEnergyBurned:
+            case HealthMetricType.totalCaloriesBurned:
+            case HealthMetricType.distanceWalkingRunning:
+            case HealthMetricType.distanceDelta:
+            case HealthMetricType.restingHeartRate:
+              return true;
+            default:
+              return false;
+          }
+        })
+        .toList(growable: false);
+
+    final dayMap = <DateTime, _DayStats>{};
+    for (final sample in relevant) {
+      final day = DateTime.utc(
+        sample.timestamp.year,
+        sample.timestamp.month,
+        sample.timestamp.day,
+      );
+      final dayStats = dayMap.putIfAbsent(day, _DayStats.new);
+      dayStats.consume(sample);
+    }
+
+    final days = dayMap.keys.toList(growable: false)..sort();
+    final heartSeries = <double>[];
+    final stepsSeries = <double>[];
+    final normalizedHeartSeries = <double>[];
+
+    for (final day in days) {
+      final d = dayMap[day]!;
+      final heart = d.avgHeartRate;
+      final steps = d.steps;
+      final resting = d.avgRestingHeartRate;
+      if (heart != null) {
+        heartSeries.add(heart);
+      }
+      stepsSeries.add(steps);
+      if (heart != null && resting != null && resting > 0) {
+        normalizedHeartSeries.add(heart - resting);
+      }
+    }
+
+    double latestOrAverage(
+      double? latest,
+      List<double> source, [
+      double fallback = 0.0,
+    ]) {
+      if (latest != null) {
+        return latest;
+      }
+      if (source.isNotEmpty) {
+        return source.reduce((a, b) => a + b) / source.length;
+      }
+      return fallback;
+    }
+
+    final latestDay = days.isNotEmpty ? dayMap[days.last] : null;
+    final stepsValues = days
+        .map((day) => dayMap[day]!.steps)
+        .toList(growable: false);
+    final heartValues = days
+        .map((day) => dayMap[day]!.avgHeartRate)
+        .whereType<double>()
+        .toList(growable: false);
+
+    final latestSteps = latestOrAverage(latestDay?.steps, stepsValues);
+    final latestHeart = latestOrAverage(
+      latestDay?.avgHeartRate,
+      heartValues,
+      60,
+    );
+    final latestCalories = latestOrAverage(
+      latestDay?.activeCalories,
+      days.map((day) => dayMap[day]!.activeCalories).toList(growable: false),
+    );
+    final latestDistance = latestOrAverage(
+      latestDay?.distance,
+      days.map((day) => dayMap[day]!.distance).toList(growable: false),
+    );
+    final latestResting = latestOrAverage(
+      latestDay?.avgRestingHeartRate,
+      days
+          .map((day) => dayMap[day]!.avgRestingHeartRate)
+          .whereType<double>()
+          .toList(growable: false),
+      60,
+    );
+
+    final availableSignals = [
+      latestSteps > 0,
+      latestHeart > 0,
+      latestCalories > 0,
+      latestDistance > 0,
+      latestResting > 0,
+    ].where((x) => x).length;
+
+    return _ModelStats(
+      stepsLatest: latestSteps,
+      heartLatest: latestHeart,
+      caloriesLatest: latestCalories,
+      distanceLatest: latestDistance,
+      restingLatest: latestResting,
+      heartEntropy: _entropy(heartValues),
+      stepsEntropy: _entropy(stepsValues),
+      heartSeries: heartSeries,
+      stepsSeries: stepsSeries,
+      normalizedHeartSeries: normalizedHeartSeries,
+      availableSignals: availableSignals,
+    );
+  }
+
+  double _entropy(List<double> values) {
+    if (values.length < 2) {
+      return 0;
+    }
+    final minV = values.reduce(min);
+    final maxV = values.reduce(max);
+    if ((maxV - minV).abs() < 1e-9) {
+      return 0;
+    }
+    final bins = min(365, max(16, values.length));
+    final counts = List<int>.filled(bins, 0);
+    for (final value in values) {
+      final norm = ((value - minV) / (maxV - minV)).clamp(0.0, 0.999999);
+      final idx = (norm * bins).floor().clamp(0, bins - 1);
+      counts[idx] += 1;
+    }
+
+    final n = values.length.toDouble();
+    var entropy = 0.0;
+    for (final count in counts) {
+      if (count == 0) {
+        continue;
+      }
+      final p = count / n;
+      entropy -= p * log(p);
+    }
+    return entropy;
+  }
+
+  double _confidenceFromSignals(int availableSignals) {
+    final score = (availableSignals / 5).clamp(0.0, 1.0);
+    return (0.55 + score * 0.4).clamp(0.0, 0.98);
+  }
+
+  HarvardActivityRecommendationResult _insufficientResult() {
+    return const HarvardActivityRecommendationResult(
+      activityClass: HarvardActivityClass.insufficientData,
+      confidence: 0,
+      recommendationKeys: [
+        'modelRecInsufficient1',
+        'modelRecInsufficient2',
+        'modelRecInsufficient3',
+      ],
+      modelVersion: _modelVersion,
+    );
+  }
+
+  List<String> _recommendationsForClass(HarvardActivityClass activityClass) {
+    switch (activityClass) {
+      case HarvardActivityClass.insufficientData:
+        return const [
+          'modelRecInsufficient1',
+          'modelRecInsufficient2',
+          'modelRecInsufficient3',
+        ];
+      case HarvardActivityClass.lying:
+      case HarvardActivityClass.sitting:
+        return const [
+          'modelRecRecovery1',
+          'modelRecRecovery2',
+          'modelRecRecovery3',
+        ];
+      case HarvardActivityClass.selfPaceWalk:
+      case HarvardActivityClass.running3Met:
+        return const ['modelRecBuild1', 'modelRecBuild2', 'modelRecBuild3'];
+      case HarvardActivityClass.running5Met:
+      case HarvardActivityClass.running7Met:
+        return const [
+          'modelRecPerformance1',
+          'modelRecPerformance2',
+          'modelRecPerformance3',
+        ];
+    }
+  }
+}
+
+class _ModelStats {
+  final double stepsLatest;
+  final double heartLatest;
+  final double caloriesLatest;
+  final double distanceLatest;
+  final double restingLatest;
+  final double heartEntropy;
+  final double stepsEntropy;
+  final List<double> heartSeries;
+  final List<double> stepsSeries;
+  final List<double> normalizedHeartSeries;
+  final int availableSignals;
+
+  const _ModelStats({
+    required this.stepsLatest,
+    required this.heartLatest,
+    required this.caloriesLatest,
+    required this.distanceLatest,
+    required this.restingLatest,
+    required this.heartEntropy,
+    required this.stepsEntropy,
+    required this.heartSeries,
+    required this.stepsSeries,
+    required this.normalizedHeartSeries,
+    required this.availableSignals,
+  });
+}
+
+class _DayStats {
+  double steps = 0;
+  double activeCalories = 0;
+  double distance = 0;
+  double _heartSum = 0;
+  int _heartCount = 0;
+  double _restingHeartSum = 0;
+  int _restingHeartCount = 0;
+
+  void consume(HealthMetricSample sample) {
+    switch (sample.type) {
+      case HealthMetricType.steps:
+        steps += sample.value;
+        break;
+      case HealthMetricType.activeEnergyBurned:
+      case HealthMetricType.totalCaloriesBurned:
+        activeCalories += sample.value;
+        break;
+      case HealthMetricType.distanceWalkingRunning:
+      case HealthMetricType.distanceDelta:
+        distance += sample.value;
+        break;
+      case HealthMetricType.heartRate:
+      case HealthMetricType.walkingHeartRate:
+        _heartSum += sample.value;
+        _heartCount += 1;
+        break;
+      case HealthMetricType.restingHeartRate:
+        _restingHeartSum += sample.value;
+        _restingHeartCount += 1;
+        break;
+      default:
+        break;
+    }
+  }
+
+  double? get avgHeartRate => _heartCount == 0 ? null : _heartSum / _heartCount;
+
+  double? get avgRestingHeartRate =>
+      _restingHeartCount == 0 ? null : _restingHeartSum / _restingHeartCount;
+}

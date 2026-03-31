@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:health/health.dart';
 import '../../domain/entities/health_metric_type.dart';
 import '../models/health_metric_sample_model.dart';
@@ -5,17 +6,46 @@ import '../models/health_metric_sample_model.dart';
 /// Маппинг метрик здоровья между доменом и платформенным SDK.
 class HealthPlatformMapper {
   /// Возвращает список типов данных для запроса.
-  static List<HealthDataType> toPlatformTypes(
-    List<HealthMetricType> types,
-  ) {
-    if (types.isEmpty) {
-      return _supportedTypes;
+  static List<HealthDataType> toPlatformTypes(List<HealthMetricType> types) {
+    final requestedTypes = types.isEmpty
+        ? supportedMetricsForCurrentPlatform
+        : types;
+    final availableNames = _availablePlatformTypeNames;
+
+    final result = <HealthDataType>[];
+    final added = <String>{};
+
+    for (final metricType in requestedTypes) {
+      final platformName = metricType.platformTypeName;
+      if (platformName == null || !availableNames.contains(platformName)) {
+        continue;
+      }
+      if (!added.add(platformName)) {
+        continue;
+      }
+
+      final mapped = _typeByName(platformName);
+      if (mapped != null) {
+        result.add(mapped);
+      }
     }
 
-    return types
-        .map(_mapMetricType)
-        .whereType<HealthDataType>()
-        .toList(growable: false);
+    return result;
+  }
+
+  /// Список доменных метрик, доступных на iOS.
+  static List<HealthMetricType> get supportedMetricsForIOS {
+    return _mapPlatformList(dataTypeKeysIOS);
+  }
+
+  /// Список доменных метрик, доступных на Android.
+  static List<HealthMetricType> get supportedMetricsForAndroid {
+    return _mapPlatformList(dataTypeKeysAndroid);
+  }
+
+  /// Список доменных метрик, доступных на текущей платформе.
+  static List<HealthMetricType> get supportedMetricsForCurrentPlatform {
+    return Platform.isIOS ? supportedMetricsForIOS : supportedMetricsForAndroid;
   }
 
   /// Преобразует платформенную точку в модель.
@@ -39,47 +69,32 @@ class HealthPlatformMapper {
     );
   }
 
-  static const Map<HealthMetricType, String> _metricTypeNames = {
-    HealthMetricType.heartRate: 'HEART_RATE',
-    HealthMetricType.steps: 'STEPS',
-    HealthMetricType.sleep: 'SLEEP_ASLEEP',
-    HealthMetricType.bloodOxygen: 'BLOOD_OXYGEN',
-    HealthMetricType.weight: 'WEIGHT',
-  };
+  static Set<String> get _availablePlatformTypeNames {
+    final supportedTypes = Platform.isIOS
+        ? dataTypeKeysIOS
+        : dataTypeKeysAndroid;
+    return supportedTypes.map((item) => item.name).toSet();
+  }
 
-  static HealthDataType? _mapMetricType(HealthMetricType type) {
-    final name = _metricTypeNames[type];
-    return name == null ? null : _typeByName(name);
+  static List<HealthMetricType> _mapPlatformList(List<HealthDataType> types) {
+    final mapped = <HealthMetricType>[];
+    final added = <HealthMetricType>{};
+
+    for (final type in types) {
+      final metricType = _mapPlatformType(type);
+      if (metricType == HealthMetricType.unknown) {
+        continue;
+      }
+      if (added.add(metricType)) {
+        mapped.add(metricType);
+      }
+    }
+
+    return mapped;
   }
 
   static HealthMetricType _mapPlatformType(HealthDataType type) {
-    switch (type.name) {
-      case 'HEART_RATE':
-        return HealthMetricType.heartRate;
-      case 'STEPS':
-        return HealthMetricType.steps;
-      case 'SLEEP':
-      case 'SLEEP_ASLEEP':
-        return HealthMetricType.sleep;
-      case 'BLOOD_OXYGEN':
-      case 'BLOOD_OXYGEN_SATURATION':
-        return HealthMetricType.bloodOxygen;
-      case 'WEIGHT':
-        return HealthMetricType.weight;
-      default:
-        return HealthMetricType.unknown;
-    }
-  }
-
-  static List<HealthDataType> get _supportedTypes {
-    final result = <HealthDataType>[];
-    for (final name in _metricTypeNames.values) {
-      final type = _typeByName(name);
-      if (type != null) {
-        result.add(type);
-      }
-    }
-    return result;
+    return HealthMetricTypeX.fromKey(type.name);
   }
 
   static HealthDataType? _typeByName(String name) {
@@ -93,9 +108,27 @@ class HealthPlatformMapper {
 
   static double _extractNumericValue(HealthDataPoint point) {
     final value = point.value;
+
     if (value is NumericHealthValue) {
       return value.numericValue.toDouble();
     }
+
+    if (value is WorkoutHealthValue) {
+      return (value.totalEnergyBurned ??
+              value.totalDistance ??
+              value.totalSteps ??
+              0)
+          .toDouble();
+    }
+
+    if (value is ElectrocardiogramHealthValue) {
+      return value.averageHeartRate?.toDouble() ?? 0;
+    }
+
+    if (value is InsulinDeliveryHealthValue) {
+      return value.units;
+    }
+
     return 0;
   }
 }

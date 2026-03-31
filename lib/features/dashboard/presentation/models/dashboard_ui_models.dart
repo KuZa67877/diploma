@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/mini_chart.dart';
 
+enum DashboardScoreState { noAccess, calculating, risk, attention, stable }
+
 class DashboardMetricUiModel {
   final String id;
   final IconData icon;
@@ -35,7 +37,10 @@ class DashboardViewData {
   final String greetingKey;
   final String userName;
   final int healthScore;
-  final String status;
+  final DashboardScoreState scoreState;
+  final String scoreStateLabel;
+  final bool showInsufficientDataBanner;
+  final List<String> recommendations;
   final DashboardInsightUiModel insight;
   final List<DashboardMetricUiModel> metrics;
 
@@ -43,7 +48,10 @@ class DashboardViewData {
     required this.greetingKey,
     required this.userName,
     required this.healthScore,
-    required this.status,
+    required this.scoreState,
+    required this.scoreStateLabel,
+    required this.showInsufficientDataBanner,
+    required this.recommendations,
     required this.insight,
     required this.metrics,
   });

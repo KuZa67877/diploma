@@ -20,60 +20,39 @@ class BottomNavigation extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final navItems = [
+      _NavItem(id: 'home', icon: LucideIcons.heart, labelKey: 'home'),
       _NavItem(
-        id: 'home',
-        icon: LucideIcons.home,
-        labelKey: 'home',
-      ),
-      _NavItem(
-        id: 'data',
-        icon: LucideIcons.database,
-        labelKey: 'data',
+        id: 'wellbeing',
+        icon: LucideIcons.calendarDays,
+        labelKey: 'wellbeing',
       ),
       _NavItem(
         id: 'analytics',
-        icon: LucideIcons.barChart3,
+        icon: LucideIcons.activity,
         labelKey: 'analytics',
-      ),
-      _NavItem(
-        id: 'reports',
-        icon: LucideIcons.fileText,
-        labelKey: 'reports',
-      ),
-      _NavItem(
-        id: 'profile',
-        icon: LucideIcons.user,
-        labelKey: 'profile',
       ),
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: isDark
-                ? AppColors.darkBorder.withValues(alpha: 0.5)
-                : AppColors.border.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppConstants.spacingMd,
-            vertical: AppConstants.spacingSm,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark
+                  ? AppColors.darkBorder.withValues(alpha: 0.8)
+                  : AppColors.border.withValues(alpha: 0.9),
+            ),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: navItems.asMap().entries.map((entry) {
               final index = entry.key;
               final item = entry.value;
@@ -127,15 +106,9 @@ class _NavItemWidget extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppConstants.radiusXl),
       child: AnimatedContainer(
         duration: AppConstants.shortAnimationDuration,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.spacingMd,
-          vertical: AppConstants.spacingSm,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
         decoration: BoxDecoration(
-          color: isActive
-              ? (isDark ? AppColors.darkPrimary : AppColors.primary)
-                  .withValues(alpha: 0.1)
-              : Colors.transparent,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(AppConstants.radiusXl),
         ),
         child: Column(
@@ -147,8 +120,8 @@ class _NavItemWidget extends StatelessWidget {
               color: isActive
                   ? (isDark ? AppColors.darkPrimary : AppColors.primary)
                   : (isDark
-                      ? AppColors.darkMutedForeground
-                      : AppColors.mutedForeground),
+                        ? AppColors.darkMutedForeground
+                        : AppColors.mutedForeground),
             ),
             const SizedBox(height: 4),
             Text(
@@ -159,8 +132,8 @@ class _NavItemWidget extends StatelessWidget {
                 color: isActive
                     ? (isDark ? AppColors.darkPrimary : AppColors.primary)
                     : (isDark
-                        ? AppColors.darkMutedForeground
-                        : AppColors.mutedForeground),
+                          ? AppColors.darkMutedForeground
+                          : AppColors.mutedForeground),
               ),
             ),
           ],

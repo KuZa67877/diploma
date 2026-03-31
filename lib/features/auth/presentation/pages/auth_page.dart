@@ -9,14 +9,9 @@ import '../bloc/auth_cubit.dart';
 import '../widgets/auth_content.dart';
 
 class AuthPage extends StatefulWidget {
-  final VoidCallback onBack;
-  final VoidCallback onAuthSuccess;
+  final ValueChanged<bool> onAuthSuccess;
 
-  const AuthPage({
-    super.key,
-    required this.onBack,
-    required this.onAuthSuccess,
-  });
+  const AuthPage({super.key, required this.onAuthSuccess});
 
   @override
   State<AuthPage> createState() => _AuthPageState();
@@ -40,10 +35,7 @@ class _AuthPageState extends State<AuthPage>
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
 
     _animationController.forward();
@@ -60,9 +52,9 @@ class _AuthPageState extends State<AuthPage>
   Future<void> _handleSubmit(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
     context.read<AuthCubit>().submit(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
   }
 
   @override
@@ -75,7 +67,7 @@ class _AuthPageState extends State<AuthPage>
             current.maybeWhen(success: (_, __) => true, orElse: () => false),
         listener: (context, state) {
           context.hideKeyboard();
-          widget.onAuthSuccess();
+          widget.onAuthSuccess(state.isLogin);
           context.read<AuthCubit>().resetStatus();
         },
         child: BlocBuilder<AuthCubit, AuthState>(
@@ -100,9 +92,9 @@ class _AuthPageState extends State<AuthPage>
                       formKey: _formKey,
                       emailController: _emailController,
                       passwordController: _passwordController,
-                      onBack: widget.onBack,
                       onSubmit: () => _handleSubmit(context),
-                      onToggleMode: () => context.read<AuthCubit>().toggleMode(),
+                      onToggleMode: () =>
+                          context.read<AuthCubit>().toggleMode(),
                       onTogglePasswordVisibility: () =>
                           context.read<AuthCubit>().togglePasswordVisibility(),
                       onGoogle: () =>

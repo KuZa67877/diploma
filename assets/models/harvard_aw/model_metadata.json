@@ -1,0 +1,15 @@
+{
+  "model_version": "harvard-aw-xgb-v1",
+  "accuracy_test": 0.846995,
+  "features_count": 16,
+  "input_name": "float_input",
+  "labels": {
+    "0": "Lying",
+    "1": "Running 3 METs",
+    "2": "Running 5 METs",
+    "3": "Running 7 METs",
+    "4": "Self Pace walk",
+    "5": "Sitting"
+  },
+  "dataset_path": "/Users/kuzminykhhh/.cache/kagglehub/datasets/aleespinosa/apple-watch-and-fitbit-data/versions/1/data_for_weka_aw.csv"
+}

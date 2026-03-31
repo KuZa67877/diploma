@@ -5,6 +5,7 @@ import '../../../../injection_container.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/gradient_background.dart';
 import '../bloc/reports_cubit.dart';
 import '../models/reports_ui_models.dart';
@@ -22,12 +23,11 @@ class _ReportsPageState extends State<ReportsPage> {
     return BlocProvider(
       create: (_) => getIt<ReportsCubit>()..load(),
       child: BlocListener<ReportsCubit, ReportsState>(
-        listenWhen: (_, current) =>
-            current.maybeWhen(
-              exportReady: (_, __, ___) => true,
-              exportFailed: (_, __) => true,
-              orElse: () => false,
-            ),
+        listenWhen: (_, current) => current.maybeWhen(
+          exportReady: (_, __, ___) => true,
+          exportFailed: (_, __) => true,
+          orElse: () => false,
+        ),
         listener: (context, state) {
           final localizations = AppLocalizations.of(context);
           state.whenOrNull(
@@ -44,9 +44,9 @@ class _ReportsPageState extends State<ReportsPage> {
               );
             },
             exportFailed: (_, message) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(message)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(message)));
             },
           );
         },
@@ -76,9 +76,9 @@ class _ReportsPageState extends State<ReportsPage> {
             }
 
             if (viewData == null) {
-              return const Scaffold(
-                body: Center(
-                  child: CircularProgressIndicator(),
+              return Scaffold(
+                body: GradientBackground(
+                  child: SafeArea(child: _ReportsLoadingShimmer()),
                 ),
               );
             }
@@ -94,207 +94,221 @@ class _ReportsPageState extends State<ReportsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                            // Header
-                            Padding(
-                              padding: const EdgeInsets.all(
-                                AppConstants.spacingLg,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    localizations.get('reports'),
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark
-                                          ? AppColors.darkForeground
-                                          : AppColors.lightForeground,
+                              // Header
+                              Padding(
+                                padding: const EdgeInsets.all(
+                                  AppConstants.spacingLg,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      localizations.get('reports'),
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark
+                                            ? AppColors.darkForeground
+                                            : AppColors.lightForeground,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    localizations.get('exportAndShare'),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: isDark
-                                          ? AppColors.darkMutedForeground
-                                          : AppColors.mutedForeground,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Filters
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppConstants.spacingLg,
-                              ),
-                              child: Row(
-                                children: viewData.filters.map((filter) {
-                                  final isSelected =
-                                      viewData.selectedFilterId == filter.id;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: FilterChip(
-                                      label: Text(localizations.get(filter.labelKey)),
-                                      selected: isSelected,
-                                      onSelected: (selected) {
-                                        context
-                                            .read<ReportsCubit>()
-                                            .selectFilter(filter.id);
-                                      },
-                                      backgroundColor: isDark
-                                          ? AppColors.darkMuted
-                                          : AppColors.muted,
-                                      selectedColor: isDark
-                                          ? AppColors.darkPrimary
-                                          : AppColors.primary,
-                                      labelStyle: TextStyle(
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      localizations.get('exportAndShare'),
+                                      style: TextStyle(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : (isDark
-                                                ? AppColors.darkMutedForeground
-                                                : AppColors.mutedForeground),
+                                        color: isDark
+                                            ? AppColors.darkMutedForeground
+                                            : AppColors.mutedForeground,
                                       ),
                                     ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-
-                            const SizedBox(height: AppConstants.spacingLg),
-
-                            // Export Options
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppConstants.spacingLg,
-                              ),
-                              child: Card(
-                                margin: EdgeInsets.zero,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(
-                                    AppConstants.spacingMd,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        localizations.get('quickExport'),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark
-                                              ? AppColors.darkForeground
-                                              : AppColors.lightForeground,
-                                        ),
-                                      ),
-                                      const SizedBox(height: AppConstants.spacingMd),
-                                      Row(
-                                        children: viewData.exportOptions.map((option) {
-                                          final label = option.useLocalization
-                                              ? localizations.get(option.labelKey)
-                                              : option.labelKey;
-                                          return Expanded(
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(right: 8),
-                                              child: _buildExportButton(
-                                                context,
-                                                option.id,
-                                                label,
-                                                option.icon,
-                                                option.color,
-                                                isDark,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ],
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ),
 
-                            const SizedBox(height: AppConstants.spacingLg),
-
-                            // Reports List
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppConstants.spacingLg,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    localizations.get('recentReports'),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark
-                                          ? AppColors.darkForeground
-                                          : AppColors.lightForeground,
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {},
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: Size.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          LucideIcons.filter,
-                                          size: 16,
-                                          color: AppColors.primary,
+                              // Filters
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppConstants.spacingLg,
+                                ),
+                                child: Row(
+                                  children: viewData.filters.map((filter) {
+                                    final isSelected =
+                                        viewData.selectedFilterId == filter.id;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: FilterChip(
+                                        label: Text(
+                                          localizations.get(filter.labelKey),
                                         ),
-                                        const SizedBox(width: 4),
+                                        selected: isSelected,
+                                        onSelected: (selected) {
+                                          context
+                                              .read<ReportsCubit>()
+                                              .selectFilter(filter.id);
+                                        },
+                                        backgroundColor: isDark
+                                            ? AppColors.darkMuted
+                                            : AppColors.muted,
+                                        selectedColor: isDark
+                                            ? AppColors.darkPrimary
+                                            : AppColors.primary,
+                                        labelStyle: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : (isDark
+                                                    ? AppColors
+                                                          .darkMutedForeground
+                                                    : AppColors
+                                                          .mutedForeground),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+
+                              const SizedBox(height: AppConstants.spacingLg),
+
+                              // Export Options
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppConstants.spacingLg,
+                                ),
+                                child: Card(
+                                  margin: EdgeInsets.zero,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(
+                                      AppConstants.spacingMd,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
                                         Text(
-                                          localizations.get('filter'),
-                                          style: const TextStyle(
+                                          localizations.get('quickExport'),
+                                          style: TextStyle(
                                             fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? AppColors.darkForeground
+                                                : AppColors.lightForeground,
                                           ),
+                                        ),
+                                        const SizedBox(
+                                          height: AppConstants.spacingMd,
+                                        ),
+                                        Row(
+                                          children: viewData.exportOptions.map((
+                                            option,
+                                          ) {
+                                            final label = option.useLocalization
+                                                ? localizations.get(
+                                                    option.labelKey,
+                                                  )
+                                                : option.labelKey;
+                                            return Expanded(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  right: 8,
+                                                ),
+                                                child: _buildExportButton(
+                                                  context,
+                                                  option.id,
+                                                  label,
+                                                  option.icon,
+                                                  option.color,
+                                                  isDark,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
 
-                            const SizedBox(height: AppConstants.spacingMd),
+                              const SizedBox(height: AppConstants.spacingLg),
 
-                            ...viewData.reports.asMap().entries.map((entry) {
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                  left: AppConstants.spacingLg,
-                                  right: AppConstants.spacingLg,
-                                  bottom: entry.key < viewData.reports.length - 1
-                                      ? AppConstants.spacingMd
-                                      : 0,
+                              // Reports List
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppConstants.spacingLg,
                                 ),
-                                child: _buildAnimatedCard(
-                                  delay: 200 + (entry.key * 50),
-                                  child: _buildReportCard(
-                                    entry.value,
-                                    localizations,
-                                    isDark,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      localizations.get('recentReports'),
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? AppColors.darkForeground
+                                            : AppColors.lightForeground,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {},
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            LucideIcons.filter,
+                                            size: 16,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            localizations.get('filter'),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: AppConstants.spacingMd),
+
+                              ...viewData.reports.asMap().entries.map((entry) {
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    left: AppConstants.spacingLg,
+                                    right: AppConstants.spacingLg,
+                                    bottom:
+                                        entry.key < viewData.reports.length - 1
+                                        ? AppConstants.spacingMd
+                                        : 0,
                                   ),
-                                ),
-                              );
-                            }),
+                                  child: _buildAnimatedCard(
+                                    delay: 200 + (entry.key * 50),
+                                    child: _buildReportCard(
+                                      entry.value,
+                                      localizations,
+                                      isDark,
+                                    ),
+                                  ),
+                                );
+                              }),
 
-                            const SizedBox(height: AppConstants.spacingLg),
+                              const SizedBox(height: AppConstants.spacingLg),
                             ],
                           ),
                         ),
@@ -397,12 +411,8 @@ class _ReportsPageState extends State<ReportsPage> {
                 color: bgColor,
                 borderRadius: BorderRadius.circular(AppConstants.radiusXl),
               ),
-                  child: Icon(
-                    LucideIcons.fileText,
-                    size: 24,
-                    color: iconColor,
-                  ),
-                ),
+              child: Icon(LucideIcons.fileText, size: 24, color: iconColor),
+            ),
             const SizedBox(width: AppConstants.spacingMd),
             Expanded(
               child: Column(
@@ -461,14 +471,12 @@ class _ReportsPageState extends State<ReportsPage> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      LucideIcons.eye,
-                      size: 16,
-                    ),
+                    icon: const Icon(LucideIcons.eye, size: 16),
                     onPressed: () {},
                     style: IconButton.styleFrom(
-                      backgroundColor:
-                          isDark ? AppColors.darkMuted : AppColors.muted,
+                      backgroundColor: isDark
+                          ? AppColors.darkMuted
+                          : AppColors.muted,
                       minimumSize: const Size(36, 36),
                     ),
                   ),
@@ -494,31 +502,83 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 }
 
+class _ReportsLoadingShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AppShimmer(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppConstants.spacingLg,
+          AppConstants.spacingLg,
+          AppConstants.spacingLg,
+          80,
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppShimmerBox(height: 22, width: 160),
+            SizedBox(height: 8),
+            AppShimmerBox(height: 14, width: 220),
+            SizedBox(height: 16),
+            Row(
+              children: [
+                AppShimmerBox(width: 72, height: 28),
+                SizedBox(width: 8),
+                AppShimmerBox(width: 72, height: 28),
+                SizedBox(width: 8),
+                AppShimmerBox(width: 72, height: 28),
+              ],
+            ),
+            SizedBox(height: 18),
+            AppShimmerBox(
+              height: 124,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+            SizedBox(height: 16),
+            AppShimmerBox(
+              height: 92,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+            SizedBox(height: 12),
+            AppShimmerBox(
+              height: 92,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+            SizedBox(height: 12),
+            AppShimmerBox(
+              height: 92,
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context);
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.spacingLg,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingLg),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               LucideIcons.alertTriangle,
               size: 32,
-              color: isDark ? AppColors.darkMutedForeground : AppColors.mutedForeground,
+              color: isDark
+                  ? AppColors.darkMutedForeground
+                  : AppColors.mutedForeground,
             ),
             const SizedBox(height: AppConstants.spacingMd),
             Text(
@@ -533,7 +593,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: AppConstants.spacingLg),
             TextButton(
               onPressed: onRetry,
-              child: const Text('Retry'),
+              child: Text(localizations.get('retry')),
             ),
           ],
         ),

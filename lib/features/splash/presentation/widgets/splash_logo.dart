@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/medi_ai_logo_mark.dart';
 import '../models/splash_ui_models.dart';
 import 'splash_dashed_circle_painter.dart';
 
@@ -29,10 +29,7 @@ class SplashLogo extends StatelessWidget {
             children: [
               RotationTransition(
                 turns: Tween<double>(begin: 0.0, end: 1.0).animate(
-                  CurvedAnimation(
-                    parent: controller,
-                    curve: Curves.linear,
-                  ),
+                  CurvedAnimation(parent: controller, curve: Curves.linear),
                 ),
                 child: CustomPaint(
                   size: const Size(124, 124),
@@ -51,10 +48,7 @@ class SplashLogo extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primaryGlow,
-                    ],
+                    colors: [AppColors.primary, AppColors.primaryGlow],
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -64,10 +58,12 @@ class SplashLogo extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  LucideIcons.brain,
-                  size: 40,
-                  color: Colors.white,
+                child: const Center(
+                  child: MediAiLogoMark(
+                    size: 44,
+                    strokeWidth: 4,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -79,7 +75,9 @@ class SplashLogo extends StatelessWidget {
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: isDark ? AppColors.darkForeground : AppColors.lightForeground,
+            color: isDark
+                ? AppColors.darkForeground
+                : AppColors.lightForeground,
             letterSpacing: 1.2,
           ),
         ),
@@ -88,7 +86,9 @@ class SplashLogo extends StatelessWidget {
           data.tagline,
           style: TextStyle(
             fontSize: 14,
-            color: isDark ? AppColors.darkMutedForeground : AppColors.mutedForeground,
+            color: isDark
+                ? AppColors.darkMutedForeground
+                : AppColors.mutedForeground,
             letterSpacing: 0.5,
           ),
         ),

@@ -9,6 +9,7 @@
       "args": [
         "--flavor",
         "dev",
+        "--dart-define=APP_FLAVOR=dev",
         "-t",
         "lib/main.dart"
       ]
@@ -21,6 +22,7 @@
       "args": [
         "--flavor",
         "prod",
+        "--dart-define=APP_FLAVOR=prod",
         "-t",
         "lib/main.dart"
       ]
@@ -34,6 +36,21 @@
       "args": [
         "--flavor",
         "dev",
+        "--dart-define=APP_FLAVOR=dev",
+        "-t",
+        "lib/main.dart"
+      ]
+    },
+    {
+      "name": "Flutter Dev (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "program": "lib/main.dart",
+      "args": [
+        "--flavor",
+        "dev",
+        "--dart-define=APP_FLAVOR=dev",
         "-t",
         "lib/main.dart"
       ]
@@ -47,6 +64,7 @@
       "args": [
         "--flavor",
         "prod",
+        "--dart-define=APP_FLAVOR=prod",
         "-t",
         "lib/main.dart"
       ]

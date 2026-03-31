@@ -2,30 +2,21 @@ class AnalyticsFilterUiModel {
   final String id;
   final String labelKey;
 
-  const AnalyticsFilterUiModel({
-    required this.id,
-    required this.labelKey,
-  });
+  const AnalyticsFilterUiModel({required this.id, required this.labelKey});
 }
 
 class AnalyticsChartPoint {
   final double x;
   final double y;
 
-  const AnalyticsChartPoint({
-    required this.x,
-    required this.y,
-  });
+  const AnalyticsChartPoint({required this.x, required this.y});
 }
 
 class AnalyticsBarData {
   final String label;
   final int steps;
 
-  const AnalyticsBarData({
-    required this.label,
-    required this.steps,
-  });
+  const AnalyticsBarData({required this.label, required this.steps});
 }
 
 class AnalyticsInsightUiModel {
@@ -46,6 +37,11 @@ class AnalyticsViewData {
   final List<AnalyticsChartPoint> heartRate;
   final List<AnalyticsBarData> activity;
   final List<AnalyticsInsightUiModel> insights;
+  final int recordsCount;
+  final int sourceCount;
+  final int metricTypeCount;
+  final int averageHeartRate;
+  final int averageSteps;
 
   const AnalyticsViewData({
     required this.filters,
@@ -53,5 +49,10 @@ class AnalyticsViewData {
     required this.heartRate,
     required this.activity,
     required this.insights,
+    required this.recordsCount,
+    required this.sourceCount,
+    required this.metricTypeCount,
+    required this.averageHeartRate,
+    required this.averageSteps,
   });
 }

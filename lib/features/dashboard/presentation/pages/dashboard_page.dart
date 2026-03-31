@@ -1,39 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../injection_container.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/gradient_background.dart';
 import '../bloc/dashboard_cubit.dart';
 import '../widgets/dashboard_content.dart';
 import '../widgets/dashboard_error_state.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  final VoidCallback onOpenProfile;
+
+  const DashboardPage({super.key, required this.onOpenProfile});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: AppConstants.mediumAnimationDuration,
-      vsync: this,
-    );
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
+class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -57,9 +40,9 @@ class _DashboardPageState extends State<DashboardPage>
           }
 
           if (viewData == null) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
+            return Scaffold(
+              body: GradientBackground(
+                child: SafeArea(child: _DashboardLoadingShimmer()),
               ),
             );
           }
@@ -67,11 +50,59 @@ class _DashboardPageState extends State<DashboardPage>
           return Scaffold(
             body: GradientBackground(
               child: SafeArea(
-                child: DashboardContent(viewData: viewData),
+                child: DashboardContent(
+                  viewData: viewData,
+                  onOpenProfile: widget.onOpenProfile,
+                ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _DashboardLoadingShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AppShimmer(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(14, 24, 14, 92),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(child: AppShimmerBox(height: 20)),
+                SizedBox(width: 12),
+                AppShimmerBox(width: 40, height: 40, shape: BoxShape.circle),
+              ],
+            ),
+            SizedBox(height: 14),
+            AppShimmerBox(
+              height: 240,
+              borderRadius: BorderRadius.all(Radius.circular(20)),
+            ),
+            SizedBox(height: 14),
+            AppShimmerBox(height: 22, width: 200),
+            SizedBox(height: 10),
+            AppShimmerBox(
+              height: 50,
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+            ),
+            SizedBox(height: 10),
+            AppShimmerBox(
+              height: 50,
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+            ),
+            SizedBox(height: 10),
+            AppShimmerBox(
+              height: 50,
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+            ),
+          ],
+        ),
       ),
     );
   }

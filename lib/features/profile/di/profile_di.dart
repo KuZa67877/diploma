@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import '../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../data/datasources/profile_local_data_source.dart';
 import '../data/repositories/profile_repository_impl.dart';
 import '../domain/repositories/profile_repository.dart';
@@ -15,6 +16,7 @@ void registerProfile(GetIt getIt) {
   getIt.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(
       localDataSource: getIt<ProfileLocalDataSource>(),
+      snapshotDataSource: getIt<AnonymousUserSnapshotDataSource>(),
     ),
   );
 

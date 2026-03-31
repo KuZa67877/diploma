@@ -56,6 +56,7 @@ dependencies:
   
   # Utils
   lucide_icons: ^0.257.0
+  onnxruntime: ^1.4.1
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +81,7 @@ flutter:
   assets:
     - assets/images/
     - assets/data/
+    - assets/models/
     - .env
 
 # Flutter Launcher Icons Configuration
