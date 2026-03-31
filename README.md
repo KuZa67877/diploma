@@ -3,6 +3,7 @@
 Мобильное приложение для мониторинга здоровья с использованием искусственного интеллекта.
 
 
+<img width="2094" height="2727" alt="MediAI App Redesign Flow" src="https://github.com/user-attachments/assets/5c36460b-bf62-40c3-8d6e-2bbeca670d10" />
 
 ## Архитектура
 
