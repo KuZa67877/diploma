@@ -5,17 +5,20 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/localization/language_cubit.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/widgets/gradient_background.dart';
 
 class SettingsPage extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenHealthSources;
+  final VoidCallback? onOpenSleepModelDebug;
 
   const SettingsPage({
     super.key,
     required this.onBack,
     required this.onOpenHealthSources,
+    this.onOpenSleepModelDebug,
   });
 
   @override
@@ -36,6 +39,7 @@ class SettingsPage extends StatelessWidget {
         : AppColors.mutedForeground;
     final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final debugEnabled = AppLogger.instance.isEnabled;
 
     return Scaffold(
       body: GradientBackground(
@@ -66,10 +70,7 @@ class SettingsPage extends StatelessWidget {
                 ),
                 Text(
                   l10n.get('privacyDataSourcesAndPreferences'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: subtitleColor,
-                  ),
+                  style: TextStyle(fontSize: 14, color: subtitleColor),
                 ),
                 const SizedBox(height: 14),
                 Container(
@@ -132,6 +133,18 @@ class SettingsPage extends StatelessWidget {
                         onTap: () =>
                             context.read<LanguageCubit>().toggleLanguage(),
                       ),
+                      if (debugEnabled) ...[
+                        _DividerLine(color: borderColor),
+                        _SettingsRow(
+                          icon: LucideIcons.activity,
+                          iconBg: isDark
+                              ? AppColors.darkMuted
+                              : AppColors.muted,
+                          title: l10n.get('sleepModelDebug'),
+                          subtitle: l10n.get('sleepModelDebugSubtitle'),
+                          onTap: onOpenSleepModelDebug,
+                        ),
+                      ],
                     ],
                   ),
                 ),

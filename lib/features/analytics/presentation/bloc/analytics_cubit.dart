@@ -47,6 +47,10 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       metricTypeCount: data.metricTypeCount,
       averageHeartRate: data.averageHeartRate,
       averageSteps: data.averageSteps,
+      sleepAiScore: data.sleepAiScore,
+      sleepAiConfidence: data.sleepAiConfidence,
+      sleepAiStatus: data.sleepAiStatus,
+      sleepAiReason: data.sleepAiReason,
     );
   }
 

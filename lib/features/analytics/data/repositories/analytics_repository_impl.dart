@@ -5,6 +5,7 @@ import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 import '../../../health_data/domain/entities/health_metrics_query.dart';
 import '../../../health_data/domain/repositories/health_data_repository.dart';
+import '../../../dashboard/data/services/sleep_quality_inference_model.dart';
 import '../../domain/entities/activity_sample.dart';
 import '../../domain/entities/analytics_data.dart';
 import '../../domain/entities/analytics_filter_option.dart';
@@ -14,16 +15,21 @@ import '../../domain/repositories/analytics_repository.dart';
 
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
   final HealthDataRepository healthDataRepository;
+  final SleepQualityInferenceModel sleepQualityModel;
 
-  const AnalyticsRepositoryImpl({required this.healthDataRepository});
+  const AnalyticsRepositoryImpl({
+    required this.healthDataRepository,
+    required this.sleepQualityModel,
+  });
 
   @override
   Future<Either<Failure, AnalyticsData>> getAnalyticsData(
     String filterId,
   ) async {
     try {
+      final now = DateTime.now();
       final normalizedFilter = _normalizeFilterId(filterId);
-      final range = _rangeForFilter(normalizedFilter);
+      final range = _rangeForFilter(normalizedFilter, now: now);
       final metricsResult = await healthDataRepository.getMetrics(
         HealthMetricsQuery(
           range: range,
@@ -36,42 +42,54 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           ],
         ),
       );
+      Failure? metricsFailure;
+      List<HealthMetricSample>? metrics;
+      metricsResult.fold(
+        (failure) => metricsFailure = failure,
+        (value) => metrics = value,
+      );
+      if (metricsFailure != null || metrics == null) {
+        return Left(metricsFailure ?? const CacheFailure());
+      }
 
-      return metricsResult.fold((failure) => Left(failure), (metrics) {
-        final wearableMetrics = metrics
-            .where((sample) => sample.sourceId != 'local_manual')
-            .toList(growable: false);
-        final heartRate = _buildHeartRate(wearableMetrics);
-        final activity = _buildActivity(wearableMetrics, normalizedFilter);
-        final averageHeartRate = _averageHeartRate(heartRate);
-        final averageSteps = _averageSteps(activity);
-        final insights = _buildInsights(
-          metrics: wearableMetrics,
+      final wearableMetrics = metrics!
+          .where((sample) => sample.sourceId != 'local_manual')
+          .toList(growable: false);
+      final heartRate = _buildHeartRate(wearableMetrics);
+      final activity = _buildActivity(wearableMetrics, normalizedFilter);
+      final averageHeartRate = _averageHeartRate(heartRate);
+      final averageSteps = _averageSteps(activity);
+      final insights = _buildInsights(
+        metrics: wearableMetrics,
+        averageHeartRate: averageHeartRate,
+        averageSteps: averageSteps,
+      );
+      final sleepAi = await _resolveSleepAi(now: now);
+
+      return Right(
+        AnalyticsData(
+          filters: _filters,
+          selectedFilterId: normalizedFilter,
+          heartRate: heartRate,
+          activity: activity,
+          insights: insights,
+          recordsCount: wearableMetrics.length,
+          sourceCount: wearableMetrics
+              .map((sample) => sample.sourceId)
+              .toSet()
+              .length,
+          metricTypeCount: wearableMetrics
+              .map((sample) => sample.type)
+              .toSet()
+              .length,
           averageHeartRate: averageHeartRate,
           averageSteps: averageSteps,
-        );
-
-        return Right(
-          AnalyticsData(
-            filters: _filters,
-            selectedFilterId: normalizedFilter,
-            heartRate: heartRate,
-            activity: activity,
-            insights: insights,
-            recordsCount: wearableMetrics.length,
-            sourceCount: wearableMetrics
-                .map((sample) => sample.sourceId)
-                .toSet()
-                .length,
-            metricTypeCount: wearableMetrics
-                .map((sample) => sample.type)
-                .toSet()
-                .length,
-            averageHeartRate: averageHeartRate,
-            averageSteps: averageSteps,
-          ),
-        );
-      });
+          sleepAiScore: sleepAi.score,
+          sleepAiConfidence: sleepAi.confidence,
+          sleepAiStatus: sleepAi.status,
+          sleepAiReason: sleepAi.reason,
+        ),
+      );
     } catch (_) {
       return const Left(CacheFailure());
     }
@@ -84,16 +102,16 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     };
   }
 
-  HealthDateRange _rangeForFilter(String filterId) {
-    final now = DateTime.now();
+  HealthDateRange _rangeForFilter(String filterId, {DateTime? now}) {
+    final current = now ?? DateTime.now();
     final start = switch (filterId) {
-      'day' => now.subtract(const Duration(days: 1)),
-      'week' => now.subtract(const Duration(days: 7)),
-      'month' => now.subtract(const Duration(days: 30)),
-      'year' => now.subtract(const Duration(days: 365)),
-      _ => now.subtract(const Duration(days: 7)),
+      'day' => current.subtract(const Duration(days: 1)),
+      'week' => current.subtract(const Duration(days: 7)),
+      'month' => current.subtract(const Duration(days: 30)),
+      'year' => current.subtract(const Duration(days: 365)),
+      _ => current.subtract(const Duration(days: 7)),
     };
-    return HealthDateRange(start: start, end: now);
+    return HealthDateRange(start: start, end: current);
   }
 
   List<HeartRateSample> _buildHeartRate(List<HealthMetricSample> metrics) {
@@ -218,6 +236,112 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     AnalyticsFilterOption(id: 'year', labelKey: 'year'),
   ];
 
+  static const int _sleepInferenceWindowDays = 30;
+  static const List<HealthMetricType> _sleepInferenceTypes = [
+    HealthMetricType.sleepAsleep,
+    HealthMetricType.sleepInBed,
+    HealthMetricType.sleepSession,
+    HealthMetricType.sleepAwake,
+    HealthMetricType.sleepAwakeInBed,
+    HealthMetricType.sleepDeep,
+    HealthMetricType.sleepLight,
+    HealthMetricType.sleepRem,
+    HealthMetricType.heartRate,
+    HealthMetricType.walkingHeartRate,
+    HealthMetricType.restingHeartRate,
+    HealthMetricType.heartRateVariabilitySdnn,
+    HealthMetricType.heartRateVariabilityRmssd,
+    HealthMetricType.steps,
+    HealthMetricType.distanceWalkingRunning,
+    HealthMetricType.distanceDelta,
+    HealthMetricType.activeEnergyBurned,
+    HealthMetricType.totalCaloriesBurned,
+  ];
+
+  Future<_SleepAiSnapshot> _resolveSleepAi({required DateTime now}) async {
+    final sleepResult = await healthDataRepository.getMetrics(
+      HealthMetricsQuery(
+        range: HealthDateRange(
+          start: now.subtract(const Duration(days: _sleepInferenceWindowDays)),
+          end: now,
+        ),
+        types: _sleepInferenceTypes,
+      ),
+    );
+
+    Failure? failure;
+    List<HealthMetricSample>? metrics;
+    sleepResult.fold((left) => failure = left, (right) => metrics = right);
+    if (failure != null || metrics == null) {
+      return const _SleepAiSnapshot(
+        score: null,
+        confidence: 0,
+        status: 'unavailable',
+        reason: 'sleep_metrics_unavailable',
+      );
+    }
+
+    final wearable = metrics!
+        .where(
+          (sample) => sample.sourceId.trim().toLowerCase() != 'local_manual',
+        )
+        .toList(growable: false);
+    if (wearable.isEmpty) {
+      return const _SleepAiSnapshot(
+        score: null,
+        confidence: 0,
+        status: 'insufficient',
+        reason: 'no_wearable_samples',
+      );
+    }
+
+    final inferenceNow = _latestWearableTimestamp(wearable);
+    final inference = await sleepQualityModel.infer(
+      samples: wearable,
+      now: inferenceNow,
+    );
+    final score = _normalizeSleepScore(inference.score);
+    if (score != null) {
+      return _SleepAiSnapshot(
+        score: score,
+        confidence: inference.confidence,
+        status: 'ok',
+        reason: inference.reason,
+      );
+    }
+
+    final status = inference.reason.startsWith('model_not_ready')
+        ? 'unavailable'
+        : 'insufficient';
+    return _SleepAiSnapshot(
+      score: null,
+      confidence: inference.confidence,
+      status: status,
+      reason: inference.reason,
+    );
+  }
+
+  double? _normalizeSleepScore(double? value) {
+    if (value == null || !value.isFinite) {
+      return null;
+    }
+    return value.clamp(0.0, 100.0);
+  }
+
+  DateTime? _latestWearableTimestamp(List<HealthMetricSample> samples) {
+    if (samples.isEmpty) {
+      return null;
+    }
+    DateTime latest = samples.first.timestamp.toUtc();
+    for (final sample in samples) {
+      final ts = sample.timestamp.toUtc();
+      if (ts.isAfter(latest)) {
+        latest = ts;
+      }
+    }
+    return latest;
+  }
+
   List<ActivitySample> _buildWeeklyActivity(List<HealthMetricSample> samples) {
     final labels = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final Map<int, int> buckets = {for (var i = 1; i <= 7; i++) i: 0};
@@ -277,4 +401,18 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       growable: false,
     );
   }
+}
+
+class _SleepAiSnapshot {
+  final double? score;
+  final double confidence;
+  final String status;
+  final String reason;
+
+  const _SleepAiSnapshot({
+    required this.score,
+    required this.confidence,
+    required this.status,
+    required this.reason,
+  });
 }

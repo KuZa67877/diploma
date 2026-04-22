@@ -15,6 +15,10 @@ class AnalyticsData extends Equatable {
   final int metricTypeCount;
   final int averageHeartRate;
   final int averageSteps;
+  final double? sleepAiScore;
+  final double sleepAiConfidence;
+  final String sleepAiStatus;
+  final String sleepAiReason;
 
   const AnalyticsData({
     required this.filters,
@@ -27,6 +31,10 @@ class AnalyticsData extends Equatable {
     this.metricTypeCount = 0,
     this.averageHeartRate = 0,
     this.averageSteps = 0,
+    this.sleepAiScore,
+    this.sleepAiConfidence = 0,
+    this.sleepAiStatus = 'unavailable',
+    this.sleepAiReason = 'not_available',
   });
 
   @override
@@ -41,5 +49,9 @@ class AnalyticsData extends Equatable {
     metricTypeCount,
     averageHeartRate,
     averageSteps,
+    sleepAiScore ?? -1,
+    sleepAiConfidence,
+    sleepAiStatus,
+    sleepAiReason,
   ];
 }

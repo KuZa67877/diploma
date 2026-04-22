@@ -88,7 +88,7 @@ class AnonymousUserSnapshotDataSourceImpl
           ? Map<String, dynamic>.from(profile)
           : const <String, dynamic>{};
 
-      return OnboardingProfileSnapshot(
+      final tableSnapshot = OnboardingProfileSnapshot(
         firstName: _stringOrNull(map['first_name']),
         lastName: _stringOrNull(map['last_name']),
         fullName: null,
@@ -109,6 +109,41 @@ class AnonymousUserSnapshotDataSourceImpl
         connectedHealthSourceIds: connectedSourceIds,
         wellbeingEntryDates: wellbeingDates,
       );
+
+      final metadataSnapshot = OnboardingProfileSnapshot.fromUserMetadata(
+        user.userMetadata,
+        email: user.email,
+      );
+      final merged = _mergeWithMetadataFallback(
+        tableSnapshot: tableSnapshot,
+        metadataSnapshot: metadataSnapshot,
+      );
+      _logger.debug(
+        'snapshot.remote',
+        'Resolved onboarding snapshot',
+        payload: {
+          'subjectId': subjectId,
+          'fromTable': {
+            'age': tableSnapshot.age,
+            'sex': tableSnapshot.sex,
+            'heightCm': tableSnapshot.heightCm,
+            'weightKg': tableSnapshot.weightKg,
+          },
+          'fromMetadata': {
+            'age': metadataSnapshot.age,
+            'sex': metadataSnapshot.sex,
+            'heightCm': metadataSnapshot.heightCm,
+            'weightKg': metadataSnapshot.weightKg,
+          },
+          'resolved': {
+            'age': merged.age,
+            'sex': merged.sex,
+            'heightCm': merged.heightCm,
+            'weightKg': merged.weightKg,
+          },
+        },
+      );
+      return merged;
     } catch (error, stackTrace) {
       _logger.warning(
         'snapshot.remote',
@@ -120,6 +155,35 @@ class AnonymousUserSnapshotDataSourceImpl
       );
       return null;
     }
+  }
+
+  OnboardingProfileSnapshot _mergeWithMetadataFallback({
+    required OnboardingProfileSnapshot tableSnapshot,
+    required OnboardingProfileSnapshot metadataSnapshot,
+  }) {
+    return OnboardingProfileSnapshot(
+      firstName: tableSnapshot.firstName ?? metadataSnapshot.firstName,
+      lastName: tableSnapshot.lastName ?? metadataSnapshot.lastName,
+      fullName: tableSnapshot.fullName ?? metadataSnapshot.fullName,
+      email: tableSnapshot.email ?? metadataSnapshot.email,
+      age: tableSnapshot.age ?? metadataSnapshot.age,
+      sex: tableSnapshot.sex ?? metadataSnapshot.sex,
+      heightCm: tableSnapshot.heightCm ?? metadataSnapshot.heightCm,
+      weightKg: tableSnapshot.weightKg ?? metadataSnapshot.weightKg,
+      systolic: tableSnapshot.systolic ?? metadataSnapshot.systolic,
+      diastolic: tableSnapshot.diastolic ?? metadataSnapshot.diastolic,
+      glucose: tableSnapshot.glucose ?? metadataSnapshot.glucose,
+      temperatureC: tableSnapshot.temperatureC ?? metadataSnapshot.temperatureC,
+      recordedAt: tableSnapshot.recordedAt ?? metadataSnapshot.recordedAt,
+      completedAt: tableSnapshot.completedAt ?? metadataSnapshot.completedAt,
+      symptoms: tableSnapshot.symptoms.isNotEmpty
+          ? tableSnapshot.symptoms
+          : metadataSnapshot.symptoms,
+      wellbeingEntriesCount: tableSnapshot.wellbeingEntriesCount,
+      healthSamplesCount: tableSnapshot.healthSamplesCount,
+      connectedHealthSourceIds: tableSnapshot.connectedHealthSourceIds,
+      wellbeingEntryDates: tableSnapshot.wellbeingEntryDates,
+    );
   }
 
   static String? _stringOrNull(Object? value) {

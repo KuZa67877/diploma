@@ -42,6 +42,10 @@ class AnalyticsViewData {
   final int metricTypeCount;
   final int averageHeartRate;
   final int averageSteps;
+  final double? sleepAiScore;
+  final double sleepAiConfidence;
+  final String sleepAiStatus;
+  final String sleepAiReason;
 
   const AnalyticsViewData({
     required this.filters,
@@ -54,5 +58,9 @@ class AnalyticsViewData {
     required this.metricTypeCount,
     required this.averageHeartRate,
     required this.averageSteps,
+    this.sleepAiScore,
+    this.sleepAiConfidence = 0,
+    this.sleepAiStatus = 'unavailable',
+    this.sleepAiReason = 'not_available',
   });
 }

@@ -14,6 +14,7 @@ import '../../features/health_data/presentation/pages/health_sources_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/debug_logs_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/settings/presentation/pages/sleep_model_debug_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/wellbeing/presentation/bloc/wellbeing_cubit.dart';
 import '../../features/wellbeing/presentation/pages/wellbeing_checkin_page.dart';
@@ -39,6 +40,7 @@ class AppRouter {
   static const String settingsPath = '/settings';
   static const String profilePath = '/profile';
   static const String debugLogsPath = '/debug-logs';
+  static const String sleepModelDebugPath = '/sleep-model-debug';
   static const String wellbeingCheckInPath = '/wellbeing-check-in';
 
   static const String splashRoute = 'splash';
@@ -53,6 +55,7 @@ class AppRouter {
   static const String settingsRoute = 'settings';
   static const String profileRoute = 'profile';
   static const String debugLogsRoute = 'debug-logs';
+  static const String sleepModelDebugRoute = 'sleep-model-debug';
   static const String wellbeingCheckInRoute = 'wellbeing-check-in';
 
   late final GoRouter router = GoRouter(
@@ -188,6 +191,9 @@ class AppRouter {
             healthSourcesRoute,
             queryParameters: const {'from': 'settings'},
           ),
+          onOpenSleepModelDebug: AppLogger.instance.isEnabled
+              ? () => context.pushNamed(sleepModelDebugRoute)
+              : null,
         ),
       ),
       GoRoute(
@@ -239,6 +245,13 @@ class AppRouter {
           builder: (context, state) =>
               DebugLogsPage(onBack: () => context.pop()),
         ),
+      if (AppLogger.instance.isEnabled)
+        GoRoute(
+          path: sleepModelDebugPath,
+          name: sleepModelDebugRoute,
+          builder: (context, state) =>
+              SleepModelDebugPage(onBack: () => context.pop()),
+        ),
     ],
   );
 
@@ -273,6 +286,7 @@ class AppRouter {
     wellbeingCheckInPath,
     profilePath,
     if (AppLogger.instance.isEnabled) debugLogsPath,
+    if (AppLogger.instance.isEnabled) sleepModelDebugPath,
   ];
 }
 

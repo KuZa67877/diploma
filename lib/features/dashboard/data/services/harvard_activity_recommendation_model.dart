@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
@@ -56,7 +57,9 @@ class HarvardActivityRecommendationModel {
   List<double> _mean = const [];
   List<double> _std = const [];
   List<String> _featureNames = const [];
+  Map<String, int> _targetMapping = const {};
   Map<int, String> _inverseTargetMapping = const {};
+  final _logger = AppLogger.instance;
 
   Future<HarvardActivityRecommendationResult> infer({
     required OnboardingProfileSnapshot profile,
@@ -65,8 +68,36 @@ class HarvardActivityRecommendationModel {
   }) async {
     final current = (now ?? DateTime.now()).toUtc();
     final stats = _buildStats(samples: samples, now: current);
+    _logger.info(
+      'model.harvard',
+      'Starting recommendation inference',
+      payload: {
+        'samplesTotal': samples.length,
+        'windowDays': _windowDays,
+        'profile': {
+          'age': profile.age,
+          'sex': profile.sex,
+          'heightCm': profile.heightCm,
+          'weightKg': profile.weightKg,
+        },
+        'stats': {
+          'availableSignals': stats.availableSignals,
+          'stepsLatest': stats.stepsLatest,
+          'heartLatest': stats.heartLatest,
+          'caloriesLatest': stats.caloriesLatest,
+          'distanceLatest': stats.distanceLatest,
+          'restingLatest': stats.restingLatest,
+          'heartDays': stats.heartSeries.length,
+          'stepsDays': stats.stepsSeries.length,
+        },
+      },
+    );
+
     if (stats.availableSignals < 2) {
-      return _insufficientResult();
+      return _insufficientResult(
+        reason: 'not_enough_signals',
+        payload: {'availableSignals': stats.availableSignals},
+      );
     }
 
     await _ensureInitialized();
@@ -76,29 +107,68 @@ class HarvardActivityRecommendationModel {
         _featureNames.isEmpty ||
         _featureNames.length != _mean.length ||
         _featureNames.length != _std.length) {
-      return _insufficientResult();
+      return _insufficientResult(
+        reason: 'model_not_ready',
+        payload: {
+          'initFailed': _initFailed,
+          'sessionNull': _session == null,
+          'featureNames': _featureNames.length,
+          'mean': _mean.length,
+          'std': _std.length,
+        },
+      );
     }
 
     try {
       final rawVector = _buildNotebookFeatureVector(profile, stats);
       final scaled = _scale(rawVector);
+      _logger.debug(
+        'model.harvard',
+        'Feature vector prepared',
+        payload: {
+          'inputName': _inputName,
+          'featureCount': rawVector.length,
+          'firstFeatures': _featureNames.take(6).toList(growable: false),
+          'firstValues': rawVector.take(6).toList(growable: false),
+        },
+      );
       final classId = await _runOnnx(scaled);
       if (classId == null) {
-        return _insufficientResult();
+        return _insufficientResult(reason: 'onnx_output_unrecognized');
       }
       final label = _inverseTargetMapping[classId];
       final activityClass = _mapLabelToClass(label);
       if (activityClass == HarvardActivityClass.insufficientData) {
-        return _insufficientResult();
+        return _insufficientResult(
+          reason: 'class_mapping_failed',
+          payload: {'classId': classId, 'label': label},
+        );
       }
+      _logger.info(
+        'model.harvard',
+        'Inference success',
+        payload: {
+          'classId': classId,
+          'label': label,
+          'activityClass': activityClass.name,
+        },
+      );
       return HarvardActivityRecommendationResult(
         activityClass: activityClass,
         confidence: _confidenceFromSignals(stats.availableSignals),
         recommendationKeys: _recommendationsForClass(activityClass),
         modelVersion: _modelVersion,
       );
-    } catch (_) {
-      return _insufficientResult();
+    } catch (error, stackTrace) {
+      _logger.error(
+        'model.harvard',
+        'Inference failed with exception',
+        payload: {
+          'error': error.toString(),
+          'stackTrace': stackTrace.toString(),
+        },
+      );
+      return _insufficientResult(reason: 'inference_exception');
     }
   }
 
@@ -135,15 +205,47 @@ class HarvardActivityRecommendationModel {
           .map((item) => item.toString())
           .toList(growable: false);
 
+      final target =
+          payload['target_mapping'] as Map<String, dynamic>? ??
+          const <String, dynamic>{};
+      _targetMapping = target.map(
+        (key, value) => MapEntry(
+          key.toString(),
+          (value is num)
+              ? value.toInt()
+              : (int.tryParse(value.toString()) ?? -1),
+        ),
+      )..removeWhere((_, value) => value < 0);
+
       final inverse =
           payload['inverse_target_mapping'] as Map<String, dynamic>? ??
           const <String, dynamic>{};
       _inverseTargetMapping = inverse.map(
         (key, value) => MapEntry(int.tryParse(key) ?? -1, value.toString()),
       )..remove(-1);
-    } catch (_) {
+      _logger.info(
+        'model.harvard',
+        'Model initialized',
+        payload: {
+          'inputName': _inputName,
+          'outputNames': _session?.outputNames ?? const [],
+          'featureCount': _featureNames.length,
+          'targetClasses': _inverseTargetMapping.length,
+        },
+      );
+    } catch (error, stackTrace) {
       _initFailed = true;
       _session = null;
+      _logger.error(
+        'model.harvard',
+        'Model initialization failed',
+        payload: {
+          'error': error.toString(),
+          'stackTrace': stackTrace.toString(),
+          'modelAssetPath': _modelAssetPath,
+          'preprocessorAssetPath': _preprocessorAssetPath,
+        },
+      );
     }
   }
 
@@ -162,13 +264,81 @@ class HarvardActivityRecommendationModel {
 
     try {
       if (outputs.isEmpty) {
+        _logger.warning('model.harvard', 'ONNX returned no outputs');
         return null;
       }
-      final first = outputs.first;
-      if (first == null) {
-        return null;
+      _logger.debug(
+        'model.harvard',
+        'ONNX outputs received',
+        payload: {
+          'outputNames': session.outputNames,
+          'outputsCount': outputs.length,
+          'outputTypes': outputs
+              .map((item) => item?.value.runtimeType.toString() ?? 'null')
+              .toList(growable: false),
+        },
+      );
+
+      // 1) Prefer explicit label outputs when available.
+      final outputNames = session.outputNames;
+      for (var index = 0; index < outputs.length; index++) {
+        final output = outputs[index];
+        if (output == null) {
+          continue;
+        }
+        final outputName = index < outputNames.length
+            ? outputNames[index].toLowerCase()
+            : '';
+        if (!outputName.contains('label')) {
+          continue;
+        }
+        final classId = _extractClassId(output.value);
+        if (classId != null) {
+          _logger.debug(
+            'model.harvard',
+            'Class id extracted from label output',
+            payload: {'outputName': outputName, 'classId': classId},
+          );
+          return classId;
+        }
       }
-      return _extractClassId(first.value);
+
+      // 2) Try class id extraction from any output.
+      for (final output in outputs) {
+        if (output == null) {
+          continue;
+        }
+        final classId = _extractClassId(output.value);
+        if (classId != null) {
+          _logger.debug(
+            'model.harvard',
+            'Class id extracted from output',
+            payload: {'classId': classId},
+          );
+          return classId;
+        }
+      }
+
+      // 3) Fallback: infer class from probability tensor/map.
+      for (final output in outputs) {
+        if (output == null) {
+          continue;
+        }
+        final classId = _extractClassIdFromProbabilities(output.value);
+        if (classId != null) {
+          _logger.debug(
+            'model.harvard',
+            'Class id inferred from probabilities',
+            payload: {'classId': classId},
+          );
+          return classId;
+        }
+      }
+      _logger.warning(
+        'model.harvard',
+        'Unable to parse ONNX output into class id',
+      );
+      return null;
     } finally {
       input.release();
       runOptions.release();
@@ -188,10 +358,24 @@ class HarvardActivityRecommendationModel {
     if (value is Uint8List && value.isNotEmpty) {
       return value.first;
     }
+    if (value is String) {
+      final byLabel = _targetMapping[value];
+      if (byLabel != null) {
+        return byLabel;
+      }
+      return int.tryParse(value);
+    }
     if (value is List && value.isNotEmpty) {
       final first = value.first;
       if (first is num) {
         return first.toInt();
+      }
+      if (first is String) {
+        final byLabel = _targetMapping[first];
+        if (byLabel != null) {
+          return byLabel;
+        }
+        return int.tryParse(first);
       }
       if (first is List && first.isNotEmpty && first.first is num) {
         return (first.first as num).toInt();
@@ -199,6 +383,97 @@ class HarvardActivityRecommendationModel {
     }
     if (value is num) {
       return value.toInt();
+    }
+    return null;
+  }
+
+  int? _extractClassIdFromProbabilities(dynamic value) {
+    int? argMax(List<double> values) {
+      if (values.isEmpty) {
+        return null;
+      }
+      var bestIndex = 0;
+      var bestValue = values.first;
+      for (var i = 1; i < values.length; i++) {
+        final current = values[i];
+        if (current > bestValue) {
+          bestValue = current;
+          bestIndex = i;
+        }
+      }
+      return bestIndex;
+    }
+
+    if (value is Float32List && value.isNotEmpty) {
+      return argMax(value.toList(growable: false));
+    }
+    if (value is Float64List && value.isNotEmpty) {
+      return argMax(value.toList(growable: false));
+    }
+    if (value is List && value.isNotEmpty) {
+      final first = value.first;
+      if (first is num) {
+        final scores = value
+            .whereType<num>()
+            .map((item) => item.toDouble())
+            .toList(growable: false);
+        if (scores.length == value.length) {
+          return argMax(scores);
+        }
+      }
+      if (first is List) {
+        final inner = first
+            .whereType<num>()
+            .map((item) => item.toDouble())
+            .toList(growable: false);
+        if (inner.isNotEmpty) {
+          return argMax(inner);
+        }
+      }
+      if (first is Map) {
+        final probabilities = first.entries
+            .map((entry) {
+              final key = entry.key;
+              final classId = key is num
+                  ? key.toInt()
+                  : int.tryParse(key.toString());
+              final probability = (entry.value is num)
+                  ? (entry.value as num).toDouble()
+                  : null;
+              if (classId == null || probability == null) {
+                return null;
+              }
+              return MapEntry(classId, probability);
+            })
+            .whereType<MapEntry<int, double>>()
+            .toList(growable: false);
+        if (probabilities.isNotEmpty) {
+          probabilities.sort((a, b) => b.value.compareTo(a.value));
+          return probabilities.first.key;
+        }
+      }
+    }
+    if (value is Map && value.isNotEmpty) {
+      final probabilities = value.entries
+          .map((entry) {
+            final key = entry.key;
+            final classId = key is num
+                ? key.toInt()
+                : int.tryParse(key.toString());
+            final probability = (entry.value is num)
+                ? (entry.value as num).toDouble()
+                : null;
+            if (classId == null || probability == null) {
+              return null;
+            }
+            return MapEntry(classId, probability);
+          })
+          .whereType<MapEntry<int, double>>()
+          .toList(growable: false);
+      if (probabilities.isNotEmpty) {
+        probabilities.sort((a, b) => b.value.compareTo(a.value));
+        return probabilities.first.key;
+      }
     }
     return null;
   }
@@ -517,7 +792,15 @@ class HarvardActivityRecommendationModel {
     return (0.55 + score * 0.4).clamp(0.0, 0.98);
   }
 
-  HarvardActivityRecommendationResult _insufficientResult() {
+  HarvardActivityRecommendationResult _insufficientResult({
+    String reason = 'unknown',
+    Object? payload,
+  }) {
+    _logger.warning(
+      'model.harvard',
+      'Returning insufficient-data recommendation',
+      payload: {'reason': reason, if (payload != null) 'details': payload},
+    );
     return const HarvardActivityRecommendationResult(
       activityClass: HarvardActivityClass.insufficientData,
       confidence: 0,

@@ -5,6 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../models/dashboard_ui_models.dart';
 import 'dashboard_header.dart';
 import 'health_score_card.dart';
+import 'metrics_section.dart';
 
 class DashboardContent extends StatelessWidget {
   final DashboardViewData viewData;
@@ -119,6 +120,8 @@ class DashboardContent extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 6),
+          MetricsSection(metrics: viewData.metrics, onViewAll: () {}),
         ],
       ),
     );

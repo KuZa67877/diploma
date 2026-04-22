@@ -82,6 +82,15 @@ flutter:
     - assets/images/
     - assets/data/
     - assets/models/
+    - assets/models/harvard_aw/model_harvardAWData_xgboost.onnx
+    - assets/models/harvard_aw/preprocessor_v1.json
+    - assets/models/harvard_aw/model_metadata.json
+    - assets/models/sleep_quality/model_sleep_quality.onnx
+    - assets/models/sleep_quality/preprocessor_v2.json
+    - assets/models/sleep_quality/feature_contract_health_v2.json
+    - assets/models/sleep_quality/preprocessor_v1.json
+    - assets/models/sleep_quality/model_metadata.json
+    - assets/models/sleep_quality/feature_contract_health_v1.json
     - .env
 
 # Flutter Launcher Icons Configuration

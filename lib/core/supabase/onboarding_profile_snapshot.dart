@@ -47,9 +47,39 @@ class OnboardingProfileSnapshot {
   }) {
     final metadata = Map<String, dynamic>.from(userMetadata ?? const {});
     final onboardingRaw = metadata['onboarding_profile'];
+    final onboardingLegacyRaw = metadata['onboarding'];
+    final profileRaw = metadata['profile'];
     final onboarding = onboardingRaw is Map
         ? Map<String, dynamic>.from(onboardingRaw.cast<dynamic, dynamic>())
         : const <String, dynamic>{};
+    final onboardingLegacy = onboardingLegacyRaw is Map
+        ? Map<String, dynamic>.from(
+            onboardingLegacyRaw.cast<dynamic, dynamic>(),
+          )
+        : const <String, dynamic>{};
+    final profile = profileRaw is Map
+        ? Map<String, dynamic>.from(profileRaw.cast<dynamic, dynamic>())
+        : const <String, dynamic>{};
+
+    Object? pick(List<String> keys) {
+      for (final key in keys) {
+        if (onboarding.containsKey(key) && onboarding[key] != null) {
+          return onboarding[key];
+        }
+        if (onboardingLegacy.containsKey(key) &&
+            onboardingLegacy[key] != null) {
+          return onboardingLegacy[key];
+        }
+        if (profile.containsKey(key) && profile[key] != null) {
+          return profile[key];
+        }
+        if (metadata.containsKey(key) && metadata[key] != null) {
+          return metadata[key];
+        }
+      }
+      return null;
+    }
+
     final symptomsRaw = onboarding['symptoms'];
     final symptoms = symptomsRaw is List
         ? symptomsRaw.map((item) => item.toString()).toList(growable: false)
@@ -89,21 +119,36 @@ class OnboardingProfileSnapshot {
     }
 
     return OnboardingProfileSnapshot(
-      firstName: _stringOrNull(onboarding['first_name']),
-      lastName: _stringOrNull(onboarding['last_name']),
+      firstName: _stringOrNull(
+        pick(['first_name', 'firstName', 'name_first', 'firstname']),
+      ),
+      lastName: _stringOrNull(
+        pick(['last_name', 'lastName', 'name_last', 'lastname']),
+      ),
       fullName:
           _stringOrNull(metadata['full_name']) ??
-          _stringOrNull(metadata['name']),
+          _stringOrNull(metadata['name']) ??
+          _stringOrNull(
+            pick(['display_name', 'displayName', 'fullName', 'full_name']),
+          ),
       email: email ?? _stringOrNull(metadata['email']),
-      age: _intOrNull(onboarding['age']),
-      sex: _stringOrNull(onboarding['sex']),
-      heightCm: _doubleOrNull(onboarding['height_cm']),
-      weightKg: _doubleOrNull(onboarding['weight_kg']),
-      systolic: _intOrNull(onboarding['blood_pressure_systolic']),
-      diastolic: _intOrNull(onboarding['blood_pressure_diastolic']),
-      glucose: _intOrNull(onboarding['glucose']),
-      temperatureC: _doubleOrNull(onboarding['temperature_c']),
-      recordedAt: _dateTimeOrNull(onboarding['recorded_at']),
+      age: _intOrNull(pick(['age'])),
+      sex: _stringOrNull(pick(['sex', 'gender'])),
+      heightCm: _doubleOrNull(pick(['height_cm', 'heightCm', 'height'])),
+      weightKg: _doubleOrNull(pick(['weight_kg', 'weightKg', 'weight'])),
+      systolic: _intOrNull(
+        pick(['blood_pressure_systolic', 'systolic', 'bp_systolic']),
+      ),
+      diastolic: _intOrNull(
+        pick(['blood_pressure_diastolic', 'diastolic', 'bp_diastolic']),
+      ),
+      glucose: _intOrNull(pick(['glucose', 'blood_glucose'])),
+      temperatureC: _doubleOrNull(
+        pick(['temperature_c', 'temperatureC', 'temperature']),
+      ),
+      recordedAt: _dateTimeOrNull(
+        pick(['recorded_at', 'recordedAt', 'created_at']),
+      ),
       completedAt: _dateTimeOrNull(metadata['onboarding_completed_at']),
       symptoms: symptoms,
       wellbeingEntriesCount: wellbeingEntryDates.length,

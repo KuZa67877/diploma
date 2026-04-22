@@ -204,6 +204,16 @@ class AppLocalizations {
     'viewAll': {'en': 'View All', 'ru': 'Все'},
     'heartRate': {'en': 'Heart Rate', 'ru': 'Пульс'},
     'sleep': {'en': 'Sleep', 'ru': 'Сон'},
+    'sleepAiScore': {'en': 'Sleep AI Score', 'ru': 'ИИ-оценка сна'},
+    'sleepAiConfidence': {'en': 'Confidence', 'ru': 'Уверенность'},
+    'sleepAiReason': {'en': 'Reason', 'ru': 'Причина'},
+    'sleepAiNoScore': {'en': 'No score yet', 'ru': 'Оценка пока недоступна'},
+    'sleepAiStatusOk': {'en': 'Ready', 'ru': 'Готово'},
+    'sleepAiStatusInsufficient': {
+      'en': 'Insufficient data',
+      'ru': 'Недостаточно данных',
+    },
+    'sleepAiStatusUnavailable': {'en': 'Unavailable', 'ru': 'Недоступно'},
     'activity': {'en': 'Activity', 'ru': 'Активность'},
     'runAIDiagnostics': {
       'en': 'Run AI Diagnostics',
@@ -683,6 +693,23 @@ class AppLocalizations {
     'debugLogsSubtitle': {
       'en': 'Auth, Supabase, state transitions and errors',
       'ru': 'Авторизация, Supabase, переходы состояния и ошибки',
+    },
+    'sleepModelDebug': {'en': 'Sleep model debug', 'ru': 'Отладка модели сна'},
+    'sleepModelDebugSubtitle': {
+      'en': 'Replay model inference on historical wearable data',
+      'ru': 'Прогон инференса на исторических wearable-данных',
+    },
+    'sleepModelDebugRun2130': {
+      'en': 'Run D-30..D-21',
+      'ru': 'Прогнать D-30..D-21',
+    },
+    'sleepModelDebugRunAll': {
+      'en': 'Run full history',
+      'ru': 'Прогнать всю историю',
+    },
+    'sleepModelDebugNoRows': {
+      'en': 'No run results yet. Start one of the scenarios above.',
+      'ru': 'Результатов пока нет. Запустите один из сценариев выше.',
     },
     'networkAuthEventsAndErrors': {
       'en': 'Network/auth events and errors',

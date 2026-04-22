@@ -18,6 +18,8 @@ import '../models/health_metric_sample_model.dart';
 /// Реализация репозитория данных здоровья.
 class HealthDataRepositoryImpl implements HealthDataRepository {
   static final DateTime _fullSyncStartDate = DateTime(2010, 1, 1);
+  static const String _appleSourceId = 'apple_health';
+  static const String _googleSourceId = 'google_fit';
 
   /// Локальный источник данных.
   final HealthDataLocalDataSource localDataSource;
@@ -105,7 +107,7 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       final sources = await localDataSource.getSources();
       final connectedIds = await localDataSource.getConnectedSourceIds();
       final allowedSourceIds = query.sourceId != null
-          ? {query.sourceId!}
+          ? {_normalizeSourceId(query.sourceId!)}
           : query.onlyConnectedSources
           ? connectedIds
           : sources.map((item) => item.id).toSet();
@@ -132,7 +134,8 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
           .getCachedExternalSamples();
       final filteredCachedExternal = cachedExternalAll
           .where((sample) {
-            final matchesSource = allowedSourceIds.contains(sample.sourceId);
+            final normalizedSourceId = _normalizeSourceId(sample.sourceId);
+            final matchesSource = allowedSourceIds.contains(normalizedSourceId);
             final matchesType =
                 query.types.isEmpty || query.types.contains(sample.type);
             final matchesDate = query.range.contains(sample.timestamp);
@@ -239,10 +242,13 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
   Future<void> _overwriteConnectedSources(Set<String> remoteSourceIds) async {
     final localSources = await localDataSource.getSources();
     final localConnected = await localDataSource.getConnectedSourceIds();
+    final normalizedRemoteSourceIds = remoteSourceIds
+        .map(_normalizeSourceId)
+        .toSet();
     final sourceIds = localSources.map((source) => source.id).toSet();
 
     for (final sourceId in sourceIds) {
-      final shouldBeConnected = remoteSourceIds.contains(sourceId);
+      final shouldBeConnected = normalizedRemoteSourceIds.contains(sourceId);
       final isConnected = localConnected.contains(sourceId);
       if (shouldBeConnected != isConnected) {
         await localDataSource.setSourceConnection(sourceId, shouldBeConnected);
@@ -279,7 +285,14 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
 
   HealthMetricSampleModel _toModel(HealthMetricSample sample) {
     if (sample is HealthMetricSampleModel) {
-      return sample;
+      return HealthMetricSampleModel(
+        id: sample.id,
+        type: sample.type,
+        value: sample.value,
+        unit: sample.unit,
+        timestamp: sample.timestamp,
+        sourceId: _normalizeSourceId(sample.sourceId),
+      );
     }
     return HealthMetricSampleModel(
       id: sample.id,
@@ -287,8 +300,31 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       value: sample.value,
       unit: sample.unit,
       timestamp: sample.timestamp,
-      sourceId: sample.sourceId,
+      sourceId: _normalizeSourceId(sample.sourceId),
     );
+  }
+
+  String _normalizeSourceId(String sourceId) {
+    final value = sourceId.trim().toLowerCase();
+    if (value.isEmpty) {
+      return sourceId;
+    }
+
+    if (value == _appleSourceId ||
+        value.contains('apple') ||
+        value.contains('healthkit')) {
+      return _appleSourceId;
+    }
+    if (value == _googleSourceId ||
+        value.contains('google') ||
+        value.contains('healthconnect')) {
+      return _googleSourceId;
+    }
+    if (value == 'local_manual') {
+      return value;
+    }
+
+    return value;
   }
 
   Future<HealthDataSource> _getSourceById(String sourceId) async {

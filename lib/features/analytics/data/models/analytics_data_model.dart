@@ -11,34 +11,47 @@ class AnalyticsDataModel extends AnalyticsData {
     required super.heartRate,
     required super.activity,
     required super.insights,
+    super.sleepAiScore,
+    super.sleepAiConfidence,
+    super.sleepAiStatus,
+    super.sleepAiReason,
   });
 
   factory AnalyticsDataModel.fromJson(Map<String, dynamic> json) {
-    final filters = (json['filters'] as List<dynamic>?)
-            ?.map((item) => AnalyticsFilterOptionModel.fromJson(
-                  item as Map<String, dynamic>,
-                ))
+    final filters =
+        (json['filters'] as List<dynamic>?)
+            ?.map(
+              (item) => AnalyticsFilterOptionModel.fromJson(
+                item as Map<String, dynamic>,
+              ),
+            )
             .toList() ??
         const <AnalyticsFilterOptionModel>[];
 
-    final heartRate = (json['heartRate'] as List<dynamic>?)
-            ?.map((item) => HeartRateSampleModel.fromJson(
-                  item as Map<String, dynamic>,
-                ))
+    final heartRate =
+        (json['heartRate'] as List<dynamic>?)
+            ?.map(
+              (item) =>
+                  HeartRateSampleModel.fromJson(item as Map<String, dynamic>),
+            )
             .toList() ??
         const <HeartRateSampleModel>[];
 
-    final activity = (json['activity'] as List<dynamic>?)
-            ?.map((item) => ActivitySampleModel.fromJson(
-                  item as Map<String, dynamic>,
-                ))
+    final activity =
+        (json['activity'] as List<dynamic>?)
+            ?.map(
+              (item) =>
+                  ActivitySampleModel.fromJson(item as Map<String, dynamic>),
+            )
             .toList() ??
         const <ActivitySampleModel>[];
 
-    final insights = (json['insights'] as List<dynamic>?)
-            ?.map((item) => AnalyticsInsightModel.fromJson(
-                  item as Map<String, dynamic>,
-                ))
+    final insights =
+        (json['insights'] as List<dynamic>?)
+            ?.map(
+              (item) =>
+                  AnalyticsInsightModel.fromJson(item as Map<String, dynamic>),
+            )
             .toList() ??
         const <AnalyticsInsightModel>[];
 
@@ -48,6 +61,10 @@ class AnalyticsDataModel extends AnalyticsData {
       heartRate: heartRate,
       activity: activity,
       insights: insights,
+      sleepAiScore: (json['sleepAiScore'] as num?)?.toDouble(),
+      sleepAiConfidence: (json['sleepAiConfidence'] as num?)?.toDouble() ?? 0,
+      sleepAiStatus: json['sleepAiStatus']?.toString() ?? 'unavailable',
+      sleepAiReason: json['sleepAiReason']?.toString() ?? 'not_available',
     );
   }
 
@@ -66,6 +83,10 @@ class AnalyticsDataModel extends AnalyticsData {
       'insights': insights
           .map((item) => (item as AnalyticsInsightModel).toJson())
           .toList(),
+      'sleepAiScore': sleepAiScore,
+      'sleepAiConfidence': sleepAiConfidence,
+      'sleepAiStatus': sleepAiStatus,
+      'sleepAiReason': sleepAiReason,
     };
   }
 }

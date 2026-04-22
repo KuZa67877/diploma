@@ -93,6 +93,75 @@ class AnalyticsContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        localizations.get('sleepAiScore'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: titleColor,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _sleepStatusColor(
+                          viewData.sleepAiStatus,
+                        ).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _sleepStatusLabel(
+                          localizations,
+                          viewData.sleepAiStatus,
+                        ),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _sleepStatusColor(viewData.sleepAiStatus),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  viewData.sleepAiScore == null
+                      ? localizations.get('sleepAiNoScore')
+                      : '${viewData.sleepAiScore!.toStringAsFixed(1)} / 100',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${localizations.get('sleepAiConfidence')}: '
+                  '${(viewData.sleepAiConfidence * 100).clamp(0.0, 100.0).toStringAsFixed(0)}%',
+                  style: TextStyle(fontSize: 12, color: subtitleColor),
+                ),
+                if (viewData.sleepAiStatus != 'ok') ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${localizations.get('sleepAiReason')}: ${viewData.sleepAiReason}',
+                    style: TextStyle(fontSize: 12, color: subtitleColor),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _CardContainer(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
                   localizations.get('dailySteps'),
                   style: TextStyle(
@@ -260,6 +329,22 @@ class AnalyticsContent extends StatelessWidget {
         'aiInsightSleepQualityImproving',
       ),
       _ => localizations.get('aiInsightAnalyzing'),
+    };
+  }
+
+  String _sleepStatusLabel(AppLocalizations localizations, String status) {
+    return switch (status) {
+      'ok' => localizations.get('sleepAiStatusOk'),
+      'insufficient' => localizations.get('sleepAiStatusInsufficient'),
+      _ => localizations.get('sleepAiStatusUnavailable'),
+    };
+  }
+
+  Color _sleepStatusColor(String status) {
+    return switch (status) {
+      'ok' => AppColors.success,
+      'insufficient' => AppColors.warning,
+      _ => AppColors.mutedForeground,
     };
   }
 }
