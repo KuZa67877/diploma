@@ -1,0 +1,87 @@
+{
+  "contract_id": "stress-health-contract-v2",
+  "window_minutes": 15,
+  "runtime_windows_minutes": [
+    5,
+    15,
+    60,
+    1440
+  ],
+  "baseline_windows_days": [
+    7,
+    14,
+    30
+  ],
+  "required_runtime_groups": [
+    "heart_rate",
+    "personal_baseline"
+  ],
+  "optional_runtime_groups": [
+    "hrv",
+    "respiratory",
+    "sleep",
+    "activity",
+    "temperature",
+    "spo2"
+  ],
+  "feature_names": [
+    "hr_z_14",
+    "resting_hr_z_30",
+    "hrv_sdnn_z_30",
+    "hrv_rmssd_z_30",
+    "resp_rate_z_14",
+    "temperature_z_30",
+    "steps_15m",
+    "steps_1h",
+    "steps_24h",
+    "active_energy_1h",
+    "exercise_time_45m",
+    "minutes_since_workout",
+    "sleep_hours_latest",
+    "sleep_hours_delta_7",
+    "sleep_efficiency_latest",
+    "sleep_efficiency_delta_7",
+    "sleep_nights_7",
+    "recent_sleep_score",
+    "cardiac_event_present",
+    "high_hr_event_present",
+    "missing_hr",
+    "missing_resting_hr",
+    "missing_hrv_sdnn",
+    "missing_hrv_rmssd",
+    "missing_resp_rate",
+    "missing_temperature",
+    "missing_spo2",
+    "missing_sleep",
+    "missing_activity"
+  ],
+  "runtime_extra_feature_names": [
+    "hr_mean_5m",
+    "hr_std_5m",
+    "hr_min_5m",
+    "hr_max_5m",
+    "hr_slope_5m",
+    "hr_z_5m_14",
+    "steps_5m",
+    "active_energy_5m"
+  ],
+  "missing_flags": [
+    "missing_hr",
+    "missing_resting_hr",
+    "missing_hrv_sdnn",
+    "missing_hrv_rmssd",
+    "missing_resp_rate",
+    "missing_temperature",
+    "missing_spo2",
+    "missing_sleep",
+    "missing_activity"
+  ],
+  "quality_gate": {
+    "min_model_quality": 0.45,
+    "block_if_missing": [
+      "missing_hr"
+    ],
+    "fallback_if_recent_workout_minutes_lt": 45,
+    "fallback_if_baseline_days_lt": 3
+  }
+}

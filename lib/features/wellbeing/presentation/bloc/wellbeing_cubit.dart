@@ -121,12 +121,18 @@ class WellbeingCubit extends Cubit<WellbeingState> {
     required WellbeingMood mood,
     required Set<String> tags,
     String? note,
+    int? stressNow,
+    int? fatigue,
+    int? wellness,
   }) async {
     final entry = WellbeingEntry(
       date: DateTime(date.year, date.month, date.day),
       mood: mood,
       tags: tags.toList(growable: false),
       note: _normalizeNote(note),
+      stressNow: _normalizeScale(stressNow),
+      fatigue: _normalizeScale(fatigue),
+      wellness: _normalizeScale(wellness),
     );
 
     emit(state.copyWith(isSaving: true, clearError: true));
@@ -169,6 +175,13 @@ class WellbeingCubit extends Cubit<WellbeingState> {
       return null;
     }
     return trimmed;
+  }
+
+  int? _normalizeScale(int? value) {
+    if (value == null || value < 1 || value > 5) {
+      return null;
+    }
+    return value;
   }
 }
 

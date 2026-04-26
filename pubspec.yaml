@@ -91,6 +91,9 @@ flutter:
     - assets/models/sleep_quality/preprocessor_v1.json
     - assets/models/sleep_quality/model_metadata.json
     - assets/models/sleep_quality/feature_contract_health_v1.json
+    - assets/models/stress/scorecard_v1.json
+    - assets/models/stress/feature_contract_stress_v2.json
+    - assets/models/stress/model_metadata.json
     - .env
 
 # Flutter Launcher Icons Configuration

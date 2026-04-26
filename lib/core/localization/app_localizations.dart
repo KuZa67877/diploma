@@ -205,6 +205,11 @@ class AppLocalizations {
     'heartRate': {'en': 'Heart Rate', 'ru': 'Пульс'},
     'sleep': {'en': 'Sleep', 'ru': 'Сон'},
     'sleepAiScore': {'en': 'Sleep AI Score', 'ru': 'ИИ-оценка сна'},
+    'stressAiScore': {'en': 'Stress Load', 'ru': 'Напряжение'},
+    'physiologyAnomalyScore': {
+      'en': 'Physiology anomaly',
+      'ru': 'Физиологическая аномалия',
+    },
     'sleepAiConfidence': {'en': 'Confidence', 'ru': 'Уверенность'},
     'sleepAiReason': {'en': 'Reason', 'ru': 'Причина'},
     'sleepAiNoScore': {'en': 'No score yet', 'ru': 'Оценка пока недоступна'},
@@ -397,6 +402,19 @@ class AppLocalizations {
       'en': 'Move from very unpleasant to very pleasant',
       'ru': 'От очень неприятного к очень приятному',
     },
+    'stressCalibration': {
+      'en': 'Stress calibration',
+      'ru': 'Калибровка стресса',
+    },
+    'stressCalibrationSubtitle': {
+      'en': 'These 1-5 ratings help calibrate the stress model',
+      'ru': 'Оценки 1-5 помогают калибровать модель стресса',
+    },
+    'stressNow': {'en': 'Stress now', 'ru': 'Стресс сейчас'},
+    'fatigueNow': {'en': 'Fatigue now', 'ru': 'Усталость сейчас'},
+    'wellnessNow': {'en': 'Wellbeing now', 'ru': 'Самочувствие сейчас'},
+    'high': {'en': 'High', 'ru': 'Высоко'},
+    'poor': {'en': 'Poor', 'ru': 'Плохо'},
     'whatDescribesYourDay': {
       'en': 'What describes your day?',
       'ru': 'Что описывает ваш день?',
@@ -708,6 +726,46 @@ class AppLocalizations {
       'ru': 'Прогнать всю историю',
     },
     'sleepModelDebugNoRows': {
+      'en': 'No run results yet. Start one of the scenarios above.',
+      'ru': 'Результатов пока нет. Запустите один из сценариев выше.',
+    },
+    'stressModelDebug': {
+      'en': 'Stress model debug',
+      'ru': 'Отладка модели стресса',
+    },
+    'stressModelDebugSubtitle': {
+      'en': 'Replay stress inference on account wearable history',
+      'ru': 'Прогон оценки стресса на wearable-истории аккаунта',
+    },
+    'stressModelDebugRunRecent': {
+      'en': 'Run last 7 days',
+      'ru': 'Прогнать 7 дней',
+    },
+    'stressModelDebugRunAll': {
+      'en': 'Run full history',
+      'ru': 'Прогнать всю историю',
+    },
+    'stressModelDebugNoRows': {
+      'en': 'No run results yet. Start one of the scenarios above.',
+      'ru': 'Результатов пока нет. Запустите один из сценариев выше.',
+    },
+    'physiologyAnomalyDebug': {
+      'en': 'Physiology anomaly debug',
+      'ru': 'Отладка модели аномалий',
+    },
+    'physiologyAnomalyDebugSubtitle': {
+      'en': 'Replay personal physiology anomaly inference on wearable history',
+      'ru': 'Прогон персональной модели отклонений на wearable-истории',
+    },
+    'physiologyAnomalyDebugRunRecent': {
+      'en': 'Run last 14 days',
+      'ru': 'Прогнать 14 дней',
+    },
+    'physiologyAnomalyDebugRunAll': {
+      'en': 'Run full history',
+      'ru': 'Прогнать всю историю',
+    },
+    'physiologyAnomalyDebugNoRows': {
       'en': 'No run results yet. Start one of the scenarios above.',
       'ru': 'Результатов пока нет. Запустите один из сценариев выше.',
     },

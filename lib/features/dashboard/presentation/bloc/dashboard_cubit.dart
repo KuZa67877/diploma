@@ -96,6 +96,10 @@ class DashboardCubit extends Cubit<DashboardState> {
         return LucideIcons.footprints;
       case 'sleep_ai':
         return LucideIcons.brain;
+      case 'stress_ai':
+        return LucideIcons.zap;
+      case 'physiology_anomaly':
+        return LucideIcons.activity;
       default:
         return LucideIcons.activity;
     }

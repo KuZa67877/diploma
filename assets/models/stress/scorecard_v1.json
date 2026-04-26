@@ -1,0 +1,228 @@
+{
+  "model_id": "stress-score-v1",
+  "model_version": "stress-scorecard-v1",
+  "created_at_utc": "2026-04-26T14:58:00.006774+00:00",
+  "task_type": "binary_stress_classification",
+  "output": {
+    "stress_score": "calibrated_probability_stress_times_100",
+    "status_thresholds": {
+      "stable_max_exclusive": 40,
+      "attention_max_exclusive": 70,
+      "risk_min": 70
+    }
+  },
+  "feature_contract_version": "stress-health-contract-v2",
+  "feature_names": [
+    "hr_z_14",
+    "resting_hr_z_30",
+    "hrv_sdnn_z_30",
+    "hrv_rmssd_z_30",
+    "resp_rate_z_14",
+    "temperature_z_30",
+    "steps_15m",
+    "steps_1h",
+    "steps_24h",
+    "active_energy_1h",
+    "exercise_time_45m",
+    "minutes_since_workout",
+    "sleep_hours_latest",
+    "sleep_hours_delta_7",
+    "sleep_efficiency_latest",
+    "sleep_efficiency_delta_7",
+    "sleep_nights_7",
+    "recent_sleep_score",
+    "cardiac_event_present",
+    "high_hr_event_present",
+    "missing_hr",
+    "missing_resting_hr",
+    "missing_hrv_sdnn",
+    "missing_hrv_rmssd",
+    "missing_resp_rate",
+    "missing_temperature",
+    "missing_spo2",
+    "missing_sleep",
+    "missing_activity"
+  ],
+  "preprocessing": {
+    "imputer_strategy": "train_median",
+    "imputer_statistics": [
+      3.7810512360569524,
+      0.0,
+      0.14894745355148306,
+      0.0,
+      0.17864252450665682,
+      -0.8257718535743409,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scaler": "robust_iqr",
+    "center": [
+      3.7810512360569524,
+      0.0,
+      0.14894745355148306,
+      0.0,
+      0.17864252450665682,
+      -0.8257718535743409,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "scale": [
+      0.25016470472787944,
+      1.0,
+      0.1334838713928109,
+      1.0,
+      0.030079972069920663,
+      0.7164208378063371,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "model": {
+    "type": "logistic_regression",
+    "intercept": -0.07172422034064088,
+    "coefficients": [
+      0.055147416656033565,
+      0.0,
+      0.006329645451581332,
+      0.0,
+      -0.0017026524067816412,
+      -0.19860470027300645,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "calibration": {
+    "method": "platt_sigmoid",
+    "coefficient": 0.7926228889367813,
+    "intercept": -0.5829215071837495
+  },
+  "reason_feature_groups": {
+    "elevated_hr_vs_baseline": [
+      "hr_z_14"
+    ],
+    "elevated_resting_hr_vs_baseline": [
+      "resting_hr_z_30"
+    ],
+    "low_hrv_vs_baseline": [
+      "hrv_sdnn_z_30",
+      "hrv_rmssd_z_30"
+    ],
+    "elevated_respiratory_rate": [
+      "resp_rate_z_14"
+    ],
+    "poor_sleep_recovery": [
+      "sleep_hours_delta_7",
+      "sleep_efficiency_delta_7"
+    ],
+    "temperature_deviation": [
+      "temperature_z_30"
+    ],
+    "recent_activity_context": [
+      "steps_1h",
+      "active_energy_1h",
+      "exercise_time_45m",
+      "minutes_since_workout"
+    ]
+  },
+  "training_summary": {
+    "validation_protocol": "subject-wise LeaveOneGroupOut",
+    "logistic_oof_calibrated": {
+      "macro_f1": 0.7341628959276019,
+      "balanced_accuracy": 0.7186274509803922,
+      "pr_auc": 0.7040898414129851,
+      "brier": 0.20468405448390098,
+      "ece": 0.27875570879400147,
+      "roc_auc": 0.6475490196078432,
+      "mae_score": 41.59800277006465
+    }
+  },
+  "safety_notes": [
+    "This model estimates stress-related load, not a medical diagnosis.",
+    "Use runtime quality gates and fallback when heart-rate data or personal baseline is insufficient.",
+    "Domain shift must be checked on Apple Watch / HealthKit EMA data before clinical or high-stakes use."
+  ]
+}

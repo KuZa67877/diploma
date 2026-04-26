@@ -13,8 +13,10 @@ import '../../features/health_data/presentation/pages/health_import_preview_page
 import '../../features/health_data/presentation/pages/health_sources_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/debug_logs_page.dart';
+import '../../features/settings/presentation/pages/physiology_anomaly_debug_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/sleep_model_debug_page.dart';
+import '../../features/settings/presentation/pages/stress_model_debug_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/wellbeing/presentation/bloc/wellbeing_cubit.dart';
 import '../../features/wellbeing/presentation/pages/wellbeing_checkin_page.dart';
@@ -41,6 +43,8 @@ class AppRouter {
   static const String profilePath = '/profile';
   static const String debugLogsPath = '/debug-logs';
   static const String sleepModelDebugPath = '/sleep-model-debug';
+  static const String stressModelDebugPath = '/stress-model-debug';
+  static const String physiologyAnomalyDebugPath = '/physiology-anomaly-debug';
   static const String wellbeingCheckInPath = '/wellbeing-check-in';
 
   static const String splashRoute = 'splash';
@@ -56,6 +60,8 @@ class AppRouter {
   static const String profileRoute = 'profile';
   static const String debugLogsRoute = 'debug-logs';
   static const String sleepModelDebugRoute = 'sleep-model-debug';
+  static const String stressModelDebugRoute = 'stress-model-debug';
+  static const String physiologyAnomalyDebugRoute = 'physiology-anomaly-debug';
   static const String wellbeingCheckInRoute = 'wellbeing-check-in';
 
   late final GoRouter router = GoRouter(
@@ -194,6 +200,12 @@ class AppRouter {
           onOpenSleepModelDebug: AppLogger.instance.isEnabled
               ? () => context.pushNamed(sleepModelDebugRoute)
               : null,
+          onOpenStressModelDebug: AppLogger.instance.isEnabled
+              ? () => context.pushNamed(stressModelDebugRoute)
+              : null,
+          onOpenPhysiologyAnomalyDebug: AppLogger.instance.isEnabled
+              ? () => context.pushNamed(physiologyAnomalyDebugRoute)
+              : null,
         ),
       ),
       GoRoute(
@@ -252,6 +264,20 @@ class AppRouter {
           builder: (context, state) =>
               SleepModelDebugPage(onBack: () => context.pop()),
         ),
+      if (AppLogger.instance.isEnabled)
+        GoRoute(
+          path: stressModelDebugPath,
+          name: stressModelDebugRoute,
+          builder: (context, state) =>
+              StressModelDebugPage(onBack: () => context.pop()),
+        ),
+      if (AppLogger.instance.isEnabled)
+        GoRoute(
+          path: physiologyAnomalyDebugPath,
+          name: physiologyAnomalyDebugRoute,
+          builder: (context, state) =>
+              PhysiologyAnomalyDebugPage(onBack: () => context.pop()),
+        ),
     ],
   );
 
@@ -287,6 +313,8 @@ class AppRouter {
     profilePath,
     if (AppLogger.instance.isEnabled) debugLogsPath,
     if (AppLogger.instance.isEnabled) sleepModelDebugPath,
+    if (AppLogger.instance.isEnabled) stressModelDebugPath,
+    if (AppLogger.instance.isEnabled) physiologyAnomalyDebugPath,
   ];
 }
 

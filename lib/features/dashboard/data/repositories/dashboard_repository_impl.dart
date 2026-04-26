@@ -12,24 +12,33 @@ import '../../domain/entities/dashboard_summary.dart';
 import '../../domain/entities/dashboard_metric.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../datasources/dashboard_local_data_source.dart';
+import '../datasources/health_model_output_remote_data_source.dart';
 import '../models/dashboard_summary_model.dart';
 import '../services/harvard_activity_recommendation_model.dart';
+import '../services/physiology_anomaly_inference_model.dart';
 import '../services/sleep_quality_inference_model.dart';
+import '../services/stress_inference_model.dart';
 
 class DashboardRepositoryImpl implements DashboardRepository {
   final DashboardLocalDataSource localDataSource;
   final AnonymousUserSnapshotDataSource snapshotDataSource;
   final HealthDataRemoteDataSource healthRemoteDataSource;
+  final HealthModelOutputRemoteDataSource modelOutputRemoteDataSource;
   final HarvardActivityRecommendationModel recommendationModel;
   final SleepQualityInferenceModel sleepQualityModel;
+  final StressInferenceModel stressModel;
+  final PhysiologyAnomalyInferenceModel physiologyAnomalyModel;
   final _logger = AppLogger.instance;
 
   DashboardRepositoryImpl({
     required this.localDataSource,
     required this.snapshotDataSource,
     required this.healthRemoteDataSource,
+    required this.modelOutputRemoteDataSource,
     required this.recommendationModel,
     required this.sleepQualityModel,
+    required this.stressModel,
+    required this.physiologyAnomalyModel,
   });
 
   @override
@@ -60,18 +69,26 @@ class DashboardRepositoryImpl implements DashboardRepository {
               fallback: localSummary.healthScore,
             )
           : null;
-      final modelContext = await _resolveModelContext(profile: profile);
+      final modelContext = await _resolveModelContext(
+        profile: profile,
+        fallbackHealthScore: baseScore,
+      );
       final normalizedSleepScore = _normalizeSleepScore(
         modelContext.sleep.score,
+      );
+      final normalizedStressScore = _normalizeStressScore(
+        modelContext.stress.stressScore,
       );
       final score = _composeHealthScore(
         baseScore: baseScore,
         sleepScore: normalizedSleepScore,
       );
-      final metrics = _mergeMetricsWithSleepModel(
+      final metrics = _mergeMetricsWithModelOutputs(
         baseMetrics: localSummary.metrics,
         sleep: modelContext.sleep,
         normalizedSleepScore: normalizedSleepScore,
+        normalizedStressScore: normalizedStressScore,
+        physiologyAnomaly: modelContext.physiologyAnomaly,
       );
       final hasAnyScoringData =
           baseScore != null || normalizedSleepScore != null;
@@ -88,7 +105,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
           recommendationKeys: modelContext.recommendations.keys,
           hasInsufficientModelData:
               modelContext.recommendations.insufficient ||
-              modelContext.sleep.insufficientData,
+              modelContext.sleep.insufficientData ||
+              modelContext.stress.insufficientData ||
+              modelContext.physiologyAnomaly.insufficientData,
           insight: localSummary.insight,
           metrics: metrics,
         ),
@@ -108,6 +127,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
   Future<_ResolvedModelContext> _resolveModelContext({
     required OnboardingProfileSnapshot profile,
+    required int? fallbackHealthScore,
   }) async {
     try {
       final snapshot = await healthRemoteDataSource.getSnapshot();
@@ -120,6 +140,22 @@ class DashboardRepositoryImpl implements DashboardRepository {
         samples: snapshot.cachedSamples,
         now: inferenceNow,
       );
+      final stressInference = await stressModel.infer(
+        samples: snapshot.cachedSamples,
+        now: inferenceNow,
+        recentSleepScore: sleepInference.score,
+        fallbackHealthScore: fallbackHealthScore,
+      );
+      final physiologyAnomalyInference = physiologyAnomalyModel.inferSync(
+        samples: snapshot.cachedSamples,
+        now: inferenceNow,
+      );
+      await _persistModelOutputs(
+        sleep: sleepInference,
+        stress: stressInference,
+        physiologyAnomaly: physiologyAnomalyInference,
+        now: inferenceNow ?? DateTime.now().toUtc(),
+      );
 
       return _ResolvedModelContext(
         recommendations: _ResolvedRecommendations(
@@ -129,6 +165,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
               HarvardActivityClass.insufficientData,
         ),
         sleep: sleepInference,
+        stress: stressInference,
+        physiologyAnomaly: physiologyAnomalyInference,
       );
     } on AuthFailure {
       return _insufficientModelContext();
@@ -140,6 +178,130 @@ class DashboardRepositoryImpl implements DashboardRepository {
       );
       return _insufficientModelContext();
     }
+  }
+
+  Future<void> _persistModelOutputs({
+    required SleepQualityInferenceResult sleep,
+    required StressInferenceResult stress,
+    required PhysiologyAnomalyInferenceResult physiologyAnomaly,
+    required DateTime now,
+  }) async {
+    if (!AppEnv.isSupabaseConfigured) {
+      return;
+    }
+
+    try {
+      await modelOutputRemoteDataSource.saveOutputs([
+        _sleepOutputPayload(sleep, now),
+        _stressOutputPayload(stress),
+        _physiologyOutputPayload(physiologyAnomaly),
+      ]);
+    } on AuthFailure {
+      // Auth can expire between dashboard load and persistence. Model inference
+      // should still be shown from local runtime output.
+    } catch (error, stackTrace) {
+      _logger.warning(
+        'dashboard.repository',
+        'Failed to persist model outputs',
+        payload: {'error': '$error', 'stackTrace': '$stackTrace'},
+      );
+    }
+  }
+
+  HealthModelOutputPayload _sleepOutputPayload(
+    SleepQualityInferenceResult sleep,
+    DateTime now,
+  ) {
+    final latestNight = sleep.latestNight;
+    return HealthModelOutputPayload(
+      modelId: 'sleep_quality',
+      modelVersion: sleep.modelVersion,
+      windowStart:
+          latestNight?.startUtc.toUtc() ??
+          now.subtract(const Duration(days: 1)),
+      windowEnd: latestNight?.endUtc.toUtc() ?? now,
+      score: sleep.score,
+      confidence: sleep.confidence,
+      status: sleep.insufficientData ? 'insufficient' : 'ready',
+      source: sleep.selectedModel,
+      reason: sleep.reason,
+      reasonCodes: const [],
+      dataQuality: _safeJsonMap({
+        'nights_used': sleep.nightsUsed,
+        'has_latest_night': latestNight != null,
+      }),
+      features: _safeJsonMap({
+        'sleep_minutes': latestNight?.sleepMinutes,
+        'in_bed_minutes': latestNight?.inBedMinutes,
+        'sleep_efficiency_pct': latestNight?.sleepEfficiencyPct,
+        'hr_mean': latestNight?.hrMean,
+        'hr_std': latestNight?.hrStd,
+        'rmssd_mean': latestNight?.rmssdMean,
+        'sdnn_mean': latestNight?.sdnnMean,
+      }),
+    );
+  }
+
+  HealthModelOutputPayload _stressOutputPayload(StressInferenceResult stress) {
+    return HealthModelOutputPayload(
+      modelId: 'stress_score_v1',
+      modelVersion: stress.modelVersion,
+      windowStart: stress.windowStart,
+      windowEnd: stress.windowEnd,
+      score: stress.stressScore,
+      confidence: stress.confidence,
+      status: stress.status,
+      source: stress.source,
+      reason: stress.reason,
+      reasonCodes: stress.reasonCodes
+          .map(
+            (reason) => _safeJsonMap({
+              'code': reason.code,
+              'severity': reason.severity,
+              'impact': reason.contribution,
+              'message': reason.message,
+            }),
+          )
+          .toList(growable: false),
+      dataQuality: _safeJsonMap({
+        'overall': stress.quality.overall,
+        'heart_rate': stress.quality.heartRate,
+        'baseline': stress.quality.baseline,
+        'sleep': stress.quality.sleep,
+        'activity_context': stress.quality.activityContext,
+        'hrv': stress.quality.hrv,
+        'respiratory_temperature_oxygen':
+            stress.quality.respiratoryTemperatureOxygen,
+      }),
+      features: _safeJsonMap(stress.features),
+    );
+  }
+
+  HealthModelOutputPayload _physiologyOutputPayload(
+    PhysiologyAnomalyInferenceResult result,
+  ) {
+    return HealthModelOutputPayload(
+      modelId: result.modelId,
+      modelVersion: result.modelVersion,
+      windowStart: result.windowStart,
+      windowEnd: result.windowEnd,
+      score: result.anomalyScore,
+      confidence: result.confidence,
+      status: result.status,
+      source: result.source,
+      reason: result.reason,
+      reasonCodes: result.reasonCodes
+          .map(
+            (reason) => _safeJsonMap({
+              'code': reason.code,
+              'message': reason.message,
+              'impact': reason.impact,
+            }),
+          )
+          .toList(growable: false),
+      dataQuality: _safeJsonMap(result.dataQuality.toJson()),
+      features: _safeJsonMap(result.features),
+    );
   }
 
   int _composeHealthScore({
@@ -165,6 +327,14 @@ class DashboardRepositoryImpl implements DashboardRepository {
       sleep: SleepQualityInferenceResult.insufficient(
         reason: 'snapshot_unavailable',
       ),
+      stress: StressInferenceResult.insufficient(
+        now: DateTime.now().toUtc(),
+        reason: 'snapshot_unavailable',
+      ),
+      physiologyAnomaly: PhysiologyAnomalyInferenceResult.insufficient(
+        now: DateTime.now().toUtc(),
+        reason: 'snapshot_unavailable',
+      ),
     );
   }
 
@@ -179,36 +349,85 @@ class DashboardRepositoryImpl implements DashboardRepository {
     );
   }
 
-  List<DashboardMetric> _mergeMetricsWithSleepModel({
+  List<DashboardMetric> _mergeMetricsWithModelOutputs({
     required List<DashboardMetric> baseMetrics,
     required SleepQualityInferenceResult sleep,
     required double? normalizedSleepScore,
+    required double? normalizedStressScore,
+    required PhysiologyAnomalyInferenceResult physiologyAnomaly,
   }) {
     final sanitized = baseMetrics
         .where((metric) => metric.id != 'sleep_ai')
+        .where((metric) => metric.id != 'stress_ai')
+        .where((metric) => metric.id != 'physiology_anomaly')
         .toList(growable: true);
-    if (normalizedSleepScore == null) {
-      return List.unmodifiable(sanitized);
+
+    if (normalizedSleepScore != null) {
+      final value = normalizedSleepScore.toStringAsFixed(1);
+      final baselineSeries = _resolveSleepBaselineSeries(
+        sanitized,
+        normalizedSleepScore,
+      );
+      final trend = _deriveTrend(baselineSeries);
+      sanitized.insert(
+        0,
+        DashboardMetric(
+          id: 'sleep_ai',
+          labelKey: 'sleepAiScore',
+          value: value,
+          unit: '/100',
+          trend: trend,
+          data: baselineSeries,
+        ),
+      );
     }
 
-    final value = normalizedSleepScore.toStringAsFixed(1);
-    final baselineSeries = _resolveSleepBaselineSeries(
-      sanitized,
-      normalizedSleepScore,
-    );
-    final trend = _deriveTrend(baselineSeries);
-    sanitized.insert(
-      0,
-      DashboardMetric(
-        id: 'sleep_ai',
-        labelKey: 'sleepAiScore',
-        value: value,
-        unit: '/100',
-        trend: trend,
-        data: baselineSeries,
-      ),
-    );
+    if (normalizedStressScore != null) {
+      sanitized.insert(
+        0,
+        DashboardMetric(
+          id: 'stress_ai',
+          labelKey: 'stressAiScore',
+          value: normalizedStressScore.toStringAsFixed(0),
+          unit: '/100',
+          trend: 'stable',
+          data: _resolveStressSeries(normalizedStressScore),
+        ),
+      );
+    }
+
+    final anomalyScore = _normalizeAnomalyScore(physiologyAnomaly.anomalyScore);
+    if (anomalyScore != null) {
+      sanitized.insert(
+        0,
+        DashboardMetric(
+          id: 'physiology_anomaly',
+          labelKey: 'physiologyAnomalyScore',
+          value: anomalyScore.toStringAsFixed(0),
+          unit: '/100',
+          trend: 'stable',
+          data: _resolveAnomalySeries(anomalyScore),
+        ),
+      );
+    }
+
     return List.unmodifiable(sanitized);
+  }
+
+  List<double> _resolveAnomalySeries(double latestScore) {
+    final value = latestScore.clamp(0.0, 100.0);
+    return [
+      (value - 2.0).clamp(0.0, 100.0),
+      (value - 1.5).clamp(0.0, 100.0),
+      (value - 1.0).clamp(0.0, 100.0),
+      (value - 0.5).clamp(0.0, 100.0),
+      value,
+    ];
+  }
+
+  List<double> _resolveStressSeries(double latestScore) {
+    final value = latestScore.clamp(0.0, 100.0);
+    return [value, value, value, value, value];
   }
 
   List<double> _resolveSleepBaselineSeries(
@@ -266,6 +485,50 @@ class DashboardRepositoryImpl implements DashboardRepository {
     return normalized;
   }
 
+  double? _normalizeStressScore(double? value) {
+    if (value == null || !value.isFinite) {
+      if (value != null && !value.isFinite) {
+        _logger.warning(
+          'dashboard.repository',
+          'Stress score is non-finite, dropping value',
+          payload: {'stressScore': value},
+        );
+      }
+      return null;
+    }
+    final normalized = value.clamp(0.0, 100.0);
+    if (normalized != value) {
+      _logger.warning(
+        'dashboard.repository',
+        'Stress score was out of range and clamped',
+        payload: {'stressScore': value, 'normalizedStressScore': normalized},
+      );
+    }
+    return normalized;
+  }
+
+  double? _normalizeAnomalyScore(double? value) {
+    if (value == null || !value.isFinite) {
+      if (value != null && !value.isFinite) {
+        _logger.warning(
+          'dashboard.repository',
+          'Physiology anomaly score is non-finite, dropping value',
+          payload: {'anomalyScore': value},
+        );
+      }
+      return null;
+    }
+    final normalized = value.clamp(0.0, 100.0);
+    if (normalized != value) {
+      _logger.warning(
+        'dashboard.repository',
+        'Physiology anomaly score was out of range and clamped',
+        payload: {'anomalyScore': value, 'normalizedAnomalyScore': normalized},
+      );
+    }
+    return normalized;
+  }
+
   DateTime? _latestWearableTimestamp(List<HealthMetricSample> samples) {
     final wearable = samples
         .where(
@@ -284,15 +547,44 @@ class DashboardRepositoryImpl implements DashboardRepository {
     }
     return latest;
   }
+
+  Map<String, dynamic> _safeJsonMap(Map<String, Object?> input) {
+    return input.map((key, value) => MapEntry(key, _safeJsonValue(value)));
+  }
+
+  dynamic _safeJsonValue(dynamic value) {
+    if (value == null || value is String || value is bool) {
+      return value;
+    }
+    if (value is num) {
+      return value.isFinite ? value : null;
+    }
+    if (value is DateTime) {
+      return value.toUtc().toIso8601String();
+    }
+    if (value is List) {
+      return value.map(_safeJsonValue).toList(growable: false);
+    }
+    if (value is Map) {
+      return value.map(
+        (key, item) => MapEntry(key.toString(), _safeJsonValue(item)),
+      );
+    }
+    return value.toString();
+  }
 }
 
 class _ResolvedModelContext {
   final _ResolvedRecommendations recommendations;
   final SleepQualityInferenceResult sleep;
+  final StressInferenceResult stress;
+  final PhysiologyAnomalyInferenceResult physiologyAnomaly;
 
   const _ResolvedModelContext({
     required this.recommendations,
     required this.sleep,
+    required this.stress,
+    required this.physiologyAnomaly,
   });
 }
 

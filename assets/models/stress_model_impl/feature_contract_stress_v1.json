@@ -1,0 +1,70 @@
+{
+  "model_id": "stress-score-v1",
+  "task_type": "binary_stress_classification",
+  "window_minutes": 5,
+  "required_feature_groups": [
+    "heart_rate",
+    "context"
+  ],
+  "optional_feature_groups": [
+    "hrv",
+    "respiratory",
+    "activity",
+    "temperature",
+    "spo2"
+  ],
+  "base_features": [
+    "hr_mean",
+    "hr_std",
+    "hr_min",
+    "hr_max",
+    "hr_slope",
+    "hr_delta_prev",
+    "resting_hr_mean",
+    "hr_over_rhr",
+    "hrv_sdnn_mean",
+    "hrv_sdnn_std",
+    "resp_rate_mean",
+    "resp_rate_std",
+    "steps_sum",
+    "distance_sum",
+    "active_energy_sum",
+    "exercise_time_sum",
+    "body_temp_mean",
+    "wrist_temp_mean",
+    "spo2_mean",
+    "coverage_ratio",
+    "minutes_since_workout",
+    "recent_sleep_score",
+    "recent_activity_score",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "missing_mask_features": [
+    "missing_hr",
+    "missing_resting_hr",
+    "missing_hrv_sdnn",
+    "missing_resp_rate",
+    "missing_steps",
+    "missing_distance",
+    "missing_active_energy",
+    "missing_exercise_time",
+    "missing_body_temp",
+    "missing_wrist_temp",
+    "missing_spo2"
+  ],
+  "derived_features": [
+    "activity_load_proxy",
+    "physiological_strain_proxy"
+  ],
+  "runtime_rules": {
+    "min_required": ["hr_mean", "coverage_ratio"],
+    "degrade_confidence_if_missing": [
+      "missing_hrv_sdnn",
+      "missing_resp_rate",
+      "missing_body_temp",
+      "missing_spo2"
+    ],
+    "block_if_missing": ["missing_hr"]
+  }
+}

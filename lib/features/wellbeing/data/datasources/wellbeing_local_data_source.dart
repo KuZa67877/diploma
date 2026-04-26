@@ -69,6 +69,9 @@ class WellbeingLocalDataSourceImpl implements WellbeingLocalDataSource {
           mood: mood,
           tags: tags.toSet().toList(growable: false),
           note: note,
+          stressNow: _toScale(payload['stressNow']),
+          fatigue: _toScale(payload['fatigue']),
+          wellness: _toScale(payload['wellness']),
         ),
       );
     });
@@ -94,6 +97,9 @@ class WellbeingLocalDataSourceImpl implements WellbeingLocalDataSource {
       'mood': entry.mood.storageValue,
       'tags': entry.tags.toSet().toList(growable: false),
       'note': entry.note?.trim(),
+      'stressNow': entry.stressNow,
+      'fatigue': entry.fatigue,
+      'wellness': entry.wellness,
     };
 
     await sharedPreferences.setString(_storageKey, jsonEncode(payload));
@@ -107,6 +113,9 @@ class WellbeingLocalDataSourceImpl implements WellbeingLocalDataSource {
         'mood': entry.mood.storageValue,
         'tags': entry.tags.toSet().toList(growable: false),
         'note': entry.note?.trim(),
+        'stressNow': entry.stressNow,
+        'fatigue': entry.fatigue,
+        'wellness': entry.wellness,
       };
     }
     await sharedPreferences.setString(_storageKey, jsonEncode(payload));
@@ -142,5 +151,13 @@ class WellbeingLocalDataSourceImpl implements WellbeingLocalDataSource {
       return null;
     }
     return DateTime(year, month, day);
+  }
+
+  int? _toScale(Object? value) {
+    final parsed = value is int ? value : int.tryParse(value?.toString() ?? '');
+    if (parsed == null || parsed < 1 || parsed > 5) {
+      return null;
+    }
+    return parsed;
   }
 }

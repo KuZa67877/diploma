@@ -37,6 +37,9 @@ class _WellbeingCheckInPageState extends State<WellbeingCheckInPage> {
   final TextEditingController _noteController = TextEditingController();
   WellbeingMood? _selectedMood;
   Set<String> _selectedTags = <String>{};
+  int? _stressNow;
+  int? _fatigue;
+  int? _wellness;
   bool _didInitialHydration = false;
   bool _hasExistingEntry = false;
   bool _isEditMode = true;
@@ -76,6 +79,9 @@ class _WellbeingCheckInPageState extends State<WellbeingCheckInPage> {
       _isEditMode = entry == null;
       _selectedMood = entry?.mood;
       _selectedTags = entry?.tags.toSet() ?? <String>{};
+      _stressNow = entry?.stressNow;
+      _fatigue = entry?.fatigue;
+      _wellness = entry?.wellness;
       _noteController.text = entry?.note ?? '';
     });
   }
@@ -194,6 +200,9 @@ class _WellbeingCheckInPageState extends State<WellbeingCheckInPage> {
       mood: _selectedMood!,
       tags: _selectedTags,
       note: _noteController.text,
+      stressNow: _stressNow,
+      fatigue: _fatigue,
+      wellness: _wellness,
     );
 
     if (!mounted) {
@@ -382,6 +391,55 @@ class _WellbeingCheckInPageState extends State<WellbeingCheckInPage> {
                                       );
                                     })
                                     .toList(growable: false),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            _SectionCard(
+                              title: localizations.get('stressCalibration'),
+                              subtitle: localizations.get(
+                                'stressCalibrationSubtitle',
+                              ),
+                              child: Column(
+                                children: [
+                                  _ScaleSlider(
+                                    label: localizations.get('stressNow'),
+                                    lowLabel: localizations.get('low'),
+                                    highLabel: localizations.get('high'),
+                                    value: _stressNow,
+                                    enabled: _isEditMode,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _stressNow = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _ScaleSlider(
+                                    label: localizations.get('fatigueNow'),
+                                    lowLabel: localizations.get('low'),
+                                    highLabel: localizations.get('high'),
+                                    value: _fatigue,
+                                    enabled: _isEditMode,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _fatigue = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _ScaleSlider(
+                                    label: localizations.get('wellnessNow'),
+                                    lowLabel: localizations.get('poor'),
+                                    highLabel: localizations.get('good'),
+                                    value: _wellness,
+                                    enabled: _isEditMode,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _wellness = value;
+                                      });
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 10),
@@ -594,6 +652,79 @@ class _MoodOption extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ScaleSlider extends StatelessWidget {
+  final String label;
+  final String lowLabel;
+  final String highLabel;
+  final int? value;
+  final bool enabled;
+  final ValueChanged<int> onChanged;
+
+  const _ScaleSlider({
+    required this.label,
+    required this.lowLabel,
+    required this.highLabel,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = isDark ? AppColors.darkForeground : AppColors.lightForeground;
+    final muted = isDark
+        ? AppColors.darkMutedForeground
+        : AppColors.mutedForeground;
+    final resolvedValue = (value ?? 3).clamp(1, 5).toDouble();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: fg,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              value?.toString() ?? '-',
+              style: TextStyle(
+                color: value == null ? muted : AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: resolvedValue,
+          min: 1,
+          max: 5,
+          divisions: 4,
+          label: value?.toString() ?? '3',
+          onChanged: enabled
+              ? (next) => onChanged(next.round().clamp(1, 5))
+              : null,
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(lowLabel, style: TextStyle(color: muted, fontSize: 11)),
+            Text(highLabel, style: TextStyle(color: muted, fontSize: 11)),
+          ],
+        ),
+      ],
     );
   }
 }

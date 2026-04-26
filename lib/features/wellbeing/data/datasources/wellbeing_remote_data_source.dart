@@ -37,7 +37,7 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
     try {
       final fetched = await _clientProvider()
           .from('wellbeing_entries')
-          .select('entry_date, mood, tags, note')
+          .select('entry_date, mood, tags, note, stress_now, fatigue, wellness')
           .eq('subject_id', subjectId)
           .order('entry_date', ascending: false);
       rows = fetched;
@@ -88,6 +88,9 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
           mood: mood,
           tags: tags.toSet().toList(growable: false),
           note: note,
+          stressNow: _toScale(row['stress_now']),
+          fatigue: _toScale(row['fatigue']),
+          wellness: _toScale(row['wellness']),
         ),
       );
     }
@@ -132,7 +135,15 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
           ? noteRaw.trim()
           : null;
       legacyEntries.add(
-        WellbeingEntry(date: date, mood: mood, tags: tags, note: note),
+        WellbeingEntry(
+          date: date,
+          mood: mood,
+          tags: tags,
+          note: note,
+          stressNow: _toScale(payload['stressNow'] ?? payload['stress_now']),
+          fatigue: _toScale(payload['fatigue']),
+          wellness: _toScale(payload['wellness']),
+        ),
       );
     });
     legacyEntries.sort((a, b) => b.date.compareTo(a.date));
@@ -166,6 +177,9 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
             'mood': entry.mood.storageValue,
             'tags': entry.tags.toSet().toList(growable: false),
             'note': entry.note?.trim(),
+            'stress_now': entry.stressNow,
+            'fatigue': entry.fatigue,
+            'wellness': entry.wellness,
           },
         )
         .toList(growable: false);
@@ -220,6 +234,9 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
           'mood': entry.mood.storageValue,
           'tags': entry.tags.toSet().toList(growable: false),
           'note': entry.note?.trim(),
+          'stressNow': entry.stressNow,
+          'fatigue': entry.fatigue,
+          'wellness': entry.wellness,
         },
     };
     await _clientProvider().auth.updateUser(UserAttributes(data: metadata));
@@ -253,5 +270,13 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
       return null;
     }
     return DateTime(year, month, day);
+  }
+
+  int? _toScale(Object? value) {
+    final parsed = value is int ? value : int.tryParse(value?.toString() ?? '');
+    if (parsed == null || parsed < 1 || parsed > 5) {
+      return null;
+    }
+    return parsed;
   }
 }

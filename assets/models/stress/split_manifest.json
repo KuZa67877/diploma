@@ -1,0 +1,95 @@
+{
+  "protocol": "subject-wise LeaveOneGroupOut",
+  "folds": [
+    {
+      "fold": 1,
+      "held_out_subject": "S10",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 2,
+      "held_out_subject": "S11",
+      "n_train": 87,
+      "n_test": 7
+    },
+    {
+      "fold": 3,
+      "held_out_subject": "S13",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 4,
+      "held_out_subject": "S14",
+      "n_train": 87,
+      "n_test": 7
+    },
+    {
+      "fold": 5,
+      "held_out_subject": "S15",
+      "n_train": 87,
+      "n_test": 7
+    },
+    {
+      "fold": 6,
+      "held_out_subject": "S16",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 7,
+      "held_out_subject": "S17",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 8,
+      "held_out_subject": "S2",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 9,
+      "held_out_subject": "S3",
+      "n_train": 87,
+      "n_test": 7
+    },
+    {
+      "fold": 10,
+      "held_out_subject": "S4",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 11,
+      "held_out_subject": "S5",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 12,
+      "held_out_subject": "S6",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 13,
+      "held_out_subject": "S7",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 14,
+      "held_out_subject": "S8",
+      "n_train": 88,
+      "n_test": 6
+    },
+    {
+      "fold": 15,
+      "held_out_subject": "S9",
+      "n_train": 88,
+      "n_test": 6
+    }
+  ]
+}

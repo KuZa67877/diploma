@@ -13,12 +13,16 @@ class SettingsPage extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenHealthSources;
   final VoidCallback? onOpenSleepModelDebug;
+  final VoidCallback? onOpenStressModelDebug;
+  final VoidCallback? onOpenPhysiologyAnomalyDebug;
 
   const SettingsPage({
     super.key,
     required this.onBack,
     required this.onOpenHealthSources,
     this.onOpenSleepModelDebug,
+    this.onOpenStressModelDebug,
+    this.onOpenPhysiologyAnomalyDebug,
   });
 
   @override
@@ -143,6 +147,26 @@ class SettingsPage extends StatelessWidget {
                           title: l10n.get('sleepModelDebug'),
                           subtitle: l10n.get('sleepModelDebugSubtitle'),
                           onTap: onOpenSleepModelDebug,
+                        ),
+                        _DividerLine(color: borderColor),
+                        _SettingsRow(
+                          icon: LucideIcons.zap,
+                          iconBg: isDark
+                              ? AppColors.darkMuted
+                              : AppColors.muted,
+                          title: l10n.get('stressModelDebug'),
+                          subtitle: l10n.get('stressModelDebugSubtitle'),
+                          onTap: onOpenStressModelDebug,
+                        ),
+                        _DividerLine(color: borderColor),
+                        _SettingsRow(
+                          icon: LucideIcons.activity,
+                          iconBg: isDark
+                              ? AppColors.darkMuted
+                              : AppColors.muted,
+                          title: l10n.get('physiologyAnomalyDebug'),
+                          subtitle: l10n.get('physiologyAnomalyDebugSubtitle'),
+                          onTap: onOpenPhysiologyAnomalyDebug,
                         ),
                       ],
                     ],
