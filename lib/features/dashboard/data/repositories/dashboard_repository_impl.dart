@@ -14,6 +14,7 @@ import '../../domain/repositories/dashboard_repository.dart';
 import '../datasources/dashboard_local_data_source.dart';
 import '../datasources/health_model_output_remote_data_source.dart';
 import '../models/dashboard_summary_model.dart';
+import '../services/baseline_forecast_inference_model.dart';
 import '../services/harvard_activity_recommendation_model.dart';
 import '../services/physiology_anomaly_inference_model.dart';
 import '../services/sleep_quality_inference_model.dart';
@@ -28,6 +29,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
   final SleepQualityInferenceModel sleepQualityModel;
   final StressInferenceModel stressModel;
   final PhysiologyAnomalyInferenceModel physiologyAnomalyModel;
+  final BaselineForecastInferenceModel baselineForecastModel;
   final _logger = AppLogger.instance;
 
   DashboardRepositoryImpl({
@@ -39,6 +41,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required this.sleepQualityModel,
     required this.stressModel,
     required this.physiologyAnomalyModel,
+    required this.baselineForecastModel,
   });
 
   @override
@@ -89,6 +92,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
         normalizedSleepScore: normalizedSleepScore,
         normalizedStressScore: normalizedStressScore,
         physiologyAnomaly: modelContext.physiologyAnomaly,
+        baselineForecast: modelContext.baselineForecast,
       );
       final hasAnyScoringData =
           baseScore != null || normalizedSleepScore != null;
@@ -107,7 +111,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
               modelContext.recommendations.insufficient ||
               modelContext.sleep.insufficientData ||
               modelContext.stress.insufficientData ||
-              modelContext.physiologyAnomaly.insufficientData,
+              modelContext.physiologyAnomaly.insufficientData ||
+              modelContext.baselineForecast.insufficientData,
           insight: localSummary.insight,
           metrics: metrics,
         ),
@@ -150,10 +155,15 @@ class DashboardRepositoryImpl implements DashboardRepository {
         samples: snapshot.cachedSamples,
         now: inferenceNow,
       );
+      final baselineForecastInference = baselineForecastModel.inferSync(
+        samples: snapshot.cachedSamples,
+        now: inferenceNow,
+      );
       await _persistModelOutputs(
         sleep: sleepInference,
         stress: stressInference,
         physiologyAnomaly: physiologyAnomalyInference,
+        baselineForecast: baselineForecastInference,
         now: inferenceNow ?? DateTime.now().toUtc(),
       );
 
@@ -167,6 +177,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
         sleep: sleepInference,
         stress: stressInference,
         physiologyAnomaly: physiologyAnomalyInference,
+        baselineForecast: baselineForecastInference,
       );
     } on AuthFailure {
       return _insufficientModelContext();
@@ -184,6 +195,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required SleepQualityInferenceResult sleep,
     required StressInferenceResult stress,
     required PhysiologyAnomalyInferenceResult physiologyAnomaly,
+    required BaselineForecastInferenceResult baselineForecast,
     required DateTime now,
   }) async {
     if (!AppEnv.isSupabaseConfigured) {
@@ -195,6 +207,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
         _sleepOutputPayload(sleep, now),
         _stressOutputPayload(stress),
         _physiologyOutputPayload(physiologyAnomaly),
+        _baselineForecastOutputPayload(baselineForecast),
       ]);
     } on AuthFailure {
       // Auth can expire between dashboard load and persistence. Model inference
@@ -304,6 +317,33 @@ class DashboardRepositoryImpl implements DashboardRepository {
     );
   }
 
+  HealthModelOutputPayload _baselineForecastOutputPayload(
+    BaselineForecastInferenceResult result,
+  ) {
+    return HealthModelOutputPayload(
+      modelId: result.modelId,
+      modelVersion: result.modelVersion,
+      windowStart: result.windowStart,
+      windowEnd: result.windowEnd,
+      score: result.overallDeviationScore,
+      confidence: result.confidence,
+      status: result.status,
+      source: result.source,
+      reason: result.reason,
+      reasonCodes: result.summary.mainReasons
+          .map(
+            (reason) => _safeJsonMap({
+              'code': reason,
+              'message': reason,
+              'impact': reason == 'within_expected_range' ? 0.0 : 1.0,
+            }),
+          )
+          .toList(growable: false),
+      dataQuality: _safeJsonMap(result.dataQuality.toJson()),
+      features: _safeJsonMap(result.features),
+    );
+  }
+
   int _composeHealthScore({
     required int? baseScore,
     required double? sleepScore,
@@ -335,6 +375,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
         now: DateTime.now().toUtc(),
         reason: 'snapshot_unavailable',
       ),
+      baselineForecast: BaselineForecastInferenceResult.insufficient(
+        now: DateTime.now().toUtc(),
+        reason: 'snapshot_unavailable',
+      ),
     );
   }
 
@@ -355,11 +399,13 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required double? normalizedSleepScore,
     required double? normalizedStressScore,
     required PhysiologyAnomalyInferenceResult physiologyAnomaly,
+    required BaselineForecastInferenceResult baselineForecast,
   }) {
     final sanitized = baseMetrics
         .where((metric) => metric.id != 'sleep_ai')
         .where((metric) => metric.id != 'stress_ai')
         .where((metric) => metric.id != 'physiology_anomaly')
+        .where((metric) => metric.id != 'baseline_deviation')
         .toList(growable: true);
 
     if (normalizedSleepScore != null) {
@@ -411,7 +457,35 @@ class DashboardRepositoryImpl implements DashboardRepository {
       );
     }
 
+    final baselineScore = _normalizeBaselineDeviationScore(
+      baselineForecast.overallDeviationScore,
+    );
+    if (baselineScore != null) {
+      sanitized.insert(
+        0,
+        DashboardMetric(
+          id: 'baseline_deviation',
+          labelKey: 'baselineDeviationScore',
+          value: baselineScore.toStringAsFixed(0),
+          unit: '/100',
+          trend: 'stable',
+          data: _resolveBaselineDeviationSeries(baselineScore),
+        ),
+      );
+    }
+
     return List.unmodifiable(sanitized);
+  }
+
+  List<double> _resolveBaselineDeviationSeries(double latestScore) {
+    final value = latestScore.clamp(0.0, 100.0);
+    return [
+      (value - 2.0).clamp(0.0, 100.0),
+      (value - 1.5).clamp(0.0, 100.0),
+      (value - 1.0).clamp(0.0, 100.0),
+      (value - 0.5).clamp(0.0, 100.0),
+      value,
+    ];
   }
 
   List<double> _resolveAnomalySeries(double latestScore) {
@@ -529,6 +603,31 @@ class DashboardRepositoryImpl implements DashboardRepository {
     return normalized;
   }
 
+  double? _normalizeBaselineDeviationScore(double? value) {
+    if (value == null || !value.isFinite) {
+      if (value != null && !value.isFinite) {
+        _logger.warning(
+          'dashboard.repository',
+          'Baseline deviation score is non-finite, dropping value',
+          payload: {'baselineDeviationScore': value},
+        );
+      }
+      return null;
+    }
+    final normalized = value.clamp(0.0, 100.0);
+    if (normalized != value) {
+      _logger.warning(
+        'dashboard.repository',
+        'Baseline deviation score was out of range and clamped',
+        payload: {
+          'baselineDeviationScore': value,
+          'normalizedBaselineDeviationScore': normalized,
+        },
+      );
+    }
+    return normalized;
+  }
+
   DateTime? _latestWearableTimestamp(List<HealthMetricSample> samples) {
     final wearable = samples
         .where(
@@ -579,12 +678,14 @@ class _ResolvedModelContext {
   final SleepQualityInferenceResult sleep;
   final StressInferenceResult stress;
   final PhysiologyAnomalyInferenceResult physiologyAnomaly;
+  final BaselineForecastInferenceResult baselineForecast;
 
   const _ResolvedModelContext({
     required this.recommendations,
     required this.sleep,
     required this.stress,
     required this.physiologyAnomaly,
+    required this.baselineForecast,
   });
 }
 

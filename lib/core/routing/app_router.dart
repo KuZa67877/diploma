@@ -12,6 +12,7 @@ import '../../features/data_input/presentation/pages/data_input_page.dart';
 import '../../features/health_data/presentation/pages/health_import_preview_page.dart';
 import '../../features/health_data/presentation/pages/health_sources_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/settings/presentation/pages/baseline_forecast_debug_page.dart';
 import '../../features/settings/presentation/pages/debug_logs_page.dart';
 import '../../features/settings/presentation/pages/physiology_anomaly_debug_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
@@ -45,6 +46,7 @@ class AppRouter {
   static const String sleepModelDebugPath = '/sleep-model-debug';
   static const String stressModelDebugPath = '/stress-model-debug';
   static const String physiologyAnomalyDebugPath = '/physiology-anomaly-debug';
+  static const String baselineForecastDebugPath = '/baseline-forecast-debug';
   static const String wellbeingCheckInPath = '/wellbeing-check-in';
 
   static const String splashRoute = 'splash';
@@ -62,6 +64,7 @@ class AppRouter {
   static const String sleepModelDebugRoute = 'sleep-model-debug';
   static const String stressModelDebugRoute = 'stress-model-debug';
   static const String physiologyAnomalyDebugRoute = 'physiology-anomaly-debug';
+  static const String baselineForecastDebugRoute = 'baseline-forecast-debug';
   static const String wellbeingCheckInRoute = 'wellbeing-check-in';
 
   late final GoRouter router = GoRouter(
@@ -206,6 +209,9 @@ class AppRouter {
           onOpenPhysiologyAnomalyDebug: AppLogger.instance.isEnabled
               ? () => context.pushNamed(physiologyAnomalyDebugRoute)
               : null,
+          onOpenBaselineForecastDebug: AppLogger.instance.isEnabled
+              ? () => context.pushNamed(baselineForecastDebugRoute)
+              : null,
         ),
       ),
       GoRoute(
@@ -278,6 +284,13 @@ class AppRouter {
           builder: (context, state) =>
               PhysiologyAnomalyDebugPage(onBack: () => context.pop()),
         ),
+      if (AppLogger.instance.isEnabled)
+        GoRoute(
+          path: baselineForecastDebugPath,
+          name: baselineForecastDebugRoute,
+          builder: (context, state) =>
+              BaselineForecastDebugPage(onBack: () => context.pop()),
+        ),
     ],
   );
 
@@ -315,6 +328,7 @@ class AppRouter {
     if (AppLogger.instance.isEnabled) sleepModelDebugPath,
     if (AppLogger.instance.isEnabled) stressModelDebugPath,
     if (AppLogger.instance.isEnabled) physiologyAnomalyDebugPath,
+    if (AppLogger.instance.isEnabled) baselineForecastDebugPath,
   ];
 }
 

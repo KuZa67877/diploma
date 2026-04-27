@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/datasources/dashboard_local_data_source.dart';
 import '../data/datasources/health_model_output_remote_data_source.dart';
 import '../data/repositories/dashboard_repository_impl.dart';
+import '../data/services/baseline_forecast_inference_model.dart';
 import '../data/services/harvard_activity_recommendation_model.dart';
 import '../data/services/physiology_anomaly_inference_model.dart';
 import '../data/services/sleep_quality_inference_model.dart';
@@ -37,6 +38,9 @@ void registerDashboard(GetIt getIt) {
   getIt.registerLazySingleton<PhysiologyAnomalyInferenceModel>(
     () => PhysiologyAnomalyInferenceModel(),
   );
+  getIt.registerLazySingleton<BaselineForecastInferenceModel>(
+    () => BaselineForecastInferenceModel(),
+  );
 
   // Repository
   getIt.registerLazySingleton<DashboardRepository>(
@@ -49,6 +53,7 @@ void registerDashboard(GetIt getIt) {
       sleepQualityModel: getIt<SleepQualityInferenceModel>(),
       stressModel: getIt<StressInferenceModel>(),
       physiologyAnomalyModel: getIt<PhysiologyAnomalyInferenceModel>(),
+      baselineForecastModel: getIt<BaselineForecastInferenceModel>(),
     ),
   );
 

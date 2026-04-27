@@ -210,6 +210,10 @@ class AppLocalizations {
       'en': 'Physiology anomaly',
       'ru': 'Физиологическая аномалия',
     },
+    'baselineDeviationScore': {
+      'en': 'Baseline deviation',
+      'ru': 'Отклонение от нормы',
+    },
     'sleepAiConfidence': {'en': 'Confidence', 'ru': 'Уверенность'},
     'sleepAiReason': {'en': 'Reason', 'ru': 'Причина'},
     'sleepAiNoScore': {'en': 'No score yet', 'ru': 'Оценка пока недоступна'},
@@ -766,6 +770,30 @@ class AppLocalizations {
       'ru': 'Прогнать всю историю',
     },
     'physiologyAnomalyDebugNoRows': {
+      'en': 'No run results yet. Start one of the scenarios above.',
+      'ru': 'Результатов пока нет. Запустите один из сценариев выше.',
+    },
+    'baselineForecastDebug': {
+      'en': 'Baseline forecast debug',
+      'ru': 'Отладка прогноза нормы',
+    },
+    'baselineForecastDebugSubtitle': {
+      'en': 'Inspect expected vs actual values, ranges and deviation reasons',
+      'ru': 'Просмотр expected vs actual, диапазонов и причин отклонений',
+    },
+    'baselineForecastDebugRunLatest': {
+      'en': 'Run latest',
+      'ru': 'Последний день',
+    },
+    'baselineForecastDebugRunRecent': {
+      'en': 'Run last 14 days',
+      'ru': 'Прогнать 14 дней',
+    },
+    'baselineForecastDebugRunAll': {
+      'en': 'Run full history',
+      'ru': 'Прогнать всю историю',
+    },
+    'baselineForecastDebugNoRows': {
       'en': 'No run results yet. Start one of the scenarios above.',
       'ru': 'Результатов пока нет. Запустите один из сценариев выше.',
     },

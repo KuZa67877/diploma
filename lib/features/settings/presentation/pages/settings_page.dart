@@ -15,6 +15,7 @@ class SettingsPage extends StatelessWidget {
   final VoidCallback? onOpenSleepModelDebug;
   final VoidCallback? onOpenStressModelDebug;
   final VoidCallback? onOpenPhysiologyAnomalyDebug;
+  final VoidCallback? onOpenBaselineForecastDebug;
 
   const SettingsPage({
     super.key,
@@ -23,6 +24,7 @@ class SettingsPage extends StatelessWidget {
     this.onOpenSleepModelDebug,
     this.onOpenStressModelDebug,
     this.onOpenPhysiologyAnomalyDebug,
+    this.onOpenBaselineForecastDebug,
   });
 
   @override
@@ -167,6 +169,16 @@ class SettingsPage extends StatelessWidget {
                           title: l10n.get('physiologyAnomalyDebug'),
                           subtitle: l10n.get('physiologyAnomalyDebugSubtitle'),
                           onTap: onOpenPhysiologyAnomalyDebug,
+                        ),
+                        _DividerLine(color: borderColor),
+                        _SettingsRow(
+                          icon: LucideIcons.lineChart,
+                          iconBg: isDark
+                              ? AppColors.darkMuted
+                              : AppColors.muted,
+                          title: l10n.get('baselineForecastDebug'),
+                          subtitle: l10n.get('baselineForecastDebugSubtitle'),
+                          onTap: onOpenBaselineForecastDebug,
                         ),
                       ],
                     ],
