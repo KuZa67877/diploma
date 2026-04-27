@@ -1,0 +1,16 @@
+{
+  "strategy": "stratified_shuffle_split",
+  "group_column": null,
+  "candidate_group_column": null,
+  "unique_groups": 0,
+  "train_size": 2632,
+  "val_size": 658,
+  "test_size": 366,
+  "train_ratio": 0.719912,
+  "val_ratio": 0.179978,
+  "test_ratio": 0.100109,
+  "group_overlap_check": false,
+  "seed": 42,
+  "requested_test_size": 0.1,
+  "requested_val_size_from_trainval": 0.2
+}

@@ -10,6 +10,209 @@ import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 
+const String kHarvardModelAssetPath =
+    'assets/models/harvard_aw/model_harvardAWData_xgboost.onnx';
+const String kHarvardPreprocessorV2AssetPath =
+    'assets/models/harvard_aw/preprocessor_v2.json';
+const String kHarvardPreprocessorV1AssetPath =
+    'assets/models/harvard_aw/preprocessor_v1.json';
+const String kHarvardMetadataAssetPath =
+    'assets/models/harvard_aw/model_metadata.json';
+const String kHarvardDefaultModelVersion = 'harvard-aw-xgb-v1';
+const String kHarvardModelVersionV2 = 'harvard-aw-xgb-v2';
+
+class HarvardPreprocessorLoadResult {
+  final Map<String, dynamic> payload;
+  final String sourcePath;
+
+  const HarvardPreprocessorLoadResult({
+    required this.payload,
+    required this.sourcePath,
+  });
+}
+
+class HarvardPreprocessorManifest {
+  final String version;
+  final List<double> mean;
+  final List<double> std;
+  final List<String> featureNames;
+  final Map<String, int> targetMapping;
+  final Map<int, String> inverseTargetMapping;
+
+  const HarvardPreprocessorManifest({
+    required this.version,
+    required this.mean,
+    required this.std,
+    required this.featureNames,
+    required this.targetMapping,
+    required this.inverseTargetMapping,
+  });
+}
+
+Future<HarvardPreprocessorLoadResult> loadHarvardPreprocessorPayload({
+  required AssetBundle assetBundle,
+  String preprocessorV2AssetPath = kHarvardPreprocessorV2AssetPath,
+  String preprocessorV1AssetPath = kHarvardPreprocessorV1AssetPath,
+}) async {
+  try {
+    final rawV2 = await assetBundle.loadString(preprocessorV2AssetPath);
+    return HarvardPreprocessorLoadResult(
+      payload: _decodeJsonMap(rawV2, preprocessorV2AssetPath),
+      sourcePath: preprocessorV2AssetPath,
+    );
+  } catch (error) {
+    if (!_isMissingAssetError(error)) {
+      rethrow;
+    }
+  }
+
+  final rawV1 = await assetBundle.loadString(preprocessorV1AssetPath);
+  return HarvardPreprocessorLoadResult(
+    payload: _decodeJsonMap(rawV1, preprocessorV1AssetPath),
+    sourcePath: preprocessorV1AssetPath,
+  );
+}
+
+Future<String> loadHarvardModelVersion({
+  required AssetBundle assetBundle,
+  String metadataAssetPath = kHarvardMetadataAssetPath,
+}) async {
+  try {
+    final metadataRaw = await assetBundle.loadString(metadataAssetPath);
+    final payload = _decodeJsonMap(metadataRaw, metadataAssetPath);
+    final version = payload['model_version']?.toString().trim();
+    if (version == null || version.isEmpty) {
+      return kHarvardDefaultModelVersion;
+    }
+    return version;
+  } catch (_) {
+    return kHarvardDefaultModelVersion;
+  }
+}
+
+HarvardPreprocessorManifest parseHarvardPreprocessorManifest(
+  Map<String, dynamic> payload,
+) {
+  final version = payload['version']?.toString() ?? 'preprocessor_v1';
+  final scalerRaw = payload['scaler'];
+  dynamic meanRaw;
+  dynamic stdRaw;
+  if (scalerRaw is Map<String, dynamic>) {
+    meanRaw = scalerRaw['mean'];
+    stdRaw = scalerRaw['std'];
+  } else if (scalerRaw is Map) {
+    meanRaw = scalerRaw['mean'];
+    stdRaw = scalerRaw['std'];
+  }
+  meanRaw ??= payload['mean'];
+  stdRaw ??= payload['std'];
+
+  final mean = _readDoubleList(meanRaw, fieldName: 'mean');
+  final std = _readDoubleList(stdRaw, fieldName: 'std');
+  final featureNames = _readStringList(
+    payload['feature_names'],
+    fieldName: 'feature_names',
+  );
+  if (featureNames.length != mean.length || featureNames.length != std.length) {
+    throw const FormatException(
+      'Harvard preprocessor manifest has mismatched feature/scaler lengths.',
+    );
+  }
+
+  final targetMapping = _parseTargetMapping(payload['target_mapping']);
+  var inverseTargetMapping = _parseInverseTargetMapping(
+    payload['inverse_target_mapping'],
+  );
+  if (inverseTargetMapping.isEmpty && targetMapping.isNotEmpty) {
+    inverseTargetMapping = targetMapping.map(
+      (label, id) => MapEntry(id, label),
+    );
+  }
+
+  return HarvardPreprocessorManifest(
+    version: version,
+    mean: mean,
+    std: std,
+    featureNames: featureNames,
+    targetMapping: targetMapping,
+    inverseTargetMapping: inverseTargetMapping,
+  );
+}
+
+Map<String, dynamic> _decodeJsonMap(String raw, String sourcePath) {
+  final decoded = jsonDecode(raw);
+  if (decoded is! Map<String, dynamic>) {
+    throw FormatException('Expected JSON object at $sourcePath');
+  }
+  return decoded;
+}
+
+List<double> _readDoubleList(dynamic value, {required String fieldName}) {
+  if (value is! List) {
+    throw FormatException('Expected "$fieldName" to be a list.');
+  }
+  return value
+      .map((item) {
+        if (item is num) {
+          return item.toDouble();
+        }
+        final parsed = double.tryParse(item.toString());
+        if (parsed == null) {
+          throw FormatException(
+            'Expected numeric value in "$fieldName", got: $item',
+          );
+        }
+        return parsed;
+      })
+      .toList(growable: false);
+}
+
+List<String> _readStringList(dynamic value, {required String fieldName}) {
+  if (value is! List) {
+    throw FormatException('Expected "$fieldName" to be a list.');
+  }
+  return value.map((item) => item.toString()).toList(growable: false);
+}
+
+Map<String, int> _parseTargetMapping(dynamic value) {
+  if (value is! Map) {
+    return const <String, int>{};
+  }
+  final mapping = <String, int>{};
+  for (final entry in value.entries) {
+    final parsed = (entry.value is num)
+        ? (entry.value as num).toInt()
+        : int.tryParse(entry.value.toString());
+    if (parsed == null || parsed < 0) {
+      continue;
+    }
+    mapping[entry.key.toString()] = parsed;
+  }
+  return mapping;
+}
+
+Map<int, String> _parseInverseTargetMapping(dynamic value) {
+  if (value is! Map) {
+    return const <int, String>{};
+  }
+  final mapping = <int, String>{};
+  for (final entry in value.entries) {
+    final parsedKey = (entry.key is num)
+        ? (entry.key as num).toInt()
+        : int.tryParse(entry.key.toString());
+    if (parsedKey == null || parsedKey < 0) {
+      continue;
+    }
+    mapping[parsedKey] = entry.value.toString();
+  }
+  return mapping;
+}
+
+bool _isMissingAssetError(Object error) {
+  final message = error.toString();
+  return message.contains('Unable to load asset');
+}
+
 enum HarvardActivityClass {
   insufficientData,
   lying,
@@ -36,16 +239,11 @@ class HarvardActivityRecommendationResult {
 
 /// Real notebook-backed inference:
 /// - ONNX model: assets/models/harvard_aw/model_harvardAWData_xgboost.onnx
-/// - Scaler/labels: assets/models/harvard_aw/preprocessor_v1.json
+/// - Preprocessor: v2 (fallback to v1 for backward compatibility)
 ///
 /// If assets are unavailable, data is insufficient, or inference fails, the
 /// service returns explicit insufficient-data state.
 class HarvardActivityRecommendationModel {
-  static const String _modelAssetPath =
-      'assets/models/harvard_aw/model_harvardAWData_xgboost.onnx';
-  static const String _preprocessorAssetPath =
-      'assets/models/harvard_aw/preprocessor_v1.json';
-  static const String _modelVersion = 'harvard-aw-xgb-v1';
   static const int _windowDays = 30;
 
   bool _initialized = false;
@@ -53,6 +251,7 @@ class HarvardActivityRecommendationModel {
   OrtSession? _session;
   OrtSessionOptions? _sessionOptions;
   String _inputName = 'float_input';
+  String _modelVersion = kHarvardDefaultModelVersion;
 
   List<double> _mean = const [];
   List<double> _std = const [];
@@ -178,10 +377,11 @@ class HarvardActivityRecommendationModel {
     }
     _initialized = true;
 
+    var loadedPreprocessorPath = kHarvardPreprocessorV2AssetPath;
     try {
       OrtEnv.instance.init();
 
-      final modelData = await rootBundle.load(_modelAssetPath);
+      final modelData = await rootBundle.load(kHarvardModelAssetPath);
       _sessionOptions = OrtSessionOptions();
       _session = OrtSession.fromBuffer(
         modelData.buffer.asUint8List(),
@@ -191,38 +391,21 @@ class HarvardActivityRecommendationModel {
         _inputName = _session!.inputNames.first;
       }
 
-      final preprocessorRaw = await rootBundle.loadString(
-        _preprocessorAssetPath,
+      final preprocessor = await loadHarvardPreprocessorPayload(
+        assetBundle: rootBundle,
       );
-      final payload = jsonDecode(preprocessorRaw) as Map<String, dynamic>;
-      _mean = (payload['mean'] as List<dynamic>)
-          .map((item) => (item as num).toDouble())
-          .toList(growable: false);
-      _std = (payload['std'] as List<dynamic>)
-          .map((item) => (item as num).toDouble())
-          .toList(growable: false);
-      _featureNames = (payload['feature_names'] as List<dynamic>)
-          .map((item) => item.toString())
-          .toList(growable: false);
+      loadedPreprocessorPath = preprocessor.sourcePath;
+      final manifest = parseHarvardPreprocessorManifest(preprocessor.payload);
 
-      final target =
-          payload['target_mapping'] as Map<String, dynamic>? ??
-          const <String, dynamic>{};
-      _targetMapping = target.map(
-        (key, value) => MapEntry(
-          key.toString(),
-          (value is num)
-              ? value.toInt()
-              : (int.tryParse(value.toString()) ?? -1),
-        ),
-      )..removeWhere((_, value) => value < 0);
+      _mean = manifest.mean;
+      _std = manifest.std;
+      _featureNames = manifest.featureNames;
+      _targetMapping = manifest.targetMapping;
+      _inverseTargetMapping = manifest.inverseTargetMapping;
+      _modelVersion = await _resolveModelVersion(
+        preprocessorVersion: manifest.version,
+      );
 
-      final inverse =
-          payload['inverse_target_mapping'] as Map<String, dynamic>? ??
-          const <String, dynamic>{};
-      _inverseTargetMapping = inverse.map(
-        (key, value) => MapEntry(int.tryParse(key) ?? -1, value.toString()),
-      )..remove(-1);
       _logger.info(
         'model.harvard',
         'Model initialized',
@@ -231,6 +414,8 @@ class HarvardActivityRecommendationModel {
           'outputNames': _session?.outputNames ?? const [],
           'featureCount': _featureNames.length,
           'targetClasses': _inverseTargetMapping.length,
+          'preprocessorAssetPath': loadedPreprocessorPath,
+          'modelVersion': _modelVersion,
         },
       );
     } catch (error, stackTrace) {
@@ -242,11 +427,26 @@ class HarvardActivityRecommendationModel {
         payload: {
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
-          'modelAssetPath': _modelAssetPath,
-          'preprocessorAssetPath': _preprocessorAssetPath,
+          'modelAssetPath': kHarvardModelAssetPath,
+          'preprocessorAssetPath': loadedPreprocessorPath,
         },
       );
     }
+  }
+
+  Future<String> _resolveModelVersion({
+    required String preprocessorVersion,
+  }) async {
+    final metadataVersion = await loadHarvardModelVersion(
+      assetBundle: rootBundle,
+    );
+    if (metadataVersion != kHarvardDefaultModelVersion) {
+      return metadataVersion;
+    }
+    if (preprocessorVersion == 'harvard-preprocessor-v2') {
+      return kHarvardModelVersionV2;
+    }
+    return metadataVersion;
   }
 
   Future<int?> _runOnnx(List<double> scaledInput) async {
@@ -801,7 +1001,7 @@ class HarvardActivityRecommendationModel {
       'Returning insufficient-data recommendation',
       payload: {'reason': reason, if (payload != null) 'details': payload},
     );
-    return const HarvardActivityRecommendationResult(
+    return HarvardActivityRecommendationResult(
       activityClass: HarvardActivityClass.insufficientData,
       confidence: 0,
       recommendationKeys: [

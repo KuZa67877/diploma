@@ -1,0 +1,133 @@
+{
+  "version": "harvard-preprocessor-v2",
+  "feature_engineering_version": "harvard-fe-v2",
+  "feature_engineering_params": {
+    "intensity_params": {
+      "weight_hr": 0.9,
+      "hr_max": 80.0,
+      "steps_max": 50.0,
+      "scale": 0.791,
+      "offset": -0.079
+    },
+    "sd_normalized_span": 3,
+    "correlation_window": 30
+  },
+  "numeric_features": [
+    "age",
+    "gender",
+    "height",
+    "weight",
+    "Applewatch.Steps_LE",
+    "Applewatch.Heart_LE",
+    "Applewatch.Calories_LE",
+    "Applewatch.Distance_LE",
+    "EntropyApplewatchHeartPerDay_LE",
+    "EntropyApplewatchStepsPerDay_LE",
+    "RestingApplewatchHeartrate_LE",
+    "CorrelationApplewatchHeartrateSteps_LE",
+    "NormalizedApplewatchHeartrate_LE",
+    "ApplewatchIntensity_LE",
+    "SDNormalizedApplewatchHR_LE",
+    "ApplewatchStepsXDistance_LE"
+  ],
+  "categorical_features": [],
+  "imputation": {
+    "numeric_strategy": "median",
+    "numeric_values": {
+      "age": 28.0,
+      "gender": 0.0,
+      "height": 168.0,
+      "weight": 70.0,
+      "Applewatch.Steps_LE": 60.71006493506495,
+      "Applewatch.Heart_LE": 83.37820512820511,
+      "Applewatch.Calories_LE": 0.756,
+      "Applewatch.Distance_LE": 0.0306652142857143,
+      "EntropyApplewatchHeartPerDay_LE": 6.17548535716255,
+      "EntropyApplewatchStepsPerDay_LE": 6.08496835887672,
+      "RestingApplewatchHeartrate_LE": 69.6,
+      "CorrelationApplewatchHeartrateSteps_LE": -0.1445834869331522,
+      "NormalizedApplewatchHeartrate_LE": 15.360458428030299,
+      "ApplewatchIntensity_LE": 0.12139657356941523,
+      "SDNormalizedApplewatchHR_LE": 4.168342775874136,
+      "ApplewatchStepsXDistance_LE": 1.9885292689596517
+    },
+    "categorical_strategy": "constant",
+    "categorical_fill_value": "Unknown"
+  },
+  "scaler": {
+    "mean": [
+      29.457826747720365,
+      0.4737841945288754,
+      169.97283434650456,
+      70.66193009118541,
+      178.81918305627272,
+      90.72795479907506,
+      5.765768503857939,
+      0.08325419704502614,
+      6.122354691150095,
+      6.054439815486119,
+      68.1280824149797,
+      -0.0918101602387863,
+      22.599872384095367,
+      0.18423092713850125,
+      7.263740821929948,
+      39.44147102363019
+    ],
+    "std": [
+      9.144137066633895,
+      0.4993122585552053,
+      10.496884536642215,
+      14.136744053881742,
+      268.7120823070055,
+      26.470026432278072,
+      7.2545043588117855,
+      0.13455687002995043,
+      0.21653349931340435,
+      0.17564957320713678,
+      12.043531389000131,
+      0.45805474585914424,
+      23.682851985837832,
+      0.19202563284459628,
+      8.768058397891284,
+      112.6817428674548
+    ]
+  },
+  "encoder": {
+    "type": "onehot",
+    "categories": {}
+  },
+  "feature_names": [
+    "age",
+    "gender",
+    "height",
+    "weight",
+    "Applewatch.Steps_LE",
+    "Applewatch.Heart_LE",
+    "Applewatch.Calories_LE",
+    "Applewatch.Distance_LE",
+    "EntropyApplewatchHeartPerDay_LE",
+    "EntropyApplewatchStepsPerDay_LE",
+    "RestingApplewatchHeartrate_LE",
+    "CorrelationApplewatchHeartrateSteps_LE",
+    "NormalizedApplewatchHeartrate_LE",
+    "ApplewatchIntensity_LE",
+    "SDNormalizedApplewatchHR_LE",
+    "ApplewatchStepsXDistance_LE"
+  ],
+  "target_mapping": {
+    "Lying": 0,
+    "Running 3 METs": 1,
+    "Running 5 METs": 2,
+    "Running 7 METs": 3,
+    "Self Pace walk": 4,
+    "Sitting": 5
+  },
+  "inverse_target_mapping": {
+    "0": "Lying",
+    "1": "Running 3 METs",
+    "2": "Running 5 METs",
+    "3": "Running 7 METs",
+    "4": "Self Pace walk",
+    "5": "Sitting"
+  }
+}

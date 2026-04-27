@@ -114,10 +114,16 @@ class DashboardCubit extends Cubit<DashboardState> {
         return DashboardScoreState.noAccess;
       case 'calculating':
         return DashboardScoreState.calculating;
-      default:
-        if (healthScore < 50) return DashboardScoreState.risk;
-        if (healthScore < 75) return DashboardScoreState.attention;
+      case 'risk':
+        return DashboardScoreState.risk;
+      case 'attention':
+        return DashboardScoreState.attention;
+      case 'stable':
         return DashboardScoreState.stable;
+      default:
+        if (healthScore >= 80) return DashboardScoreState.stable;
+        if (healthScore >= 60) return DashboardScoreState.attention;
+        return DashboardScoreState.risk;
     }
   }
 

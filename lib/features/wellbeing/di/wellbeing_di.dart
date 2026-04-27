@@ -6,6 +6,9 @@ import '../data/datasources/wellbeing_local_data_source.dart';
 import '../data/datasources/wellbeing_remote_data_source.dart';
 import '../data/repositories/wellbeing_repository_impl.dart';
 import '../domain/repositories/wellbeing_repository.dart';
+import '../domain/services/healthscore_base_component_service.dart';
+import '../domain/services/healthscore_calculator_service.dart';
+import '../domain/usecases/calculate_healthscore.dart';
 import '../domain/usecases/get_wellbeing_entries.dart';
 import '../domain/usecases/save_wellbeing_entry.dart';
 import '../presentation/bloc/wellbeing_cubit.dart';
@@ -28,6 +31,16 @@ void registerWellbeing(GetIt getIt) {
       localDataSource: getIt<WellbeingLocalDataSource>(),
       remoteDataSource: getIt<WellbeingRemoteDataSource>(),
     ),
+  );
+
+  getIt.registerLazySingleton<HealthScoreBaseComponentService>(
+    () => const HealthScoreBaseComponentService(),
+  );
+  getIt.registerLazySingleton<HealthScoreCalculatorService>(
+    () => const HealthScoreCalculatorService(),
+  );
+  getIt.registerLazySingleton<CalculateHealthScore>(
+    () => CalculateHealthScore(getIt<HealthScoreCalculatorService>()),
   );
 
   getIt.registerLazySingleton<GetWellbeingEntries>(

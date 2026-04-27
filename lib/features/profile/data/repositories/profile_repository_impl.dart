@@ -2,9 +2,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/config/app_env.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/health/health_score_calculator.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
+import '../../../dashboard/data/datasources/health_model_output_remote_data_source.dart';
+import '../../../wellbeing/domain/entities/health_score_input.dart';
+import '../../../wellbeing/domain/services/healthscore_base_component_service.dart';
+import '../../../wellbeing/domain/usecases/calculate_healthscore.dart';
 import '../../domain/entities/profile_data.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../models/profile_data_model.dart';
@@ -12,12 +16,26 @@ import '../models/profile_user_model.dart';
 import '../datasources/profile_local_data_source.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
+  static const List<String> _healthScoreModelIds = [
+    'sleep_quality',
+    'stress_score_v1',
+    'personal_physiology_anomaly_v1',
+    'baseline_forecast_v1',
+  ];
+
   final ProfileLocalDataSource localDataSource;
   final AnonymousUserSnapshotDataSource snapshotDataSource;
+  final HealthModelOutputRemoteDataSource modelOutputRemoteDataSource;
+  final HealthScoreBaseComponentService healthScoreBaseComponentService;
+  final CalculateHealthScore calculateHealthScore;
+  final _logger = AppLogger.instance;
 
   ProfileRepositoryImpl({
     required this.localDataSource,
     required this.snapshotDataSource,
+    required this.modelOutputRemoteDataSource,
+    required this.healthScoreBaseComponentService,
+    required this.calculateHealthScore,
   });
 
   @override
@@ -39,9 +57,59 @@ class ProfileRepositoryImpl implements ProfileRepository {
             user.userMetadata,
             email: user.email,
           );
-      final healthScore = profile.hasAnyCoreHealthValue
-          ? HealthScoreCalculator.calculate(profile)
-          : null;
+      Map<String, HealthModelOutputRecord> latestOutputs = const {};
+      try {
+        latestOutputs = await modelOutputRemoteDataSource
+            .getLatestOutputsByModelIds(_healthScoreModelIds);
+      } on AuthFailure {
+        latestOutputs = const {};
+      } catch (error, stackTrace) {
+        latestOutputs = const {};
+        _logger.warning(
+          'profile.repository',
+          'Failed to load latest model outputs, fallback to available base score only',
+          payload: {'error': '$error', 'stackTrace': '$stackTrace'},
+        );
+      }
+
+      final baseScore = healthScoreBaseComponentService.estimateScore(
+        systolic: profile.systolic,
+        diastolic: profile.diastolic,
+        glucose: profile.glucose,
+        temperatureC: profile.temperatureC,
+        heightCm: profile.heightCm,
+        weightKg: profile.weightKg,
+      );
+      final baseConfidence = healthScoreBaseComponentService.estimateConfidence(
+        systolic: profile.systolic,
+        diastolic: profile.diastolic,
+        glucose: profile.glucose,
+        temperatureC: profile.temperatureC,
+        heightCm: profile.heightCm,
+        weightKg: profile.weightKg,
+      );
+      final sleepOutput = latestOutputs['sleep_quality'];
+      final stressOutput = latestOutputs['stress_score_v1'];
+      final anomalyOutput = latestOutputs['personal_physiology_anomaly_v1'];
+      final baselineOutput = latestOutputs['baseline_forecast_v1'];
+      final input = HealthScoreInput(
+        baseScore: baseScore,
+        sleepScore: _normalizeScore(sleepOutput?.score),
+        stressScore: _normalizeScore(stressOutput?.score),
+        anomalyScore: _normalizeScore(anomalyOutput?.score),
+        baselineDeviationScore: _normalizeScore(baselineOutput?.score),
+        baseConfidence: baseScore == null ? null : baseConfidence,
+        sleepConfidence: sleepOutput?.confidence,
+        stressConfidence: stressOutput?.confidence,
+        anomalyConfidence: anomalyOutput?.confidence,
+        baselineDeviationConfidence: baselineOutput?.confidence,
+        computedAt: _resolveComputedAt(
+          fallback: DateTime.now().toUtc(),
+          outputs: [sleepOutput, stressOutput, anomalyOutput, baselineOutput],
+        ),
+      );
+      final healthScoreResult = calculateHealthScore(input);
+      final healthScore = healthScoreResult.score;
       final connectedSources = profile.connectedHealthSourceIds.toSet();
       final services = localData.services
           .map((service) {
@@ -75,6 +143,27 @@ class ProfileRepositoryImpl implements ProfileRepository {
     } catch (_) {
       return const Left(CacheFailure());
     }
+  }
+
+  double? _normalizeScore(double? score) {
+    if (score == null || !score.isFinite) {
+      return null;
+    }
+    return score.clamp(0.0, 100.0).toDouble();
+  }
+
+  DateTime _resolveComputedAt({
+    required DateTime fallback,
+    required List<HealthModelOutputRecord?> outputs,
+  }) {
+    var latest = fallback.toUtc();
+    for (final output in outputs) {
+      final end = output?.windowEnd.toUtc();
+      if (end != null && end.isAfter(latest)) {
+        latest = end;
+      }
+    }
+    return latest;
   }
 
   bool _mapConnected({

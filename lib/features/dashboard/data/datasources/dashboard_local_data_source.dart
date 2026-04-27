@@ -46,8 +46,8 @@ class DashboardLocalDataSourceImpl implements DashboardLocalDataSource {
     return DashboardSummaryModel(
       greetingKey: greetingKey,
       userName: 'User',
-      healthScore: 78,
-      status: 'stable',
+      healthScore: 0,
+      status: 'no_access',
       insight: const DashboardInsightModel(
         titleKey: 'aiInsight',
         descKey: 'sleepImproved',

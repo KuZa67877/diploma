@@ -2,12 +2,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/config/app_env.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/health/health_score_calculator.dart';
 import '../../../../core/logging/app_logger.dart';
 import '../../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../health_data/data/datasources/health_data_remote_data_source.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
+import '../../../wellbeing/domain/entities/health_score_band.dart';
+import '../../../wellbeing/domain/entities/health_score_input.dart';
+import '../../../wellbeing/domain/entities/health_score_result.dart';
+import '../../../wellbeing/domain/services/healthscore_base_component_service.dart';
+import '../../../wellbeing/domain/usecases/calculate_healthscore.dart';
 import '../../domain/entities/dashboard_summary.dart';
 import '../../domain/entities/dashboard_metric.dart';
 import '../../domain/repositories/dashboard_repository.dart';
@@ -30,6 +34,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
   final StressInferenceModel stressModel;
   final PhysiologyAnomalyInferenceModel physiologyAnomalyModel;
   final BaselineForecastInferenceModel baselineForecastModel;
+  final HealthScoreBaseComponentService healthScoreBaseComponentService;
+  final CalculateHealthScore calculateHealthScore;
   final _logger = AppLogger.instance;
 
   DashboardRepositoryImpl({
@@ -42,6 +48,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required this.stressModel,
     required this.physiologyAnomalyModel,
     required this.baselineForecastModel,
+    required this.healthScoreBaseComponentService,
+    required this.calculateHealthScore,
   });
 
   @override
@@ -65,16 +73,25 @@ class DashboardRepositoryImpl implements DashboardRepository {
             email: user.email,
           );
       final userName = profile.displayName ?? localSummary.userName;
-      final hasHealthProfile = profile.hasAnyCoreHealthValue;
-      final baseScore = hasHealthProfile
-          ? HealthScoreCalculator.calculate(
-              profile,
-              fallback: localSummary.healthScore,
-            )
-          : null;
+      final baseScore = healthScoreBaseComponentService.estimateScore(
+        systolic: profile.systolic,
+        diastolic: profile.diastolic,
+        glucose: profile.glucose,
+        temperatureC: profile.temperatureC,
+        heightCm: profile.heightCm,
+        weightKg: profile.weightKg,
+      );
+      final baseConfidence = healthScoreBaseComponentService.estimateConfidence(
+        systolic: profile.systolic,
+        diastolic: profile.diastolic,
+        glucose: profile.glucose,
+        temperatureC: profile.temperatureC,
+        heightCm: profile.heightCm,
+        weightKg: profile.weightKg,
+      );
       final modelContext = await _resolveModelContext(
         profile: profile,
-        fallbackHealthScore: baseScore,
+        fallbackHealthScore: baseScore?.round(),
       );
       final normalizedSleepScore = _normalizeSleepScore(
         modelContext.sleep.score,
@@ -82,10 +99,29 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final normalizedStressScore = _normalizeStressScore(
         modelContext.stress.stressScore,
       );
-      final score = _composeHealthScore(
+      final normalizedAnomalyScore = _normalizeAnomalyScore(
+        modelContext.physiologyAnomaly.anomalyScore,
+      );
+      final normalizedBaselineDeviationScore = _normalizeBaselineDeviationScore(
+        modelContext.baselineForecast.overallDeviationScore,
+      );
+      final healthScoreInput = HealthScoreInput(
         baseScore: baseScore,
         sleepScore: normalizedSleepScore,
+        stressScore: normalizedStressScore,
+        anomalyScore: normalizedAnomalyScore,
+        baselineDeviationScore: normalizedBaselineDeviationScore,
+        baseConfidence: baseScore == null ? null : baseConfidence,
+        sleepConfidence: modelContext.sleep.confidence,
+        stressConfidence: modelContext.stress.confidence,
+        anomalyConfidence: modelContext.physiologyAnomaly.confidence,
+        baselineDeviationConfidence: modelContext.baselineForecast.confidence,
+        computedAt: _resolveHealthScoreComputedAt(
+          modelContext: modelContext,
+          fallback: DateTime.now().toUtc(),
+        ),
       );
+      final healthScoreResult = calculateHealthScore(healthScoreInput);
       final metrics = _mergeMetricsWithModelOutputs(
         baseMetrics: localSummary.metrics,
         sleep: modelContext.sleep,
@@ -94,17 +130,23 @@ class DashboardRepositoryImpl implements DashboardRepository {
         physiologyAnomaly: modelContext.physiologyAnomaly,
         baselineForecast: modelContext.baselineForecast,
       );
-      final hasAnyScoringData =
-          baseScore != null || normalizedSleepScore != null;
-      final status = hasAnyScoringData
-          ? HealthScoreCalculator.statusForScore(score)
-          : 'no_access';
+      await _persistHealthScoreOutput(
+        input: healthScoreInput,
+        result: healthScoreResult,
+      );
+      final status = _legacyStatusFromBand(healthScoreResult.band);
+      final healthScore = healthScoreResult.score ?? 0;
+      final hasHealthScoreQualityAlerts = healthScoreResult.alerts.any(
+        (alert) =>
+            alert.code == 'low_data_completeness' ||
+            alert.code == 'low_confidence',
+      );
 
       return Right(
         DashboardSummaryModel(
           greetingKey: localSummary.greetingKey,
           userName: userName,
-          healthScore: score,
+          healthScore: healthScore,
           status: status,
           recommendationKeys: modelContext.recommendations.keys,
           hasInsufficientModelData:
@@ -112,7 +154,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
               modelContext.sleep.insufficientData ||
               modelContext.stress.insufficientData ||
               modelContext.physiologyAnomaly.insufficientData ||
-              modelContext.baselineForecast.insufficientData,
+              modelContext.baselineForecast.insufficientData ||
+              hasHealthScoreQualityAlerts,
           insight: localSummary.insight,
           metrics: metrics,
         ),
@@ -221,6 +264,30 @@ class DashboardRepositoryImpl implements DashboardRepository {
     }
   }
 
+  Future<void> _persistHealthScoreOutput({
+    required HealthScoreInput input,
+    required HealthScoreResult result,
+  }) async {
+    if (!AppEnv.isSupabaseConfigured) {
+      return;
+    }
+
+    try {
+      await modelOutputRemoteDataSource.saveOutputs([
+        _healthScoreOutputPayload(input: input, result: result),
+      ]);
+    } on AuthFailure {
+      // Auth can expire between dashboard load and persistence. Dashboard
+      // should still render current in-memory health score.
+    } catch (error, stackTrace) {
+      _logger.warning(
+        'dashboard.repository',
+        'Failed to persist healthscore_v1 output',
+        payload: {'error': '$error', 'stackTrace': '$stackTrace'},
+      );
+    }
+  }
+
   HealthModelOutputPayload _sleepOutputPayload(
     SleepQualityInferenceResult sleep,
     DateTime now,
@@ -317,6 +384,77 @@ class DashboardRepositoryImpl implements DashboardRepository {
     );
   }
 
+  HealthModelOutputPayload _healthScoreOutputPayload({
+    required HealthScoreInput input,
+    required HealthScoreResult result,
+  }) {
+    final inversedStress = input.stressScore == null
+        ? null
+        : (100.0 - input.stressScore!.clamp(0.0, 100.0)).clamp(0.0, 100.0);
+    final inversedAnomaly = input.anomalyScore == null
+        ? null
+        : (100.0 - input.anomalyScore!.clamp(0.0, 100.0)).clamp(0.0, 100.0);
+    final inversedBaseline = input.baselineDeviationScore == null
+        ? null
+        : (100.0 - input.baselineDeviationScore!.clamp(0.0, 100.0)).clamp(
+            0.0,
+            100.0,
+          );
+    final availableComponents =
+        (result.inputQuality['available_components'] as List<dynamic>?)
+            ?.map((item) => item.toString())
+            .toList(growable: false);
+    final missingComponents =
+        (result.inputQuality['missing_components'] as List<dynamic>?)
+            ?.map((item) => item.toString())
+            .toList(growable: false);
+
+    return HealthModelOutputPayload(
+      modelId: 'healthscore_v1',
+      modelVersion: HealthScoreResult.versionId,
+      windowStart: input.computedAt.toUtc(),
+      windowEnd: result.computedAt.toUtc(),
+      score: result.score?.toDouble(),
+      confidence: result.confidence,
+      status: result.band.code,
+      source: 'domain_formula_v1',
+      reason: result.band == HealthScoreBand.noAccess
+          ? 'insufficient_data'
+          : 'ok',
+      reasonCodes: result.alerts
+          .map((alert) => _safeJsonMap(alert.toJson()))
+          .toList(growable: false),
+      dataQuality: _safeJsonMap({
+        'completeness': result.inputQuality['completeness'],
+        'confidence': result.confidence,
+        'available_components': availableComponents ?? const <String>[],
+        'missing_components': missingComponents ?? const <String>[],
+      }),
+      features: _safeJsonMap({
+        'base': input.baseScore,
+        'sleep': input.sleepScore,
+        'stress': input.stressScore,
+        'anomaly': input.anomalyScore,
+        'baselineDeviation': input.baselineDeviationScore,
+        'inversed': _safeJsonMap({
+          'stress': inversedStress,
+          'anomaly': inversedAnomaly,
+          'baselineDeviation': inversedBaseline,
+        }),
+        'weights': _safeJsonMap({
+          'base': 0.35,
+          'sleep': 0.25,
+          'stressInv': 0.15,
+          'anomalyInv': 0.15,
+          'baselineInv': 0.10,
+        }),
+        'drivers': result.drivers
+            .map((driver) => _safeJsonMap(driver.toJson()))
+            .toList(growable: false),
+      }),
+    );
+  }
+
   HealthModelOutputPayload _baselineForecastOutputPayload(
     BaselineForecastInferenceResult result,
   ) {
@@ -344,21 +482,37 @@ class DashboardRepositoryImpl implements DashboardRepository {
     );
   }
 
-  int _composeHealthScore({
-    required int? baseScore,
-    required double? sleepScore,
+  String _legacyStatusFromBand(HealthScoreBand band) {
+    return switch (band) {
+      HealthScoreBand.green => 'stable',
+      HealthScoreBand.yellow => 'attention',
+      HealthScoreBand.orange || HealthScoreBand.red => 'risk',
+      HealthScoreBand.noAccess => 'no_access',
+    };
+  }
+
+  DateTime _resolveHealthScoreComputedAt({
+    required _ResolvedModelContext modelContext,
+    required DateTime fallback,
   }) {
-    if (baseScore != null && sleepScore != null) {
-      final blended = (baseScore * 0.70) + (sleepScore * 0.30);
-      return blended.round().clamp(0, 100);
+    final candidates = <DateTime>[
+      fallback.toUtc(),
+      modelContext.stress.windowEnd.toUtc(),
+      modelContext.physiologyAnomaly.windowEnd.toUtc(),
+      modelContext.baselineForecast.windowEnd.toUtc(),
+    ];
+    final sleepEnd = modelContext.sleep.latestNight?.endUtc.toUtc();
+    if (sleepEnd != null) {
+      candidates.add(sleepEnd);
     }
-    if (baseScore != null) {
-      return baseScore.clamp(0, 100);
+
+    var latest = candidates.first;
+    for (final candidate in candidates) {
+      if (candidate.isAfter(latest)) {
+        latest = candidate;
+      }
     }
-    if (sleepScore != null) {
-      return sleepScore.round().clamp(0, 100);
-    }
-    return 0;
+    return latest;
   }
 
   _ResolvedModelContext _insufficientModelContext() {
@@ -401,12 +555,21 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required PhysiologyAnomalyInferenceResult physiologyAnomaly,
     required BaselineForecastInferenceResult baselineForecast,
   }) {
-    final sanitized = baseMetrics
-        .where((metric) => metric.id != 'sleep_ai')
-        .where((metric) => metric.id != 'stress_ai')
-        .where((metric) => metric.id != 'physiology_anomaly')
-        .where((metric) => metric.id != 'baseline_deviation')
-        .toList(growable: true);
+    final sanitized = <DashboardMetric>[
+      for (final metric in baseMetrics)
+        if (metric.id != 'sleep_ai' &&
+            metric.id != 'stress_ai' &&
+            metric.id != 'physiology_anomaly' &&
+            metric.id != 'baseline_deviation')
+          DashboardMetric(
+            id: metric.id,
+            labelKey: metric.labelKey,
+            value: metric.value,
+            unit: metric.unit,
+            trend: metric.trend,
+            data: List<double>.unmodifiable(metric.data),
+          ),
+    ];
 
     if (normalizedSleepScore != null) {
       final value = normalizedSleepScore.toStringAsFixed(1);

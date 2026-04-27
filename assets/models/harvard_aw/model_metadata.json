@@ -1,9 +1,11 @@
 {
-  "model_version": "harvard-aw-xgb-v1",
-  "accuracy_test": 0.846995,
-  "features_count": 16,
+  "model_version": "harvard-aw-xgb-v2",
   "input_name": "float_input",
-  "labels": {
+  "split_strategy": "stratified_shuffle_split",
+  "group_column": null,
+  "seed": 42,
+  "features_count": 16,
+  "class_labels": {
     "0": "Lying",
     "1": "Running 3 METs",
     "2": "Running 5 METs",
@@ -11,5 +13,123 @@
     "4": "Self Pace walk",
     "5": "Sitting"
   },
-  "dataset_path": "/Users/kuzminykhhh/.cache/kagglehub/datasets/aleespinosa/apple-watch-and-fitbit-data/versions/1/data_for_weka_aw.csv"
+  "metrics": {
+    "accuracy": 0.5737704918032787,
+    "balanced_accuracy": 0.5626250464589827,
+    "macro_f1": 0.5666680932273445,
+    "weighted_f1": 0.5717445730870003,
+    "log_loss": 1.0812029127484029,
+    "confusion_matrix": [
+      [
+        50,
+        4,
+        2,
+        0,
+        4,
+        19
+      ],
+      [
+        16,
+        22,
+        0,
+        2,
+        7,
+        10
+      ],
+      [
+        6,
+        2,
+        35,
+        8,
+        1,
+        8
+      ],
+      [
+        4,
+        0,
+        1,
+        54,
+        0,
+        3
+      ],
+      [
+        15,
+        3,
+        3,
+        2,
+        17,
+        13
+      ],
+      [
+        15,
+        1,
+        1,
+        5,
+        1,
+        32
+      ]
+    ],
+    "classification_report": {
+      "Lying": {
+        "precision": 0.4716981132075472,
+        "recall": 0.6329113924050633,
+        "f1-score": 0.5405405405405406,
+        "support": 79.0
+      },
+      "Running 3 METs": {
+        "precision": 0.6875,
+        "recall": 0.38596491228070173,
+        "f1-score": 0.4943820224719101,
+        "support": 57.0
+      },
+      "Running 5 METs": {
+        "precision": 0.8333333333333334,
+        "recall": 0.5833333333333334,
+        "f1-score": 0.6862745098039216,
+        "support": 60.0
+      },
+      "Running 7 METs": {
+        "precision": 0.7605633802816901,
+        "recall": 0.8709677419354839,
+        "f1-score": 0.8120300751879699,
+        "support": 62.0
+      },
+      "Self Pace walk": {
+        "precision": 0.5666666666666667,
+        "recall": 0.32075471698113206,
+        "f1-score": 0.40963855421686746,
+        "support": 53.0
+      },
+      "Sitting": {
+        "precision": 0.3764705882352941,
+        "recall": 0.5818181818181818,
+        "f1-score": 0.45714285714285713,
+        "support": 55.0
+      },
+      "accuracy": 0.5737704918032787,
+      "macro avg": {
+        "precision": 0.6160386802874219,
+        "recall": 0.5626250464589827,
+        "f1-score": 0.5666680932273445,
+        "support": 366.0
+      },
+      "weighted avg": {
+        "precision": 0.612966656303649,
+        "recall": 0.5737704918032787,
+        "f1-score": 0.5717445730870003,
+        "support": 366.0
+      }
+    }
+  },
+  "dataset_path": "data_for_weka_aw.csv",
+  "dataset_sha256": "8f224d5a7ebad5ff62cf12e52dc50f750f4c5dcaed84d8465e9ed7bc4c6711c0",
+  "artifact_hashes": {
+    "model_harvardAWData_xgboost.onnx": "9d1b0031686bbd0f6fbc5300e828a6fecebc697e761bbb34077d4a34894462fc",
+    "preprocessor_v1.json": "85b3a2454af6ece4cc63ad3ad4ff9bd32592c34da6d22d2531e3990129a7f448",
+    "preprocessor_v2.json": "9ba815d47fb8ca96ece2c26b891de5f8f2d992097d92c3ab163be1cd3a2c8786",
+    "split_manifest.json": "c32daec8c48b457c2e197f3443a67db3ce60a7648f57565f3ed1e536d4601f60",
+    "training_report.json": "aba201492b85a545340b450fbaac7a7c20f003858160d7d11358be6c9f1f40f5",
+    "parity_fixture_v2.json": "b20fb9a6ecd4ac05b447db54b60f783175075346260ac00baf93b2844a6ef254",
+    "model_xgboost.joblib": "eb217cad1e341e5f828b219223b14f2b77b4699f1dcdf80ff593da8602bc6689"
+  }
 }
