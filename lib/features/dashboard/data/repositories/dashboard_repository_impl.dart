@@ -7,6 +7,7 @@ import '../../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../health_data/data/datasources/health_data_remote_data_source.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
+import '../../../health_data/domain/entities/health_metric_type.dart';
 import '../../../wellbeing/domain/entities/health_score_band.dart';
 import '../../../wellbeing/domain/entities/health_score_input.dart';
 import '../../../wellbeing/domain/entities/health_score_result.dart';
@@ -122,13 +123,19 @@ class DashboardRepositoryImpl implements DashboardRepository {
         ),
       );
       final healthScoreResult = calculateHealthScore(healthScoreInput);
-      final metrics = _mergeMetricsWithModelOutputs(
-        baseMetrics: localSummary.metrics,
+      final metrics = _buildTodayMetrics(
+        samples: modelContext.wearableSamples,
         sleep: modelContext.sleep,
-        normalizedSleepScore: normalizedSleepScore,
-        normalizedStressScore: normalizedStressScore,
-        physiologyAnomaly: modelContext.physiologyAnomaly,
-        baselineForecast: modelContext.baselineForecast,
+        stress: modelContext.stress,
+        recovery: modelContext.physiologyAnomaly,
+      );
+      final modelResults = _buildModelResults(
+        activity: modelContext.activity,
+        sleep: modelContext.sleep,
+        stress: modelContext.stress,
+        baseline: modelContext.baselineForecast,
+        recovery: modelContext.physiologyAnomaly,
+        healthScoreResult: healthScoreResult,
       );
       await _persistHealthScoreOutput(
         input: healthScoreInput,
@@ -151,6 +158,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
           recommendationKeys: modelContext.recommendations.keys,
           hasInsufficientModelData:
               modelContext.recommendations.insufficient ||
+              !modelContext.hasAnyWearableData ||
               modelContext.sleep.insufficientData ||
               modelContext.stress.insufficientData ||
               modelContext.physiologyAnomaly.insufficientData ||
@@ -158,6 +166,12 @@ class DashboardRepositoryImpl implements DashboardRepository {
               hasHealthScoreQualityAlerts,
           insight: localSummary.insight,
           metrics: metrics,
+          dataSnapshot: DashboardDataSnapshot(
+            connectedSources: modelContext.connectedSourceCount,
+            wearableSampleCount: modelContext.wearableSamples.length,
+            latestWearableSampleAt: modelContext.latestWearableSampleAt,
+          ),
+          modelResults: modelResults,
         ),
       );
     } catch (error, stackTrace) {
@@ -179,27 +193,32 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }) async {
     try {
       final snapshot = await healthRemoteDataSource.getSnapshot();
+      final wearableSamples = snapshot.cachedSamples
+          .where(
+            (sample) => sample.sourceId.trim().toLowerCase() != 'local_manual',
+          )
+          .toList(growable: false);
       final recommendationInference = await recommendationModel.infer(
         profile: profile,
-        samples: snapshot.cachedSamples,
+        samples: wearableSamples,
       );
-      final inferenceNow = _latestWearableTimestamp(snapshot.cachedSamples);
+      final inferenceNow = _latestWearableTimestamp(wearableSamples);
       final sleepInference = await sleepQualityModel.infer(
-        samples: snapshot.cachedSamples,
+        samples: wearableSamples,
         now: inferenceNow,
       );
       final stressInference = await stressModel.infer(
-        samples: snapshot.cachedSamples,
+        samples: wearableSamples,
         now: inferenceNow,
         recentSleepScore: sleepInference.score,
         fallbackHealthScore: fallbackHealthScore,
       );
       final physiologyAnomalyInference = physiologyAnomalyModel.inferSync(
-        samples: snapshot.cachedSamples,
+        samples: wearableSamples,
         now: inferenceNow,
       );
       final baselineForecastInference = baselineForecastModel.inferSync(
-        samples: snapshot.cachedSamples,
+        samples: wearableSamples,
         now: inferenceNow,
       );
       await _persistModelOutputs(
@@ -217,10 +236,14 @@ class DashboardRepositoryImpl implements DashboardRepository {
               recommendationInference.activityClass ==
               HarvardActivityClass.insufficientData,
         ),
+        activity: recommendationInference,
         sleep: sleepInference,
         stress: stressInference,
         physiologyAnomaly: physiologyAnomalyInference,
         baselineForecast: baselineForecastInference,
+        connectedSourceCount: snapshot.connectedSourceIds.length,
+        wearableSamples: wearableSamples,
+        latestWearableSampleAt: inferenceNow,
       );
     } on AuthFailure {
       return _insufficientModelContext();
@@ -518,6 +541,16 @@ class DashboardRepositoryImpl implements DashboardRepository {
   _ResolvedModelContext _insufficientModelContext() {
     return _ResolvedModelContext(
       recommendations: _insufficientRecommendations(),
+      activity: const HarvardActivityRecommendationResult(
+        activityClass: HarvardActivityClass.insufficientData,
+        confidence: 0,
+        recommendationKeys: <String>[
+          'modelRecInsufficient1',
+          'modelRecInsufficient2',
+          'modelRecInsufficient3',
+        ],
+        modelVersion: 'unknown',
+      ),
       sleep: SleepQualityInferenceResult.insufficient(
         reason: 'snapshot_unavailable',
       ),
@@ -533,6 +566,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
         now: DateTime.now().toUtc(),
         reason: 'snapshot_unavailable',
       ),
+      connectedSourceCount: 0,
+      wearableSamples: const <HealthMetricSample>[],
+      latestWearableSampleAt: null,
     );
   }
 
@@ -547,149 +583,571 @@ class DashboardRepositoryImpl implements DashboardRepository {
     );
   }
 
-  List<DashboardMetric> _mergeMetricsWithModelOutputs({
-    required List<DashboardMetric> baseMetrics,
+  DashboardModelResults _buildModelResults({
+    required HarvardActivityRecommendationResult activity,
     required SleepQualityInferenceResult sleep,
-    required double? normalizedSleepScore,
-    required double? normalizedStressScore,
-    required PhysiologyAnomalyInferenceResult physiologyAnomaly,
-    required BaselineForecastInferenceResult baselineForecast,
+    required StressInferenceResult stress,
+    required BaselineForecastInferenceResult baseline,
+    required PhysiologyAnomalyInferenceResult recovery,
+    required HealthScoreResult healthScoreResult,
   }) {
-    final sanitized = <DashboardMetric>[
-      for (final metric in baseMetrics)
-        if (metric.id != 'sleep_ai' &&
-            metric.id != 'stress_ai' &&
-            metric.id != 'physiology_anomaly' &&
-            metric.id != 'baseline_deviation')
-          DashboardMetric(
-            id: metric.id,
-            labelKey: metric.labelKey,
-            value: metric.value,
-            unit: metric.unit,
-            trend: metric.trend,
-            data: List<double>.unmodifiable(metric.data),
-          ),
-    ];
-
-    if (normalizedSleepScore != null) {
-      final value = normalizedSleepScore.toStringAsFixed(1);
-      final baselineSeries = _resolveSleepBaselineSeries(
-        sanitized,
-        normalizedSleepScore,
-      );
-      final trend = _deriveTrend(baselineSeries);
-      sanitized.insert(
-        0,
-        DashboardMetric(
-          id: 'sleep_ai',
-          labelKey: 'sleepAiScore',
-          value: value,
-          unit: '/100',
-          trend: trend,
-          data: baselineSeries,
-        ),
-      );
-    }
-
-    if (normalizedStressScore != null) {
-      sanitized.insert(
-        0,
-        DashboardMetric(
-          id: 'stress_ai',
-          labelKey: 'stressAiScore',
-          value: normalizedStressScore.toStringAsFixed(0),
-          unit: '/100',
-          trend: 'stable',
-          data: _resolveStressSeries(normalizedStressScore),
-        ),
-      );
-    }
-
-    final anomalyScore = _normalizeAnomalyScore(physiologyAnomaly.anomalyScore);
-    if (anomalyScore != null) {
-      sanitized.insert(
-        0,
-        DashboardMetric(
-          id: 'physiology_anomaly',
-          labelKey: 'physiologyAnomalyScore',
-          value: anomalyScore.toStringAsFixed(0),
-          unit: '/100',
-          trend: 'stable',
-          data: _resolveAnomalySeries(anomalyScore),
-        ),
-      );
-    }
-
-    final baselineScore = _normalizeBaselineDeviationScore(
-      baselineForecast.overallDeviationScore,
+    return DashboardModelResults(
+      activity: _mapActivityResult(activity),
+      sleep: _mapSleepResult(sleep, baseline),
+      stress: _mapStressResult(stress),
+      baseline: _mapBaselineResult(baseline),
+      recovery: _mapRecoveryResult(recovery),
+      healthScoreConfidence: healthScoreResult.confidence,
+      healthDrivers: _mapHealthDrivers(healthScoreResult),
     );
-    if (baselineScore != null) {
-      sanitized.insert(
-        0,
-        DashboardMetric(
-          id: 'baseline_deviation',
-          labelKey: 'baselineDeviationScore',
-          value: baselineScore.toStringAsFixed(0),
-          unit: '/100',
-          trend: 'stable',
-          data: _resolveBaselineDeviationSeries(baselineScore),
-        ),
-      );
+  }
+
+  DashboardActivityModelResult _mapActivityResult(
+    HarvardActivityRecommendationResult result,
+  ) {
+    final insufficient =
+        result.activityClass == HarvardActivityClass.insufficientData;
+    return DashboardActivityModelResult(
+      activityClass: _activityClassCode(result.activityClass),
+      confidence: insufficient ? null : result.confidence,
+      insufficientData: insufficient,
+      recommendationKeys: result.recommendationKeys,
+      modelVersion: result.modelVersion,
+    );
+  }
+
+  DashboardSleepModelResult _mapSleepResult(
+    SleepQualityInferenceResult sleep,
+    BaselineForecastInferenceResult baseline,
+  ) {
+    final score = _normalizeSleepScore(sleep.score);
+    final baselineSleep = baseline.metrics['sleep_duration'];
+    final isInsufficient = sleep.insufficientData || score == null;
+
+    return DashboardSleepModelResult(
+      score: score,
+      confidence: sleep.confidence,
+      insufficientData: isInsufficient,
+      status: isInsufficient ? 'insufficient' : _statusForModelScore(score),
+      reason: sleep.reason,
+      sleepMinutes: sleep.latestNight?.sleepMinutes,
+      sleepDurationDeviationMinutes: baselineSleep?.actualIsPartial == true
+          ? null
+          : baselineSleep?.delta,
+    );
+  }
+
+  DashboardStressModelResult _mapStressResult(StressInferenceResult stress) {
+    return DashboardStressModelResult(
+      score: _normalizeStressScore(stress.stressScore),
+      confidence: stress.confidence,
+      insufficientData: stress.insufficientData,
+      status: stress.insufficientData
+          ? 'insufficient'
+          : _statusFromStressCode(stress.status),
+      reason: stress.reason,
+      heartRate: stress.features['hr_mean'],
+      hrvSdnn: stress.features['hrv_sdnn_latest'],
+      hrvRmssd: stress.features['hrv_rmssd_latest'],
+      sleepHoursDelta: stress.features['sleep_hours_delta_7'],
+      activitySteps1h: stress.features['steps_1h'],
+      reasons: stress.reasonCodes
+          .map(
+            (reason) => DashboardModelReason(
+              code: reason.code,
+              message: reason.message,
+              severity: reason.severity,
+              impact: reason.contribution,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  DashboardBaselineModelResult _mapBaselineResult(
+    BaselineForecastInferenceResult result,
+  ) {
+    final deviations =
+        result.metrics.entries
+            .map(
+              (entry) => DashboardBaselineDeviation(
+                metric: entry.key,
+                expected: entry.value.expected,
+                actual: entry.value.actual,
+                delta: entry.value.actualIsPartial ? null : entry.value.delta,
+                robustZ: entry.value.actualIsPartial
+                    ? null
+                    : entry.value.robustZ,
+                severity: entry.value.severity,
+              ),
+            )
+            .toList(growable: false)
+          ..sort((a, b) {
+            final severityCompare = _severityRank(
+              b.severity,
+            ).compareTo(_severityRank(a.severity));
+            if (severityCompare != 0) return severityCompare;
+            return (b.robustZ?.abs() ?? 0).compareTo(a.robustZ?.abs() ?? 0);
+          });
+
+    return DashboardBaselineModelResult(
+      score: _normalizeBaselineDeviationScore(result.overallDeviationScore),
+      confidence: result.confidence,
+      insufficientData: result.insufficientData,
+      status: result.insufficientData
+          ? 'insufficient'
+          : _statusFromBaselineCode(result.status),
+      reason: result.reason,
+      mainReasons: result.summary.mainReasons.take(4).toList(growable: false),
+      deviations: deviations.take(5).toList(growable: false),
+    );
+  }
+
+  DashboardRecoveryModelResult _mapRecoveryResult(
+    PhysiologyAnomalyInferenceResult result,
+  ) {
+    final reasons = result.reasonCodes
+        .map(
+          (reason) => DashboardModelReason(
+            code: reason.code,
+            message: reason.message,
+            severity: reason.impact >= 0.66
+                ? 'high'
+                : reason.impact >= 0.33
+                ? 'medium'
+                : 'low',
+            impact: reason.impact,
+          ),
+        )
+        .toList(growable: false);
+
+    return DashboardRecoveryModelResult(
+      score: _normalizeAnomalyScore(result.anomalyScore),
+      confidence: result.confidence,
+      insufficientData: result.insufficientData,
+      status: result.insufficientData
+          ? 'insufficient'
+          : _statusFromStressCode(result.status),
+      reason: result.reason,
+      reasons: reasons,
+      groups: result.groupScores
+          .map(
+            (group) => DashboardModelGroupScore(
+              code: group.code,
+              score: group.score,
+              confidence: group.confidence,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  List<DashboardHealthDriver> _mapHealthDrivers(HealthScoreResult result) {
+    final drivers =
+        result.drivers
+            .map(
+              (driver) => DashboardHealthDriver(
+                id: driver.id,
+                contribution: driver.contribution,
+                effectiveScore: driver.effectiveScore,
+                confidence: driver.confidence,
+              ),
+            )
+            .toList(growable: false)
+          ..sort(
+            (a, b) => b.contribution.abs().compareTo(a.contribution.abs()),
+          );
+    return drivers.take(4).toList(growable: false);
+  }
+
+  List<DashboardMetric> _buildTodayMetrics({
+    required List<HealthMetricSample> samples,
+    required SleepQualityInferenceResult sleep,
+    required StressInferenceResult stress,
+    required PhysiologyAnomalyInferenceResult recovery,
+  }) {
+    final now = DateTime.now().toUtc();
+    final dayStart = DateTime.utc(now.year, now.month, now.day);
+
+    final heartSeries = _buildAverageSeries(
+      samples,
+      types: const [HealthMetricType.heartRate],
+      end: now,
+      bucketCount: 8,
+      bucketDuration: const Duration(hours: 3),
+    );
+    final hrvSeries = _buildAverageSeries(
+      samples,
+      types: const [
+        HealthMetricType.heartRateVariabilityRmssd,
+        HealthMetricType.heartRateVariabilitySdnn,
+      ],
+      end: now,
+      bucketCount: 8,
+      bucketDuration: const Duration(hours: 3),
+    );
+    final sleepSeries = _buildSleepDurationSeries(samples, end: now, days: 7);
+    final stepsSeries = _buildSumSeries(
+      samples,
+      types: const [HealthMetricType.steps],
+      end: now,
+      bucketCount: 7,
+      bucketDuration: const Duration(days: 1),
+    );
+    final activeMinutesSeries = _buildSumSeries(
+      samples,
+      types: const [HealthMetricType.exerciseTime],
+      end: now,
+      bucketCount: 7,
+      bucketDuration: const Duration(days: 1),
+      valueTransform: _exerciseMinutesFromSample,
+    );
+
+    final heart = _latestMetricValue(
+      samples,
+      types: const [HealthMetricType.heartRate],
+      start: dayStart,
+      end: now,
+    );
+    final hrv = _latestMetricValue(
+      samples,
+      types: const [
+        HealthMetricType.heartRateVariabilityRmssd,
+        HealthMetricType.heartRateVariabilitySdnn,
+      ],
+      start: dayStart,
+      end: now,
+    );
+    final steps = _sumMetricValue(
+      samples,
+      types: const [HealthMetricType.steps],
+      start: dayStart,
+      end: now,
+    );
+    final activeMinutes = _sumMetricValue(
+      samples,
+      types: const [HealthMetricType.exerciseTime],
+      start: dayStart,
+      end: now,
+      valueTransform: _exerciseMinutesFromSample,
+    );
+    final sleepHours = sleep.latestNight == null
+        ? null
+        : (sleep.latestNight!.sleepMinutes / 60.0);
+    final stressScore = _normalizeStressScore(stress.stressScore);
+    final recoveryScore = _normalizeAnomalyScore(recovery.anomalyScore);
+
+    return List.unmodifiable([
+      _buildMetric(
+        id: 'heart',
+        labelKey: 'heartRate',
+        value: heart,
+        digits: 0,
+        unit: 'bpm',
+        series: heartSeries,
+      ),
+      _buildMetric(
+        id: 'hrv',
+        labelKey: 'hrv',
+        value: hrv,
+        digits: 0,
+        unit: 'ms',
+        series: hrvSeries,
+      ),
+      _buildMetric(
+        id: 'sleep',
+        labelKey: 'sleep',
+        value: sleepHours,
+        digits: 1,
+        unit: 'h',
+        series: sleepSeries,
+      ),
+      _buildMetric(
+        id: 'steps',
+        labelKey: 'steps',
+        value: steps,
+        digits: 0,
+        unit: '',
+        series: stepsSeries,
+      ),
+      _buildMetric(
+        id: 'active_minutes',
+        labelKey: 'activeMinutes',
+        value: activeMinutes,
+        digits: 0,
+        unit: 'min',
+        series: activeMinutesSeries,
+      ),
+      _buildMetric(
+        id: 'stress_today',
+        labelKey: 'stress',
+        value: stressScore,
+        digits: 0,
+        unit: '/100',
+        series: stressScore == null ? const [] : [stressScore],
+      ),
+      _buildMetric(
+        id: 'recovery_today',
+        labelKey: 'recovery',
+        value: recoveryScore,
+        digits: 0,
+        unit: '/100',
+        series: recoveryScore == null ? const [] : [recoveryScore],
+      ),
+    ]);
+  }
+
+  DashboardMetric _buildMetric({
+    required String id,
+    required String labelKey,
+    required double? value,
+    required int digits,
+    required String unit,
+    required List<double> series,
+  }) {
+    final isAvailable = value != null && value.isFinite;
+    final double? safe = isAvailable
+        ? value.clamp(0.0, 1000000.0).toDouble()
+        : null;
+    final sanitizedSeries = series
+        .where((point) => point.isFinite)
+        .map((point) => point.clamp(0.0, 1000000.0).toDouble())
+        .toList(growable: false);
+    final resolvedSeries = sanitizedSeries.isNotEmpty
+        ? sanitizedSeries
+        : safe == null
+        ? const <double>[0]
+        : <double>[safe];
+    return DashboardMetric(
+      id: id,
+      labelKey: labelKey,
+      value: safe == null ? '—' : safe.toStringAsFixed(digits),
+      unit: unit,
+      trend: safe == null ? 'stable' : _deriveTrend(resolvedSeries),
+      data: resolvedSeries,
+    );
+  }
+
+  List<double> _buildAverageSeries(
+    List<HealthMetricSample> samples, {
+    required List<HealthMetricType> types,
+    required DateTime end,
+    required int bucketCount,
+    required Duration bucketDuration,
+    double Function(HealthMetricSample sample)? valueTransform,
+  }) {
+    return _buildBucketSeries(
+      samples,
+      types: types,
+      end: end,
+      bucketCount: bucketCount,
+      bucketDuration: bucketDuration,
+      mode: _BucketAggregationMode.average,
+      valueTransform: valueTransform,
+    );
+  }
+
+  List<double> _buildSumSeries(
+    List<HealthMetricSample> samples, {
+    required List<HealthMetricType> types,
+    required DateTime end,
+    required int bucketCount,
+    required Duration bucketDuration,
+    double Function(HealthMetricSample sample)? valueTransform,
+  }) {
+    return _buildBucketSeries(
+      samples,
+      types: types,
+      end: end,
+      bucketCount: bucketCount,
+      bucketDuration: bucketDuration,
+      mode: _BucketAggregationMode.sum,
+      valueTransform: valueTransform,
+    );
+  }
+
+  List<double> _buildSleepDurationSeries(
+    List<HealthMetricSample> samples, {
+    required DateTime end,
+    required int days,
+  }) {
+    final types = _pickSleepSeriesTypes(samples);
+    if (types.isEmpty) {
+      return const <double>[];
     }
 
-    return List.unmodifiable(sanitized);
+    return _buildSumSeries(
+      samples,
+      types: types,
+      end: end,
+      bucketCount: days,
+      bucketDuration: const Duration(days: 1),
+      valueTransform: _sleepHoursFromSample,
+    );
   }
 
-  List<double> _resolveBaselineDeviationSeries(double latestScore) {
-    final value = latestScore.clamp(0.0, 100.0);
-    return [
-      (value - 2.0).clamp(0.0, 100.0),
-      (value - 1.5).clamp(0.0, 100.0),
-      (value - 1.0).clamp(0.0, 100.0),
-      (value - 0.5).clamp(0.0, 100.0),
-      value,
-    ];
-  }
-
-  List<double> _resolveAnomalySeries(double latestScore) {
-    final value = latestScore.clamp(0.0, 100.0);
-    return [
-      (value - 2.0).clamp(0.0, 100.0),
-      (value - 1.5).clamp(0.0, 100.0),
-      (value - 1.0).clamp(0.0, 100.0),
-      (value - 0.5).clamp(0.0, 100.0),
-      value,
-    ];
-  }
-
-  List<double> _resolveStressSeries(double latestScore) {
-    final value = latestScore.clamp(0.0, 100.0);
-    return [value, value, value, value, value];
-  }
-
-  List<double> _resolveSleepBaselineSeries(
-    List<DashboardMetric> metrics,
-    double latestScore,
+  List<HealthMetricType> _pickSleepSeriesTypes(
+    List<HealthMetricSample> samples,
   ) {
-    for (final metric in metrics) {
-      if (metric.id == 'sleep' && metric.data.isNotEmpty) {
-        final normalized = metric.data
-            .map((item) => (item * 12.0).clamp(0.0, 100.0))
-            .toList(growable: false);
-        final withLatest = normalized.toList(growable: true);
-        withLatest[withLatest.length - 1] = latestScore;
-        return withLatest;
+    final available = samples.map((sample) => sample.type).toSet();
+    if (available.contains(HealthMetricType.sleepAsleep)) {
+      return const [HealthMetricType.sleepAsleep];
+    }
+    if (available.contains(HealthMetricType.sleep)) {
+      return const [HealthMetricType.sleep];
+    }
+    if (available.contains(HealthMetricType.sleepSession)) {
+      return const [HealthMetricType.sleepSession];
+    }
+
+    final sleepStageTypes = <HealthMetricType>[
+      HealthMetricType.sleepDeep,
+      HealthMetricType.sleepLight,
+      HealthMetricType.sleepRem,
+    ].where(available.contains).toList(growable: false);
+
+    return sleepStageTypes;
+  }
+
+  List<double> _buildBucketSeries(
+    List<HealthMetricSample> samples, {
+    required List<HealthMetricType> types,
+    required DateTime end,
+    required int bucketCount,
+    required Duration bucketDuration,
+    required _BucketAggregationMode mode,
+    double Function(HealthMetricSample sample)? valueTransform,
+  }) {
+    if (bucketCount <= 0 || bucketDuration <= Duration.zero || types.isEmpty) {
+      return const <double>[];
+    }
+
+    final typeSet = types.toSet();
+    final endUtc = end.toUtc();
+    final bucketMicros = bucketDuration.inMicroseconds;
+    final windowStart = endUtc.subtract(
+      Duration(microseconds: bucketMicros * bucketCount),
+    );
+    final output = <double>[];
+
+    for (var bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
+      final bucketStart = windowStart.add(
+        Duration(microseconds: bucketMicros * bucketIndex),
+      );
+      final bucketEnd = bucketStart.add(bucketDuration);
+
+      var sum = 0.0;
+      var count = 0;
+      for (final sample in samples) {
+        if (!typeSet.contains(sample.type)) {
+          continue;
+        }
+        final timestamp = sample.timestamp.toUtc();
+        if (timestamp.isBefore(bucketStart)) {
+          continue;
+        }
+        final isInsideBucket = bucketIndex == bucketCount - 1
+            ? !timestamp.isAfter(endUtc)
+            : timestamp.isBefore(bucketEnd);
+        if (!isInsideBucket) {
+          continue;
+        }
+        final value = valueTransform?.call(sample) ?? sample.value;
+        if (!value.isFinite) {
+          continue;
+        }
+        sum += value;
+        count += 1;
+      }
+
+      if (count == 0) {
+        continue;
+      }
+      output.add(mode == _BucketAggregationMode.sum ? sum : sum / count);
+    }
+
+    return output.toList(growable: false);
+  }
+
+  double _sleepHoursFromSample(HealthMetricSample sample) {
+    final unit = sample.unit.trim().toLowerCase();
+    if (unit.contains('sec')) {
+      return sample.value / 3600.0;
+    }
+    if (unit.contains('min')) {
+      return sample.value / 60.0;
+    }
+    if (unit.contains('hour') || unit == 'h' || unit == 'hr') {
+      return sample.value;
+    }
+    if (sample.value > 24) {
+      return sample.value / 60.0;
+    }
+    return sample.value;
+  }
+
+  double _exerciseMinutesFromSample(HealthMetricSample sample) {
+    final unit = sample.unit.trim().toLowerCase();
+    if (unit.contains('sec')) {
+      return sample.value / 60.0;
+    }
+    if (unit.contains('hour') || unit == 'h' || unit == 'hr') {
+      return sample.value * 60.0;
+    }
+    return sample.value;
+  }
+
+  double? _latestMetricValue(
+    List<HealthMetricSample> samples, {
+    required List<HealthMetricType> types,
+    required DateTime start,
+    required DateTime end,
+  }) {
+    double? value;
+    DateTime? latest;
+    final typeSet = types.toSet();
+    for (final sample in samples) {
+      if (!typeSet.contains(sample.type)) {
+        continue;
+      }
+      final ts = sample.timestamp.toUtc();
+      if (ts.isBefore(start) || ts.isAfter(end)) {
+        continue;
+      }
+      if (latest == null || ts.isAfter(latest)) {
+        latest = ts;
+        value = sample.value;
       }
     }
+    return value;
+  }
 
-    final low = (latestScore - 2.0).clamp(0.0, 100.0);
-    return [
-      low,
-      (latestScore - 1.5).clamp(0.0, 100.0),
-      (latestScore - 1.0).clamp(0.0, 100.0),
-      (latestScore - 0.5).clamp(0.0, 100.0),
-      latestScore,
-    ];
+  double? _sumMetricValue(
+    List<HealthMetricSample> samples, {
+    required List<HealthMetricType> types,
+    required DateTime start,
+    required DateTime end,
+    double Function(HealthMetricSample sample)? valueTransform,
+  }) {
+    double total = 0.0;
+    var hasAny = false;
+    final typeSet = types.toSet();
+    for (final sample in samples) {
+      if (!typeSet.contains(sample.type)) {
+        continue;
+      }
+      final ts = sample.timestamp.toUtc();
+      if (ts.isBefore(start) || ts.isAfter(end)) {
+        continue;
+      }
+      final value = valueTransform?.call(sample) ?? sample.value;
+      if (!value.isFinite) {
+        continue;
+      }
+      hasAny = true;
+      total += value;
+    }
+    return hasAny ? total : null;
   }
 
   String _deriveTrend(List<double> values) {
@@ -698,6 +1156,55 @@ class DashboardRepositoryImpl implements DashboardRepository {
     if (delta > 0.5) return 'up';
     if (delta < -0.5) return 'down';
     return 'stable';
+  }
+
+  int _severityRank(String severity) {
+    return switch (severity) {
+      'high' => 5,
+      'moderate' => 4,
+      'mild' => 3,
+      'normal' => 2,
+      'pending' => 1,
+      _ => 0,
+    };
+  }
+
+  String _activityClassCode(HarvardActivityClass activityClass) {
+    return switch (activityClass) {
+      HarvardActivityClass.lying => 'lying',
+      HarvardActivityClass.sitting => 'sitting',
+      HarvardActivityClass.selfPaceWalk => 'self_pace_walk',
+      HarvardActivityClass.running3Met => 'running_3_met',
+      HarvardActivityClass.running5Met => 'running_5_met',
+      HarvardActivityClass.running7Met => 'running_7_met',
+      HarvardActivityClass.insufficientData => 'insufficient_data',
+    };
+  }
+
+  String _statusForModelScore(double? value) {
+    if (value == null) return 'insufficient';
+    if (value >= 80) return 'good';
+    if (value >= 60) return 'attention';
+    return 'poor';
+  }
+
+  String _statusFromStressCode(String status) {
+    return switch (status) {
+      'risk' => 'warning',
+      'attention' => 'attention',
+      'stable' => 'good',
+      _ => 'insufficient',
+    };
+  }
+
+  String _statusFromBaselineCode(String status) {
+    return switch (status) {
+      'high_deviation' => 'warning',
+      'attention' => 'attention',
+      'stable' => 'good',
+      'pending_actuals' => 'insufficient',
+      _ => 'insufficient',
+    };
   }
 
   double? _normalizeSleepScore(double? value) {
@@ -836,20 +1343,32 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 }
 
+enum _BucketAggregationMode { sum, average }
+
 class _ResolvedModelContext {
   final _ResolvedRecommendations recommendations;
+  final HarvardActivityRecommendationResult activity;
   final SleepQualityInferenceResult sleep;
   final StressInferenceResult stress;
   final PhysiologyAnomalyInferenceResult physiologyAnomaly;
   final BaselineForecastInferenceResult baselineForecast;
+  final int connectedSourceCount;
+  final List<HealthMetricSample> wearableSamples;
+  final DateTime? latestWearableSampleAt;
 
   const _ResolvedModelContext({
     required this.recommendations,
+    required this.activity,
     required this.sleep,
     required this.stress,
     required this.physiologyAnomaly,
     required this.baselineForecast,
+    required this.connectedSourceCount,
+    required this.wearableSamples,
+    required this.latestWearableSampleAt,
   });
+
+  bool get hasAnyWearableData => wearableSamples.isNotEmpty;
 }
 
 class _ResolvedRecommendations {

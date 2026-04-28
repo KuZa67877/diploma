@@ -33,6 +33,20 @@ class AppLocalizations {
     return _translations[key]?[language.code] ?? key;
   }
 
+  String getWithParams(
+    String key, [
+    Map<String, String> params = const <String, String>{},
+  ]) {
+    var text = get(key);
+    if (params.isEmpty) {
+      return text;
+    }
+    params.forEach((paramKey, value) {
+      text = text.replaceAll('{$paramKey}', value);
+    });
+    return text;
+  }
+
   // Translations map
   static const Map<String, Map<String, String>> _translations = {
     // App name and tagline
@@ -201,9 +215,25 @@ class AppLocalizations {
       'ru': 'Качество сна улучшилось на 12% за неделю',
     },
     'healthMetrics': {'en': 'Health Metrics', 'ru': 'Показатели здоровья'},
+    'modelResults': {'en': 'Model results', 'ru': 'Результаты моделей'},
+    'aiRecommendationsToday': {
+      'en': 'AI recommendations for today',
+      'ru': 'AI-рекомендации на сегодня',
+    },
+    'todayMetrics': {'en': 'Today metrics', 'ru': 'Показатели сегодня'},
+    'dashboardDisclaimer': {
+      'en':
+          'This assessment is advisory and does not replace consultation with a doctor.',
+      'ru':
+          'Оценка носит рекомендательный характер и не заменяет консультацию врача.',
+    },
     'viewAll': {'en': 'View All', 'ru': 'Все'},
     'heartRate': {'en': 'Heart Rate', 'ru': 'Пульс'},
+    'hrv': {'en': 'HRV', 'ru': 'HRV'},
     'sleep': {'en': 'Sleep', 'ru': 'Сон'},
+    'stress': {'en': 'Stress', 'ru': 'Стресс'},
+    'recovery': {'en': 'Recovery', 'ru': 'Восстановление'},
+    'activeMinutes': {'en': 'Active minutes', 'ru': 'Активные минуты'},
     'sleepAiScore': {'en': 'Sleep AI Score', 'ru': 'ИИ-оценка сна'},
     'stressAiScore': {'en': 'Stress Load', 'ru': 'Напряжение'},
     'physiologyAnomalyScore': {
@@ -227,6 +257,333 @@ class AppLocalizations {
     'runAIDiagnostics': {
       'en': 'Run AI Diagnostics',
       'ru': 'Запустить ИИ-диагностику',
+    },
+    'dashboardDataStatusUpToDate': {
+      'en': 'Data is up to date',
+      'ru': 'Данные актуальны',
+    },
+    'dashboardDataStatusInsufficient': {
+      'en': 'Insufficient data',
+      'ru': 'Данных недостаточно',
+    },
+    'dashboardDataStatusSyncRequired': {
+      'en': 'Sync required',
+      'ru': 'Требуется синхронизация',
+    },
+    'dashboardNoDataMessage': {
+      'en': 'Not enough data for analysis',
+      'ru': 'Недостаточно данных для анализа',
+    },
+    'dashboardNoDataHint': {
+      'en': 'Connect a source or sync metrics to run model analysis.',
+      'ru':
+          'Подключите источник данных или синхронизируйте показатели, чтобы запустить анализ моделей.',
+    },
+    'openHealthSourcesCta': {
+      'en': 'Open data sources',
+      'ru': 'Открыть источники данных',
+    },
+    'dashboardTemporaryScoreBadge': {
+      'en': 'Temporary score aggregation',
+      'ru': 'Временная агрегация score',
+    },
+    'dashboardOverallSyncRequired': {
+      'en': 'Sync required for a reliable health status.',
+      'ru': 'Нужна синхронизация для корректной оценки состояния.',
+    },
+    'dashboardOverallInsufficient': {
+      'en': 'Not enough data to compute a stable status.',
+      'ru': 'Недостаточно данных для стабильной оценки состояния.',
+    },
+    'dashboardOverallStable': {
+      'en': 'Overall state looks stable.',
+      'ru': 'Общее состояние выглядит стабильным.',
+    },
+    'dashboardOverallAttention': {
+      'en': 'There are signals that need attention.',
+      'ru': 'Есть сигналы, которым стоит уделить внимание.',
+    },
+    'dashboardOverallRisk': {
+      'en': 'Signs of recovery deviation are detected.',
+      'ru': 'Есть признаки отклонения по восстановлению.',
+    },
+    'dashboardOverallNoAccess': {
+      'en': 'Data access is limited for model analysis.',
+      'ru': 'Доступ к данным ограничен для модельного анализа.',
+    },
+    'dashboardOverallTemporary': {
+      'en': 'Temporary score built from available model outputs.',
+      'ru': 'Временная оценка собрана из доступных результатов моделей.',
+    },
+    'dashboardOverallFactorsPending': {
+      'en': 'Influencing factors are being clarified.',
+      'ru': 'Факторы влияния уточняются по мере поступления данных.',
+    },
+    'dashboardOverallFactors': {
+      'en': 'Main factors: {factors}.',
+      'ru': 'Основные факторы: {factors}.',
+    },
+    'dashboardBadgeInsufficient': {
+      'en': 'Insufficient data',
+      'ru': 'Недостаточно данных',
+    },
+    'dashboardBadgeConfidence': {
+      'en': '{value}% confidence',
+      'ru': '{value}% уверенность',
+    },
+    'dashboardBadgeScoreOutOf100': {'en': '{value}/100', 'ru': '{value}/100'},
+    'dashboardRecommendationPrefix': {
+      'en': 'Recommendation: ',
+      'ru': 'Рекомендация: ',
+    },
+    'dashboardActivitySummaryInsufficient': {
+      'en': 'Activity model data is insufficient.',
+      'ru': 'Недостаточно данных для оценки активности.',
+    },
+    'dashboardActivityExplainInsufficient': {
+      'en': 'Add more wearable activity samples to detect your activity state.',
+      'ru':
+          'Добавьте больше данных активности с wearable-источника для распознавания состояния.',
+    },
+    'dashboardActivityRecInsufficient': {
+      'en': 'Sync steps and heart rate during the day.',
+      'ru': 'Синхронизируйте шаги и пульс в течение дня.',
+    },
+    'dashboardActivitySummary': {
+      'en': 'Detected activity: {activity}.',
+      'ru': 'Последняя активность: {activity}.',
+    },
+    'dashboardActivitySummaryRunningHigh': {
+      'en': 'Detected activity: high-intensity running.',
+      'ru': 'Последняя активность: бег высокой интенсивности.',
+    },
+    'dashboardActivitySummaryRunningModerate': {
+      'en': 'Detected activity: moderate-intensity running.',
+      'ru': 'Последняя активность: бег умеренной интенсивности.',
+    },
+    'dashboardActivitySummaryRunningLight': {
+      'en': 'Detected activity: light running.',
+      'ru': 'Последняя активность: лёгкий бег.',
+    },
+    'dashboardActivitySummaryWalk': {
+      'en': 'Detected activity: walking.',
+      'ru': 'Последняя активность: ходьба.',
+    },
+    'dashboardActivitySummarySitting': {
+      'en': 'Detected activity: sitting.',
+      'ru': 'Последняя активность: сидячее состояние.',
+    },
+    'dashboardActivitySummaryRest': {
+      'en': 'Detected activity: rest.',
+      'ru': 'Последняя активность: покой.',
+    },
+    'dashboardActivitySummaryUnknown': {
+      'en': 'Detected activity: unavailable.',
+      'ru': 'Последняя активность: недоступно.',
+    },
+    'dashboardActivityExplain': {
+      'en': 'The model estimated your latest activity context.',
+      'ru': 'Модель оценила ваш последний контекст активности.',
+    },
+    'dashboardActivityRecLow': {
+      'en': 'Add a short walk to reduce sedentary load.',
+      'ru': 'Добавьте короткую прогулку, чтобы снизить сидячую нагрузку.',
+    },
+    'dashboardActivityRecWalk': {
+      'en': 'Keep a moderate pace and maintain regular movement.',
+      'ru': 'Сохраняйте умеренный темп и регулярное движение.',
+    },
+    'dashboardActivityRecHigh': {
+      'en': 'Keep recovery balance after intensive activity.',
+      'ru': 'После интенсивной активности уделите внимание восстановлению.',
+    },
+    'dashboardSleepRecoveryTitle': {
+      'en': 'Sleep and recovery',
+      'ru': 'Сон и восстановление',
+    },
+    'dashboardSleepSummaryInsufficient': {
+      'en': 'Sleep analysis is not available yet.',
+      'ru': 'Анализ сна пока недоступен.',
+    },
+    'dashboardSleepExplainInsufficient': {
+      'en': 'Need more sleep records to estimate recovery quality.',
+      'ru': 'Нужно больше записей сна для оценки восстановления.',
+    },
+    'dashboardSleepRecInsufficient': {
+      'en': 'Sync sleep sessions from your wearable source.',
+      'ru': 'Синхронизируйте сессии сна из wearable-источника.',
+    },
+    'dashboardSleepDeviationUnavailable': {
+      'en': 'Sleep duration deviation from baseline is unavailable.',
+      'ru': 'Отклонение длительности сна от нормы пока недоступно.',
+    },
+    'dashboardSleepDeviationAbove': {
+      'en': 'Sleep duration is above baseline by {minutes} min.',
+      'ru': 'Длительность сна выше нормы на {minutes} мин.',
+    },
+    'dashboardSleepDeviationBelow': {
+      'en': 'Sleep duration is below baseline by {minutes} min.',
+      'ru': 'Длительность сна ниже нормы на {minutes} мин.',
+    },
+    'dashboardSleepSummary': {
+      'en': 'Sleep score {score}/100, duration {hours} h.',
+      'ru': 'Sleep score {score}/100, длительность {hours} ч.',
+    },
+    'dashboardSleepRecLow': {
+      'en': 'Prioritize earlier sleep time and reduce evening load.',
+      'ru': 'Сместите отход ко сну раньше и снизьте вечернюю нагрузку.',
+    },
+    'dashboardSleepRecGood': {
+      'en': 'Maintain current sleep routine for stable recovery.',
+      'ru': 'Сохраняйте текущий режим сна для стабильного восстановления.',
+    },
+    'dashboardStressSummaryInsufficient': {
+      'en': 'Stress assessment is not available yet.',
+      'ru': 'Оценка стресса пока недоступна.',
+    },
+    'dashboardStressExplainInsufficient': {
+      'en': 'Need HR/HRV and sleep context to estimate stress load.',
+      'ru': 'Нужны данные HR/HRV и сна для оценки стресс-нагрузки.',
+    },
+    'dashboardStressRecInsufficient': {
+      'en': 'Sync heart and sleep metrics to improve stress estimation.',
+      'ru': 'Синхронизируйте пульс и сон для более точной оценки стресса.',
+    },
+    'dashboardStressFactorsUnavailable': {
+      'en': 'Contributing factors are currently unavailable.',
+      'ru': 'Факторы влияния сейчас недоступны.',
+    },
+    'dashboardStressFactors': {
+      'en': 'Factors: {factors}.',
+      'ru': 'Факторы: {factors}.',
+    },
+    'dashboardStressSummary': {
+      'en': 'Stress level: {level}.',
+      'ru': 'Уровень стресса: {level}.',
+    },
+    'dashboardStressSummaryHigh': {
+      'en': 'Stress level: high.',
+      'ru': 'Уровень стресса: высокий.',
+    },
+    'dashboardStressSummaryModerate': {
+      'en': 'Stress level: moderate.',
+      'ru': 'Уровень стресса: умеренный.',
+    },
+    'dashboardStressSummaryLow': {
+      'en': 'Stress level: low.',
+      'ru': 'Уровень стресса: низкий.',
+    },
+    'dashboardStressRecHigh': {
+      'en': 'Take short recovery breaks and lower intensity today.',
+      'ru':
+          'Сделайте короткие паузы на восстановление и снизьте интенсивность сегодня.',
+    },
+    'dashboardStressRecModerate': {
+      'en': 'Add 3-5 minutes of breathing practice between tasks.',
+      'ru': 'Добавьте дыхательную паузу на 3–5 минут между задачами.',
+    },
+    'dashboardStressRecLow': {
+      'en': 'Stress load is low, maintain your current pace.',
+      'ru': 'Стресс-нагрузка низкая, поддерживайте текущий темп.',
+    },
+    'dashboardBaselineTitle': {'en': 'Personal baseline', 'ru': 'Личная норма'},
+    'dashboardBaselineSummaryInsufficient': {
+      'en': 'Baseline comparison is unavailable.',
+      'ru': 'Сравнение с личной нормой недоступно.',
+    },
+    'dashboardBaselineExplainInsufficient': {
+      'en': 'Need more historical samples to form baseline.',
+      'ru': 'Нужно больше исторических данных для формирования baseline.',
+    },
+    'dashboardBaselineRecInsufficient': {
+      'en': 'Keep regular sync for at least several days.',
+      'ru': 'Поддерживайте регулярную синхронизацию в течение нескольких дней.',
+    },
+    'dashboardBaselineSummary': {
+      'en': 'Baseline deviation score: {score}/100.',
+      'ru': 'Оценка отклонений от baseline: {score}/100.',
+    },
+    'dashboardBaselineExplain': {'en': '{line}', 'ru': '{line}'},
+    'dashboardBaselineRecHigh': {
+      'en': 'Deviation is moderate, keep the routine stable.',
+      'ru': 'Отклонение умеренное, сохраняйте стабильный режим.',
+    },
+    'dashboardBaselineRecLow': {
+      'en': 'Deviation is elevated, reduce load and monitor recovery.',
+      'ru':
+          'Отклонение повышено, снизьте нагрузку и отслеживайте восстановление.',
+    },
+    'dashboardRecoveryTitle': {
+      'en': 'Recovery and anomalies',
+      'ru': 'Recovery / отклонения',
+    },
+    'dashboardRecoverySummaryInsufficient': {
+      'en': 'Recovery analysis is unavailable yet.',
+      'ru': 'Анализ восстановления пока недоступен.',
+    },
+    'dashboardRecoveryExplainInsufficient': {
+      'en': 'Need more physiological signals to evaluate recovery.',
+      'ru': 'Нужно больше физиологических сигналов для оценки восстановления.',
+    },
+    'dashboardRecoveryRecInsufficient': {
+      'en': 'Continue syncing HR, HRV and sleep data.',
+      'ru': 'Продолжайте синхронизировать данные HR, HRV и сна.',
+    },
+    'dashboardRecoverySummary': {
+      'en': 'Recovery score: {score}/100.',
+      'ru': 'Recovery score: {score}/100.',
+    },
+    'dashboardRecoveryExplain': {'en': '{reason}', 'ru': '{reason}'},
+    'dashboardRecoveryRecHigh': {
+      'en': 'Recovery looks stable, maintain balanced daily load.',
+      'ru': 'Восстановление выглядит стабильным, сохраняйте баланс нагрузки.',
+    },
+    'dashboardRecoveryRecLow': {
+      'en': 'Recovery has deviations, choose lighter activity today.',
+      'ru':
+          'Есть отклонения восстановления, выберите более лёгкую активность сегодня.',
+    },
+    'dashboardAiSyncText': {
+      'en': 'Sync wearable data first',
+      'ru': 'Сначала синхронизируйте wearable-данные',
+    },
+    'dashboardAiSyncReason': {
+      'en': 'Without recent samples, model recommendations lose relevance.',
+      'ru': 'Без свежих данных рекомендации моделей теряют актуальность.',
+    },
+    'dashboardAiSleepText': {
+      'en': 'Prioritize recovery-focused sleep',
+      'ru': 'Сделайте акцент на восстановительном сне',
+    },
+    'dashboardAiSleepReason': {
+      'en': 'Sleep score is below target, so lighter pacing may help.',
+      'ru':
+          'Sleep score ниже целевого, поэтому сегодня полезен более мягкий темп.',
+    },
+    'dashboardAiStressText': {
+      'en': 'Reduce stress load with short pauses',
+      'ru': 'Снизьте стресс-нагрузку короткими паузами',
+    },
+    'dashboardAiStressReason': {
+      'en': 'Stress level is moderate/high based on current signals.',
+      'ru': 'Уровень стресса умеренный/высокий по текущим сигналам.',
+    },
+    'dashboardAiActivityText': {
+      'en': 'Add light movement during the day',
+      'ru': 'Добавьте лёгкое движение в течение дня',
+    },
+    'dashboardAiActivityReason': {
+      'en': 'Low activity context detected, short walk can improve score.',
+      'ru':
+          'Обнаружен низкий уровень активности, короткая прогулка может улучшить score.',
+    },
+    'dashboardAiStableText': {
+      'en': 'Keep current routine',
+      'ru': 'Сохраняйте текущий режим',
+    },
+    'dashboardAiStableReason': {
+      'en': 'Current model outputs do not show notable recovery risks.',
+      'ru': 'Текущие результаты моделей не показывают выраженных рисков.',
     },
     'recNoAccess1': {
       'en': 'Connect a health source for better score accuracy.',

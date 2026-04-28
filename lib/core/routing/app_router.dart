@@ -105,29 +105,30 @@ class AppRouter {
         path: healthSourcesPath,
         name: healthSourcesRoute,
         builder: (context, state) {
-          final openedFromSettings =
-              state.uri.queryParameters['from'] == 'settings';
+          final openedFrom = state.uri.queryParameters['from'];
+          final openedInline =
+              openedFrom == 'settings' || openedFrom == 'dashboard';
 
           return HealthSourcesPage(
             onBack: () {
-              if (openedFromSettings) {
+              if (openedInline) {
                 context.pop();
                 return;
               }
               context.goNamed(dataInputRoute);
             },
             onComplete: () {
-              if (openedFromSettings) {
+              if (openedInline) {
                 context.pop();
                 return;
               }
               authStatusCubit.setAuthenticated();
               context.goNamed(homeRoute);
             },
-            showSkipAction: !openedFromSettings,
-            showContinueAction: !openedFromSettings,
+            showSkipAction: !openedInline,
+            showContinueAction: !openedInline,
             onSkip: () {
-              if (openedFromSettings) {
+              if (openedInline) {
                 context.pop();
                 return;
               }
@@ -155,6 +156,10 @@ class AppRouter {
                 pageBuilder: (context, state) => NoTransitionPage(
                   child: DashboardPage(
                     onOpenProfile: () => context.pushNamed(profileRoute),
+                    onOpenHealthSources: () => context.pushNamed(
+                      healthSourcesRoute,
+                      queryParameters: const {'from': 'dashboard'},
+                    ),
                   ),
                 ),
               ),

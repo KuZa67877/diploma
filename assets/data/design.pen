@@ -1,5 +1,5 @@
 {
-  "version": "2.9",
+  "version": "2.11",
   "children": [
     {
       "type": "frame",
@@ -2361,7 +2361,7 @@
               "name": "05 Home",
               "clip": true,
               "width": 390,
-              "height": 844,
+              "height": 1720,
               "fill": "#F8FAFB",
               "cornerRadius": 28,
               "stroke": {
@@ -2372,9 +2372,9 @@
               "layout": "vertical",
               "gap": 16,
               "padding": [
-                32,
                 20,
                 20,
+                16,
                 20
               ],
               "children": [
@@ -2385,11 +2385,11 @@
                   "width": "fill_container",
                   "height": "fill_container",
                   "layout": "vertical",
-                  "gap": 14,
+                  "gap": 10,
                   "children": [
                     {
                       "type": "frame",
-                      "id": "qpfbY",
+                      "id": "CAAAA",
                       "name": "hHeader",
                       "width": "fill_container",
                       "justifyContent": "space_between",
@@ -2397,53 +2397,47 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "ZVjoK",
+                          "id": "DAAAA",
                           "name": "hGreet",
                           "layout": "vertical",
-                          "gap": 4,
+                          "gap": 2,
                           "children": [
                             {
                               "type": "text",
-                              "id": "coo9M",
-                              "name": "hGreet1",
-                              "fill": "#64748B",
-                              "content": "Good morning",
+                              "id": "EAAAA",
+                              "fill": "#1E2D3D",
+                              "content": "Доброе утро, Alex",
                               "fontFamily": "Inter",
-                              "fontSize": 13,
-                              "fontWeight": "normal"
+                              "fontSize": 20,
+                              "fontWeight": "700"
                             },
                             {
                               "type": "text",
-                              "id": "6cuGU",
-                              "name": "hGreet2",
-                              "fill": "#1E2D3D",
-                              "content": "Alex",
+                              "id": "FAAAA",
+                              "fill": "#64748B",
+                              "content": "Вторник, 28 апреля",
                               "fontFamily": "Inter",
-                              "fontSize": 22,
-                              "fontWeight": "700"
+                              "fontSize": 12,
+                              "fontWeight": "500"
                             }
                           ]
                         },
                         {
                           "type": "frame",
-                          "id": "5fidf",
+                          "id": "GAAAA",
                           "name": "hBellWrap",
-                          "width": 40,
-                          "height": 40,
                           "fill": "#E8F5F3",
                           "cornerRadius": 14,
                           "stroke": {
                             "align": "inside",
                             "thickness": 1,
-                            "fill": "#E2E8F0"
+                            "fill": "#D6ECE8"
                           },
-                          "justifyContent": "center",
-                          "alignItems": "center",
+                          "padding": 10,
                           "children": [
                             {
                               "type": "icon_font",
-                              "id": "swfY1",
-                              "name": "hBell",
+                              "id": "IAAAA",
                               "width": 18,
                               "height": 18,
                               "iconFontName": "user",
@@ -2456,198 +2450,782 @@
                     },
                     {
                       "type": "frame",
-                      "id": "FVABF",
-                      "name": "hScore",
+                      "id": "YAhOP",
+                      "name": "heroBlock",
                       "width": "fill_container",
-                      "height": 300,
-                      "fill": "#F8FAFB",
-                      "effect": {
-                        "type": "shadow",
-                        "shadowType": "outer",
-                        "enabled": false,
-                        "color": "#000000"
-                      },
-                      "layout": "none",
+                      "layout": "vertical",
+                      "gap": 10,
                       "children": [
                         {
-                          "type": "ellipse",
-                          "id": "6Kzoe",
-                          "x": 54,
-                          "y": 28,
-                          "name": "hRingMainA",
-                          "innerRadius": 0.94,
-                          "startAngle": -60,
-                          "sweepAngle": 230,
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "angular",
-                            "enabled": true,
-                            "rotation": 0,
-                            "size": {
-                              "width": 1,
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#2A9D8FCC",
-                                "position": 0
-                              },
-                              {
-                                "color": "#7ED9CF66",
-                                "position": 0.5
-                              },
-                              {
-                                "color": "#2A9D8F00",
-                                "position": 1
-                              }
-                            ]
-                          },
-                          "width": 242,
-                          "height": 242,
-                          "effect": {
-                            "type": "blur",
-                            "radius": 0.4
-                          }
-                        },
-                        {
-                          "type": "ellipse",
-                          "id": "nfMsB",
-                          "x": 43,
-                          "y": 17,
-                          "name": "hRingMainB",
-                          "innerRadius": 0.95,
-                          "startAngle": 120,
-                          "sweepAngle": 140,
-                          "fill": "#7ED9CF88",
-                          "width": 264,
-                          "height": 264
-                        },
-                        {
-                          "type": "ellipse",
-                          "id": "sm9og",
-                          "x": 59,
-                          "y": 33,
-                          "name": "hRingMainC",
-                          "innerRadius": 0.95,
-                          "startAngle": -150,
-                          "sweepAngle": 100,
-                          "fill": "#1F7A7188",
-                          "width": 232,
-                          "height": 232
-                        },
-                        {
-                          "type": "ellipse",
-                          "id": "7E5wv",
-                          "x": 48,
-                          "y": 72,
-                          "name": "hOrb1",
-                          "fill": "#7ED9CF",
-                          "width": 10,
-                          "height": 10
-                        },
-                        {
-                          "type": "ellipse",
-                          "id": "8Gsgm",
-                          "x": 292,
-                          "y": 132,
-                          "name": "hOrb2",
-                          "fill": "#2A9D8F",
-                          "width": 12,
-                          "height": 12
-                        },
-                        {
-                          "type": "ellipse",
-                          "id": "WWWNt",
-                          "x": 98,
-                          "y": 258,
-                          "name": "hOrb3",
-                          "fill": "#A7E8E1",
-                          "width": 8,
-                          "height": 8
+                          "type": "frame",
+                          "id": "iJTET",
+                          "name": "scoreHeroWrap",
+                          "width": "fill_container",
+                          "height": 430,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "EowHj",
+                              "x": 0,
+                              "y": 0,
+                              "name": "scoreHero",
+                              "width": 350,
+                              "height": 430,
+                              "fill": "#F8FAFB",
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "hkslq",
+                                  "x": 29,
+                                  "y": 60,
+                                  "name": "slRingA",
+                                  "innerRadius": 0.94,
+                                  "startAngle": -70,
+                                  "sweepAngle": 220,
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "angular",
+                                    "enabled": true,
+                                    "rotation": 0,
+                                    "size": {
+                                      "width": 1,
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#F59E0BCC",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#FDE68A66",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "#F59E0B00",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "width": 292,
+                                  "height": 292
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "tHHMF",
+                                  "x": 15,
+                                  "y": 46,
+                                  "name": "slRingB",
+                                  "innerRadius": 0.95,
+                                  "startAngle": 140,
+                                  "sweepAngle": 130,
+                                  "fill": "#FDE68A88",
+                                  "width": 320,
+                                  "height": 320
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "w1MQs5",
+                                  "x": 37,
+                                  "y": 68,
+                                  "name": "slRingC",
+                                  "innerRadius": 0.95,
+                                  "startAngle": -150,
+                                  "sweepAngle": 95,
+                                  "fill": "#F59E0B88",
+                                  "width": 276,
+                                  "height": 276
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "BWKYe",
+                                  "x": 24,
+                                  "y": 112,
+                                  "name": "slOrb1",
+                                  "fill": "#FCD34D",
+                                  "width": 10,
+                                  "height": 10
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "dAsl1",
+                                  "x": 320,
+                                  "y": 170,
+                                  "name": "slOrb2",
+                                  "fill": "#F59E0B",
+                                  "width": 12,
+                                  "height": 12
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "nqgqs",
+                                  "x": 86,
+                                  "y": 348,
+                                  "name": "slOrb3",
+                                  "fill": "#FDE68A",
+                                  "width": 8,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "iU1FA",
+                                  "x": 50,
+                                  "y": 88,
+                                  "name": "slCircle",
+                                  "width": 250,
+                                  "height": 250,
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 135,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "#B45309",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "#F59E0B",
+                                        "position": 1
+                                      }
+                                    ]
+                                  },
+                                  "cornerRadius": 125,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#B4530944",
+                                    "offset": {
+                                      "x": 0,
+                                      "y": 10
+                                    },
+                                    "blur": 22
+                                  },
+                                  "layout": "vertical",
+                                  "gap": 6,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "D4OrhT",
+                                      "name": "slLbl",
+                                      "fill": "#FFFFFFCC",
+                                      "content": "Индекс здоровья",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 16,
+                                      "fontWeight": "500"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "d9ZRsm",
+                                      "name": "slVal",
+                                      "fill": "#FFFFFF",
+                                      "content": "75",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 60,
+                                      "fontWeight": "700"
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "XQlcn",
+                                      "name": "slBadge",
+                                      "fill": "#FFFFFF33",
+                                      "cornerRadius": 100,
+                                      "padding": [
+                                        4,
+                                        10
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "derpI",
+                                          "name": "slBadgeT",
+                                          "fill": "#FFFFFF",
+                                          "content": "Требует внимания",
+                                          "fontFamily": "Inter",
+                                          "fontSize": 11,
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
                         },
                         {
                           "type": "frame",
-                          "id": "PWws1",
-                          "x": 70,
-                          "y": 44,
-                          "name": "hCircle",
-                          "width": 210,
-                          "height": 210,
-                          "fill": {
-                            "type": "gradient",
-                            "gradientType": "linear",
-                            "enabled": true,
-                            "rotation": 135,
-                            "size": {
-                              "height": 1
-                            },
-                            "colors": [
-                              {
-                                "color": "#1F7A71",
-                                "position": 0
-                              },
-                              {
-                                "color": "#2A9D8F",
-                                "position": 1
-                              }
-                            ]
+                          "id": "wEcWB",
+                          "name": "warnCard",
+                          "width": "fill_container",
+                          "fill": "#FFF7ED",
+                          "cornerRadius": 16,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#F59E0B"
                           },
-                          "cornerRadius": 105,
-                          "effect": {
-                            "type": "shadow",
-                            "shadowType": "outer",
-                            "color": "#1F7A7140",
-                            "offset": {
-                              "x": 0,
-                              "y": 10
-                            },
-                            "blur": 22
-                          },
-                          "layout": "vertical",
-                          "gap": 6,
-                          "justifyContent": "center",
+                          "gap": 10,
+                          "padding": [
+                            12,
+                            14
+                          ],
                           "alignItems": "center",
                           "children": [
                             {
+                              "type": "icon_font",
+                              "id": "v13BJw",
+                              "width": 18,
+                              "height": 18,
+                              "iconFontName": "info",
+                              "iconFontFamily": "lucide",
+                              "fill": "#D97706"
+                            },
+                            {
                               "type": "text",
-                              "id": "Ip6It",
-                              "name": "hCircleLbl",
-                              "fill": "#FFFFFFCC",
-                              "content": "Health Score",
+                              "id": "G1vaz",
+                              "fill": "#92400E",
+                              "content": "Данных недостаточно",
+                              "fontFamily": "Inter",
+                              "fontSize": 16,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "BmAAA",
+                      "fill": "#1E2D3D",
+                      "content": "Рекомендовано сегодня",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vDjYP",
+                      "name": "todayRecommendations",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gkTIz",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 14,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "padding": [
+                            12,
+                            14
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "L8Pzk",
+                              "fill": "#334155",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Постепенно увеличьте движение: цель +1 500 шагов в день на этой неделе.",
                               "fontFamily": "Inter",
                               "fontSize": 13,
                               "fontWeight": "500"
-                            },
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CuuGA",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 14,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "padding": [
+                            12,
+                            14
+                          ],
+                          "children": [
                             {
                               "type": "text",
-                              "id": "ESAKs",
-                              "name": "hCircleVal",
-                              "fill": "#FFFFFF",
-                              "content": "78",
+                              "id": "a5Hfgm",
+                              "fill": "#334155",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Сделайте упор на восстановление: 7–8 часов сна и стабильный режим.",
                               "fontFamily": "Inter",
-                              "fontSize": 54,
-                              "fontWeight": "700"
-                            },
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "W8Qt8m",
+                          "width": "fill_container",
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 14,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "padding": [
+                            12,
+                            14
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "eZlPN",
+                              "fill": "#334155",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Добавьте две лёгкие прогулки по 20 минут для снижения малоподвижности.",
+                              "fontFamily": "Inter",
+                              "fontSize": 13,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "4AAAA",
+                      "fill": "#1E2D3D",
+                      "content": "Результаты моделей",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "c2eJFI",
+                      "name": "modelsDetailed",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 14,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E2E8F0"
+                      },
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sbx2F",
+                          "width": "fill_container",
+                          "fill": "#F8FAFB",
+                          "cornerRadius": 12,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "padding": 8,
+                          "children": [
                             {
                               "type": "frame",
-                              "id": "Yg5ee",
-                              "name": "hCircleState",
-                              "fill": "#FFFFFF33",
-                              "cornerRadius": 100,
-                              "padding": [
-                                4,
-                                10
-                              ],
+                              "id": "CK2HA",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
                               "children": [
                                 {
                                   "type": "text",
-                                  "id": "zJcmT",
-                                  "name": "hCircleStateT",
-                                  "fill": "#FFFFFF",
-                                  "content": "Stable",
+                                  "id": "J1dBem",
+                                  "fill": "#0F172A",
+                                  "content": "Активность",
                                   "fontFamily": "Inter",
-                                  "fontSize": 11,
-                                  "fontWeight": "600"
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "ELAdE",
+                                  "fill": "#E8F5F3",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "zvnrS",
+                                      "fill": "#0F766E",
+                                      "content": "82% уверенность",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "G3xHA",
+                              "fill": "#475569",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Последняя активность: сидение. Рекомендуется добавить 10–15 минут лёгкой ходьбы.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "AouUU",
+                              "width": "fill_container",
+                              "height": 5,
+                              "fill": "#E2E8F0",
+                              "cornerRadius": 999,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "f9fJJ",
+                                  "width": 118,
+                                  "height": "fill_container",
+                                  "fill": "#2A9D8F",
+                                  "cornerRadius": 999
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vWFHF",
+                          "width": "fill_container",
+                          "fill": "#F8FAFB",
+                          "cornerRadius": 12,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "padding": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Zp0hU",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "XjfkM",
+                                  "fill": "#0F172A",
+                                  "content": "Сон и восстановление",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "h0WiY",
+                                  "fill": "#EEF8F6",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "v4DxQk",
+                                      "fill": "#0F766E",
+                                      "content": "68 / 100",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "tqx8J",
+                              "fill": "#475569",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Сон 6ч 20м, восстановление ниже личной нормы. Сегодня лучше снизить интенсивность.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "gSxCi",
+                              "width": "fill_container",
+                              "height": 5,
+                              "fill": "#E2E8F0",
+                              "cornerRadius": 999,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "V0UGl",
+                                  "width": 188,
+                                  "height": "fill_container",
+                                  "fill": "#59C6B5",
+                                  "cornerRadius": 999
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "vyJFc",
+                          "width": "fill_container",
+                          "fill": "#F8FAFB",
+                          "cornerRadius": 12,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "padding": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "OtmsT",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "aJw44",
+                                  "fill": "#0F172A",
+                                  "content": "Стресс",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "tSYL4",
+                                  "fill": "#FFF4E5",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "JPU0B",
+                                      "fill": "#B45309",
+                                      "content": "61 • умеренный",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "P839C",
+                              "fill": "#475569",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Пульс выше обычного, а сон был короче нормы. Рекомендуется дыхательная пауза 3–5 минут.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ZuMOE",
+                              "width": "fill_container",
+                              "height": 5,
+                              "fill": "#E2E8F0",
+                              "cornerRadius": 999,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "o4nsb",
+                                  "width": 168,
+                                  "height": "fill_container",
+                                  "fill": "#E9A23B",
+                                  "cornerRadius": 999
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "pHvNt",
+                          "width": "fill_container",
+                          "fill": "#F8FAFB",
+                          "cornerRadius": 12,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "padding": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Mwp8b",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ogJO2",
+                                  "fill": "#0F172A",
+                                  "content": "Личная норма",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xc9QL",
+                                  "fill": "#FFF7ED",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "juSLu",
+                                      "fill": "#C2410C",
+                                      "content": "+9% отклонение",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "Z48z2",
+                              "fill": "#475569",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Пульс в покое выше вашей нормы на +6 уд/мин. Полезно добавить паузы и ранний сон.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "G2L1Eb",
+                              "width": "fill_container",
+                              "height": 5,
+                              "fill": "#E2E8F0",
+                              "cornerRadius": 999,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "SyZCl",
+                                  "width": 146,
+                                  "height": "fill_container",
+                                  "fill": "#F2B66D",
+                                  "cornerRadius": 999
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ev8CM",
+                          "width": "fill_container",
+                          "fill": "#F8FAFB",
+                          "cornerRadius": 12,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "padding": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "ceJHY",
+                              "width": "fill_container",
+                              "justifyContent": "space_between",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "e8bEB",
+                                  "fill": "#0F172A",
+                                  "content": "Отклонения восстановления",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "kaVYV",
+                                  "fill": "#EFF6FF",
+                                  "cornerRadius": 999,
+                                  "padding": [
+                                    3,
+                                    8
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "d6yWy",
+                                      "fill": "#1D4ED8",
+                                      "content": "42 / 100",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 10,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "JvlLX",
+                              "fill": "#475569",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Есть умеренные нетипичные паттерны. Рекомендуется наблюдать динамику 2–3 дня.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "MhJEV",
+                              "width": "fill_container",
+                              "height": 5,
+                              "fill": "#E2E8F0",
+                              "cornerRadius": 999,
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "rhkaN",
+                                  "width": 104,
+                                  "height": "fill_container",
+                                  "fill": "#7DB8C5",
+                                  "cornerRadius": 999
                                 }
                               ]
                             }
@@ -2657,18 +3235,18 @@
                     },
                     {
                       "type": "text",
-                      "id": "vaiMi",
-                      "name": "hRecTitle",
+                      "id": "Yx5Rq",
+                      "name": "aiTitle",
                       "fill": "#1E2D3D",
-                      "content": "Recommended today",
+                      "content": "AI-рекомендации на сегодня",
                       "fontFamily": "Inter",
-                      "fontSize": 16,
+                      "fontSize": 15,
                       "fontWeight": "700"
                     },
                     {
                       "type": "frame",
-                      "id": "ntlg7",
-                      "name": "hRec1",
+                      "id": "FnDk4",
+                      "name": "aiRecCard",
                       "width": "fill_container",
                       "fill": "#FFFFFF",
                       "cornerRadius": 14,
@@ -2677,24 +3255,109 @@
                         "thickness": 1,
                         "fill": "#E2E8F0"
                       },
+                      "layout": "vertical",
+                      "gap": 6,
                       "padding": 12,
                       "children": [
                         {
-                          "type": "text",
-                          "id": "5CWMj",
-                          "name": "hRec1Txt",
-                          "fill": "#1E2D3D",
-                          "content": "Walk at least 7,000 steps",
-                          "fontFamily": "Inter",
-                          "fontSize": 13,
-                          "fontWeight": "normal"
+                          "type": "frame",
+                          "id": "aAyJn",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Z55mZm",
+                              "width": 20,
+                              "height": 20,
+                              "fill": "#E8F5F3",
+                              "cornerRadius": 10
+                            },
+                            {
+                              "type": "text",
+                              "id": "DNKt8",
+                              "fill": "#334155",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Сон был ниже нормы, поэтому сегодня лучше выбрать лёгкую активность.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "l9RyoY",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "C610X",
+                              "width": 20,
+                              "height": 20,
+                              "fill": "#FFF4E5",
+                              "cornerRadius": 10
+                            },
+                            {
+                              "type": "text",
+                              "id": "e45rXE",
+                              "fill": "#334155",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Стресс умеренный: короткая дыхательная практика может стабилизировать состояние.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "c1j5An",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Ykwqb",
+                              "width": 20,
+                              "height": 20,
+                              "fill": "#EFF6FF",
+                              "cornerRadius": 10
+                            },
+                            {
+                              "type": "text",
+                              "id": "LbkTs",
+                              "fill": "#334155",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Сделайте 1–2 короткие прогулки в течение дня для улучшения общего скора.",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "500"
+                            }
+                          ]
                         }
                       ]
                     },
                     {
+                      "type": "text",
+                      "id": "ByAAA",
+                      "fill": "#1E2D3D",
+                      "content": "Показатели сегодня",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
                       "type": "frame",
-                      "id": "83bIC",
-                      "name": "hRec2",
+                      "id": "BzAAA",
+                      "name": "todayCard",
                       "width": "fill_container",
                       "fill": "#FFFFFF",
                       "cornerRadius": 14,
@@ -2703,56 +3366,337 @@
                         "thickness": 1,
                         "fill": "#E2E8F0"
                       },
+                      "layout": "vertical",
+                      "gap": 8,
                       "padding": 12,
                       "children": [
                         {
+                          "type": "frame",
+                          "id": "B1AAA",
+                          "width": "fill_container",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "B2AAA",
+                              "fill": "#EEF8F6",
+                              "cornerRadius": 999,
+                              "padding": [
+                                4,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "B3AAA",
+                                  "fill": "#0F766E",
+                                  "content": "Сон",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "B4AAA",
+                              "fill": "#FFF4E5",
+                              "cornerRadius": 999,
+                              "padding": [
+                                4,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "B5AAA",
+                                  "fill": "#B45309",
+                                  "content": "Стресс",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "B6AAA",
+                              "fill": "#EFF6FF",
+                              "cornerRadius": 999,
+                              "padding": [
+                                4,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "B7AAA",
+                                  "fill": "#1D4ED8",
+                                  "content": "Активность",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "B8AAA",
+                              "fill": "#F1F5F9",
+                              "cornerRadius": 999,
+                              "padding": [
+                                5,
+                                8
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "B9AAA",
+                                  "fill": "#334155",
+                                  "content": "HRV",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "CBAAA",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "CCAAA",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "padding": 8,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "CDAAA",
+                                  "fill": "#64748B",
+                                  "content": "Пульс",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CEAAA",
+                                  "fill": "#0F172A",
+                                  "content": "82 bpm",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "CFAAA",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "padding": 8,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "CGAAA",
+                                  "fill": "#64748B",
+                                  "content": "HRV",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CHAAA",
+                                  "fill": "#0F172A",
+                                  "content": "34 ms",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "CIAAA",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "padding": 8,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "CJAAA",
+                                  "fill": "#64748B",
+                                  "content": "Шаги",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CKAAA",
+                                  "fill": "#0F172A",
+                                  "content": "5.4k",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "CLAAA",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 10,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "padding": 8,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "CMAAA",
+                                  "fill": "#64748B",
+                                  "content": "Сон",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 10,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "CNAAA",
+                                  "fill": "#0F172A",
+                                  "content": "6ч 20м",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "RCCVB",
+                          "name": "trendWrap",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "i0YWUr",
+                              "fill": "#64748B",
+                              "content": "Тренд 7 дней",
+                              "fontFamily": "Inter",
+                              "fontSize": 10,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "OYnmp",
+                              "height": 16,
+                              "gap": 4,
+                              "alignItems": "end",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "IQna2",
+                                  "fill": "#CDEEE9",
+                                  "width": 6,
+                                  "height": 8
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "iBUZ5",
+                                  "fill": "#C1E8E2",
+                                  "width": 6,
+                                  "height": 9
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "CRFmA",
+                                  "fill": "#B5E2DB",
+                                  "width": 6,
+                                  "height": 10
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "gPAec",
+                                  "fill": "#A7DBD3",
+                                  "width": 6,
+                                  "height": 11
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "y5gxB",
+                                  "fill": "#96D2CA",
+                                  "width": 6,
+                                  "height": 12
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "SaaQG",
+                                  "fill": "#86C9C0",
+                                  "width": 6,
+                                  "height": 14
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 3,
+                                  "id": "tPtwL",
+                                  "fill": "#2A9D8F",
+                                  "width": 6,
+                                  "height": 16
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
                           "type": "text",
-                          "id": "I9A6v",
-                          "name": "hRec2Txt",
-                          "fill": "#1E2D3D",
-                          "content": "Sleep before 23:30 for recovery",
+                          "id": "CYAAA",
+                          "fill": "#94A3B8",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Оценка носит рекомендательный характер и не заменяет консультацию врача.",
                           "fontFamily": "Inter",
-                          "fontSize": 13,
-                          "fontWeight": "normal"
+                          "fontSize": 10,
+                          "fontWeight": "500"
                         }
                       ]
                     },
                     {
                       "type": "frame",
-                      "id": "ey9Ua",
-                      "name": "hRec3",
-                      "width": "fill_container",
-                      "fill": "#FFFFFF",
-                      "cornerRadius": 14,
-                      "stroke": {
-                        "align": "inside",
-                        "thickness": 1,
-                        "fill": "#E2E8F0"
-                      },
-                      "padding": 12,
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "CYIer",
-                          "name": "hRec3Txt",
-                          "fill": "#1E2D3D",
-                          "content": "Drink 2L water and reduce sugar spikes",
-                          "fontFamily": "Inter",
-                          "fontSize": 13,
-                          "fontWeight": "normal"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "GFrDF",
+                      "id": "CZAAA",
                       "name": "homeSpacer",
                       "width": "fill_container",
                       "height": "fill_container"
                     },
                     {
                       "type": "frame",
-                      "id": "T5UOh",
+                      "id": "CaAAA",
                       "name": "hNav",
                       "width": "fill_container",
                       "fill": "#FFFFFF",
@@ -2771,16 +3715,14 @@
                       "children": [
                         {
                           "type": "frame",
-                          "id": "UKIHS",
-                          "name": "hTab1",
+                          "id": "CcAAA",
                           "layout": "vertical",
                           "gap": 2,
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon_font",
-                              "id": "ae4ji",
-                              "name": "hTab1I",
+                              "id": "CdAAA",
                               "width": 18,
                               "height": 18,
                               "iconFontName": "heart",
@@ -2789,10 +3731,9 @@
                             },
                             {
                               "type": "text",
-                              "id": "UzH4Y",
-                              "name": "hTab1T",
+                              "id": "CeAAA",
                               "fill": "#1F7A71",
-                              "content": "Home",
+                              "content": "Главная",
                               "fontFamily": "Inter",
                               "fontSize": 10,
                               "fontWeight": "600"
@@ -2801,16 +3742,14 @@
                         },
                         {
                           "type": "frame",
-                          "id": "uN2eA",
-                          "name": "hTab2",
+                          "id": "CfAAA",
                           "layout": "vertical",
                           "gap": 2,
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon_font",
-                              "id": "w2rM8",
-                              "name": "hTab2I",
+                              "id": "CgAAA",
                               "width": 18,
                               "height": 18,
                               "iconFontName": "calendar-days",
@@ -2819,10 +3758,9 @@
                             },
                             {
                               "type": "text",
-                              "id": "xmcft",
-                              "name": "hTab2T",
+                              "id": "ChAAA",
                               "fill": "#94A3B8",
-                              "content": "Wellbeing",
+                              "content": "Самочувствие",
                               "fontFamily": "Inter",
                               "fontSize": 10,
                               "fontWeight": "500"
@@ -2831,16 +3769,14 @@
                         },
                         {
                           "type": "frame",
-                          "id": "zdGyV",
-                          "name": "hTab3",
+                          "id": "CiAAA",
                           "layout": "vertical",
                           "gap": 2,
                           "alignItems": "center",
                           "children": [
                             {
                               "type": "icon_font",
-                              "id": "7DWHU",
-                              "name": "hTab3I",
+                              "id": "CjAAA",
                               "width": 18,
                               "height": 18,
                               "iconFontName": "activity",
@@ -2849,10 +3785,9 @@
                             },
                             {
                               "type": "text",
-                              "id": "QaD06",
-                              "name": "hTab3T",
+                              "id": "CkAAA",
                               "fill": "#94A3B8",
-                              "content": "Analytics",
+                              "content": "Аналитика",
                               "fontFamily": "Inter",
                               "fontSize": 10,
                               "fontWeight": "500"
