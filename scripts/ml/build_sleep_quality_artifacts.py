@@ -25,7 +25,7 @@ import json
 import re
 import warnings
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -65,6 +65,7 @@ SLEEP_ACCEL_DIRS = ("heart_rate", "labels", "steps")
 MODEL_VERSION = "sleep-quality-v3"
 PREPROCESSOR_VERSION = "preprocessor_v2"
 HEALTH_CONTRACT_VERSION = "sleep-health-contract-v2"
+TRAINING_PIPELINE_VERSION = "sleep-quality-pipeline-v4"
 INPUT_NAME = "float_input"
 SEED = 42
 MIN_SEGMENT_ROWS = 8
@@ -81,6 +82,13 @@ STUDENT_PLATFORM_PROFILES = {
     "ios": ("rmssd",),
     "android": ("sdnn",),
 }
+
+INSITU_DATASET_SOURCE = "figshare_in_situ_28509740"
+INSITU_DATASET_URI = "https://doi.org/10.6084/m9.figshare.28509740"
+INSITU_DATASET_VERSION = FIGSHARE_ARTICLE_ID
+SLEEP_ACCEL_DATASET_SOURCE = "physionet_sleep_accel"
+SLEEP_ACCEL_DATASET_URI = SLEEP_ACCEL_BASE
+SLEEP_ACCEL_DATASET_VERSION = "1.0.0"
 
 # Features that can be built from package:health wearable data in app runtime.
 # This contract intentionally excludes diary_* and survey_* fields.
@@ -219,6 +227,7 @@ class BuildConfig:
     dataset_dir: Path
     output_dir: Path
     report_dir: Path
+    training_pipeline_version: str
     allow_download: bool
     split_mode: str
     feature_mode: str
@@ -236,6 +245,10 @@ class BuildConfig:
 @dataclass
 class DatasetBundle:
     source: str
+    dataset_source: str
+    dataset_uri: str
+    dataset_version: str
+    dataset_sha256: Optional[str]
     features: pd.DataFrame
     target: np.ndarray
     groups: np.ndarray
@@ -270,6 +283,8 @@ def main() -> None:
         dataset_dir=Path(args.dataset_dir).resolve(),
         output_dir=Path(args.output_dir).resolve(),
         report_dir=Path(args.report_dir).resolve(),
+        training_pipeline_version=str(args.training_pipeline_version).strip()
+        or TRAINING_PIPELINE_VERSION,
         allow_download=not args.no_download,
         split_mode=args.split_mode,
         feature_mode=args.feature_mode,
@@ -432,9 +447,15 @@ def main() -> None:
 
     metadata = {
         "model_version": MODEL_VERSION,
+        "training_pipeline_version": config.training_pipeline_version,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "selected_model": selected_model_name,
         "input_name": INPUT_NAME,
         "source_dataset": bundle.source,
+        "dataset_source": bundle.dataset_source,
+        "dataset_uri": bundle.dataset_uri,
+        "dataset_sha256": bundle.dataset_sha256,
+        "dataset_version": bundle.dataset_version,
         "dataset_info": bundle.metadata,
         "rows_total": bundle.rows,
         "rows_train_pool": int(len(selected_report["trainval_idx"])),
@@ -505,6 +526,11 @@ def _parse_args() -> argparse.Namespace:
         "--dataset-dir",
         default="build/ml/datasets/sleep_quality",
         help="Directory for raw downloaded datasets.",
+    )
+    parser.add_argument(
+        "--training-pipeline-version",
+        default=TRAINING_PIPELINE_VERSION,
+        help="Version label of the training pipeline implementation.",
     )
     parser.add_argument(
         "--output-dir",
@@ -3176,8 +3202,17 @@ def _load_in_situ(config: BuildConfig) -> DatasetBundle:
         "night_missingness_p90": float(np.percentile(night_missingness_values, 90)) if night_missingness_values else None,
         "diary_rows_total": diary_count,
     }
+    dataset_files = [
+        in_situ_dir / hrv_file_name,
+        in_situ_dir / "sleep_diary.csv",
+        in_situ_dir / "survey.csv",
+    ]
     return DatasetBundle(
         source="in_situ_28509740",
+        dataset_source=INSITU_DATASET_SOURCE,
+        dataset_uri=INSITU_DATASET_URI,
+        dataset_version=INSITU_DATASET_VERSION,
+        dataset_sha256=_sha256_many(dataset_files),
         features=features_df,
         target=np.array(target, dtype=np.float64),
         groups=np.array(groups),
@@ -3488,6 +3523,7 @@ def _load_sleep_accel(dataset_dir: Path, allow_download: bool) -> DatasetBundle:
     rows: List[Dict[str, float]] = []
     target: List[float] = []
     groups: List[str] = []
+    used_files: List[Path] = []
     component_targets: Dict[str, List[float]] = {
         "efficiency": [],
         "duration": [],
@@ -3500,6 +3536,7 @@ def _load_sleep_accel(dataset_dir: Path, allow_download: bool) -> DatasetBundle:
         steps_path = accel_dir / "steps" / f"{subject}_steps.txt"
         if not hr_path.exists() or not steps_path.exists():
             continue
+        used_files.extend((label_path, hr_path, steps_path))
 
         labels = pd.read_csv(label_path, sep=r"\s+", names=["offset", "stage"], engine="python")
         hr = pd.read_csv(hr_path, names=["offset", "hr"])
@@ -3554,6 +3591,10 @@ def _load_sleep_accel(dataset_dir: Path, allow_download: bool) -> DatasetBundle:
     features_df = pd.DataFrame(rows).replace([np.inf, -np.inf], np.nan)
     return DatasetBundle(
         source="sleep_accel_physionet",
+        dataset_source=SLEEP_ACCEL_DATASET_SOURCE,
+        dataset_uri=SLEEP_ACCEL_DATASET_URI,
+        dataset_version=SLEEP_ACCEL_DATASET_VERSION,
+        dataset_sha256=_sha256_many(sorted(set(used_files))),
         features=features_df,
         target=np.array(target, dtype=np.float64),
         groups=np.array(groups),
@@ -3870,8 +3911,59 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _sha256_many(paths: Sequence[Path]) -> Optional[str]:
+    if not paths:
+        return None
+    digest = hashlib.sha256()
+    for path in sorted(paths, key=lambda item: str(item)):
+        if not path.exists():
+            continue
+        digest.update(str(path.name).encode("utf-8"))
+        with path.open("rb") as file:
+            for chunk in iter(lambda: file.read(1024 * 1024), b""):
+                digest.update(chunk)
+    return digest.hexdigest()
+
+
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def _assert_no_absolute_paths(payload: object, context: str) -> None:
+    _walk_and_validate(payload, field_path=context)
+
+
+def _walk_and_validate(value: object, field_path: str) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _walk_and_validate(item, field_path=f"{field_path}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _walk_and_validate(item, field_path=f"{field_path}[{index}]")
+        return
+    if isinstance(value, str) and _looks_like_absolute_path(value):
+        raise ValueError(
+            f"Absolute path is not allowed in serialized artifacts at "
+            f"{field_path}: {value}"
+        )
+
+
+def _looks_like_absolute_path(raw_value: str) -> bool:
+    value = raw_value.strip()
+    if not value:
+        return False
+    if "://" in value:
+        return False
+    if value.startswith("/"):
+        return True
+    if value.startswith("\\\\"):
+        return True
+    return bool(_WINDOWS_DRIVE_RE.match(value))
+
+
 def _write_json(path: Path, payload: Dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    _assert_no_absolute_paths(payload, context=str(path))
     with path.open("w", encoding="utf-8") as file:
         json.dump(payload, file, ensure_ascii=False, indent=2)
 

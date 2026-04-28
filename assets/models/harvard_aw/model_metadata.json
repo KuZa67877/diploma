@@ -1,6 +1,8 @@
 {
   "model_version": "harvard-aw-xgb-v2",
   "input_name": "float_input",
+  "training_pipeline_version": "harvard-aw-pipeline-v3",
+  "generated_at_utc": "2026-04-28T19:25:10.503998+00:00",
   "split_strategy": "stratified_shuffle_split",
   "group_column": null,
   "seed": 42,
@@ -121,10 +123,12 @@
       }
     }
   },
-  "dataset_path": "data_for_weka_aw.csv",
+  "dataset_source": "kaggle_apple_watch_and_fitbit_data",
+  "dataset_uri": "kaggle://aleespinosa/apple-watch-and-fitbit-data/data_for_weka_aw.csv",
   "dataset_sha256": "8f224d5a7ebad5ff62cf12e52dc50f750f4c5dcaed84d8465e9ed7bc4c6711c0",
+  "dataset_version": "1",
   "artifact_hashes": {
-    "model_harvardAWData_xgboost.onnx": "9d1b0031686bbd0f6fbc5300e828a6fecebc697e761bbb34077d4a34894462fc",
+    "model_harvardAWData_xgboost.onnx": "7b89c724b3fcf3005f4b5ce9a995d2374d2613fec76519e1fb25a97e1c526a0f",
     "preprocessor_v1.json": "85b3a2454af6ece4cc63ad3ad4ff9bd32592c34da6d22d2531e3990129a7f448",
     "preprocessor_v2.json": "9ba815d47fb8ca96ece2c26b891de5f8f2d992097d92c3ab163be1cd3a2c8786",
     "split_manifest.json": "c32daec8c48b457c2e197f3443a67db3ce60a7648f57565f3ed1e536d4601f60",

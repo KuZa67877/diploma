@@ -1,0 +1,17 @@
+# Canonical Python dependencies for ML pipelines in this repository.
+# Covers:
+# - scripts/ml/build_harvard_aw_artifacts.py
+# - scripts/ml/build_sleep_quality_artifacts.py
+# - scripts/ml/sleep_external_adapters.py
+# - assets/models/stress_model_impl/*.py
+
+joblib==1.5.3
+numpy==2.0.2
+onnx==1.19.1
+onnxmltools==1.16.0
+pandas==2.3.3
+requests==2.31.0
+scikit-learn==1.6.1
+scipy==1.13.1
+skl2onnx==1.20.0
+xgboost==2.1.4

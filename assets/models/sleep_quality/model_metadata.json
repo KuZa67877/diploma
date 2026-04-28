@@ -1533,5 +1533,11 @@
     "target_sleep_latency_downweighted": true,
     "train_test_leakage_removed": true,
     "test_used_for_model_selection": false
-  }
+  },
+  "dataset_source": "figshare_in_situ_28509740",
+  "dataset_uri": "https://doi.org/10.6084/m9.figshare.28509740",
+  "dataset_version": "28509740",
+  "dataset_sha256": null,
+  "training_pipeline_version": "sleep-quality-pipeline-v4",
+  "generated_at_utc": "2026-04-28T19:22:13.424860+00:00"
 }

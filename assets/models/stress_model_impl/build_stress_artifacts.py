@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
 import random
+import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +33,10 @@ from sklearn.model_selection import LeaveOneGroupOut
 
 SEED = 42
 EPS = 1e-8
+TRAINING_PIPELINE_VERSION = "stress-scorecard-pipeline-v2"
+DEFAULT_DATASET_SOURCE = "stress_app_health_windows"
+DEFAULT_DATASET_URI = "local://user-provided-training-csv"
+DEFAULT_DATASET_VERSION = "unknown"
 
 RUNTIME_EXTRA_FEATURES = [
     "hr_mean_5m",
@@ -673,7 +679,7 @@ def export_scorecard(
             "Domain shift must be checked on Apple Watch / HealthKit EMA data before clinical or high-stakes use.",
         ],
     }
-    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _write_json(out_path, payload)
 
 
 def export_feature_contract(out_path: Path) -> None:
@@ -694,7 +700,7 @@ def export_feature_contract(out_path: Path) -> None:
             "fallback_if_baseline_days_lt": 3,
         },
     }
-    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _write_json(out_path, payload)
 
 
 def export_parity_fixture(
@@ -718,10 +724,20 @@ def export_parity_fixture(
         "stress_probability": probability,
         "stress_score": probability * 100.0,
     }
-    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    _write_json(out_path, payload)
 
 
-def export_artifacts(df: pd.DataFrame, out_dir: Path, model_id: str) -> None:
+def export_artifacts(
+    df: pd.DataFrame,
+    out_dir: Path,
+    model_id: str,
+    *,
+    input_csv: Path,
+    dataset_source: str,
+    dataset_uri: str,
+    dataset_version: str,
+    training_pipeline_version: str,
+) -> None:
     if df["label"].nunique() < 2:
         raise ValueError("Training data must contain both stress and non-stress labels")
 
@@ -745,7 +761,7 @@ def export_artifacts(df: pd.DataFrame, out_dir: Path, model_id: str) -> None:
             for fold in report["folds"]
         ],
     }
-    (out_dir / "split_manifest.json").write_text(json.dumps(split_manifest, indent=2), encoding="utf-8")
+    _write_json(out_dir / "split_manifest.json", split_manifest)
 
     training_report = {
         **report,
@@ -764,11 +780,18 @@ def export_artifacts(df: pd.DataFrame, out_dir: Path, model_id: str) -> None:
             if not feature.startswith("missing_")
         },
     }
-    (out_dir / "training_report.json").write_text(json.dumps(training_report, indent=2), encoding="utf-8")
+    _write_json(out_dir / "training_report.json", training_report)
+    generated_at_utc = datetime.now(timezone.utc).isoformat()
     model_metadata = {
         "model_id": model_id,
         "model_version": "stress-scorecard-v1",
-        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "created_at_utc": generated_at_utc,
+        "generated_at_utc": generated_at_utc,
+        "training_pipeline_version": training_pipeline_version,
+        "dataset_source": dataset_source,
+        "dataset_uri": dataset_uri,
+        "dataset_sha256": _sha256_file(input_csv),
+        "dataset_version": dataset_version,
         "selected_production_model": "logistic_scorecard_json",
         "feature_contract_version": "stress-health-contract-v2",
         "validation_protocol": report["validation_protocol"],
@@ -780,7 +803,7 @@ def export_artifacts(df: pd.DataFrame, out_dir: Path, model_id: str) -> None:
         "n_rows": int(len(df)),
         "n_subjects": int(df["subject_id"].nunique()),
     }
-    (out_dir / "model_metadata.json").write_text(json.dumps(model_metadata, indent=2), encoding="utf-8")
+    _write_json(out_dir / "model_metadata.json", model_metadata)
 
 
 def main() -> None:
@@ -788,13 +811,93 @@ def main() -> None:
     parser.add_argument("--input_csv", required=True)
     parser.add_argument("--output_dir", required=True)
     parser.add_argument("--model_id", default="stress-score-v1")
+    parser.add_argument(
+        "--dataset-source",
+        default=DEFAULT_DATASET_SOURCE,
+        help="Logical dataset identifier for model metadata.",
+    )
+    parser.add_argument(
+        "--dataset-uri",
+        default=DEFAULT_DATASET_URI,
+        help="Dataset URI for model metadata (URL, DOI, or local URI).",
+    )
+    parser.add_argument(
+        "--dataset-version",
+        default=DEFAULT_DATASET_VERSION,
+        help="Dataset version string for model metadata.",
+    )
+    parser.add_argument(
+        "--training-pipeline-version",
+        default=TRAINING_PIPELINE_VERSION,
+        help="Version label of the training pipeline implementation.",
+    )
     args = parser.parse_args()
 
     set_seed()
-    df = pd.read_csv(args.input_csv)
+    input_csv = Path(args.input_csv).expanduser().resolve()
+    df = pd.read_csv(input_csv)
     df = ensure_columns(df)
-    export_artifacts(df, Path(args.output_dir), args.model_id)
+    export_artifacts(
+        df,
+        Path(args.output_dir).expanduser().resolve(),
+        args.model_id,
+        input_csv=input_csv,
+        dataset_source=str(args.dataset_source).strip() or DEFAULT_DATASET_SOURCE,
+        dataset_uri=str(args.dataset_uri).strip() or DEFAULT_DATASET_URI,
+        dataset_version=str(args.dataset_version).strip() or DEFAULT_DATASET_VERSION,
+        training_pipeline_version=str(args.training_pipeline_version).strip()
+        or TRAINING_PIPELINE_VERSION,
+    )
     print(f"Stress artifacts exported to {args.output_dir}")
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def _assert_no_absolute_paths(payload: Any, context: str) -> None:
+    _walk_and_validate(payload, field_path=context)
+
+
+def _walk_and_validate(value: Any, field_path: str) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _walk_and_validate(item, field_path=f"{field_path}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _walk_and_validate(item, field_path=f"{field_path}[{index}]")
+        return
+    if isinstance(value, str) and _looks_like_absolute_path(value):
+        raise ValueError(
+            f"Absolute path is not allowed in serialized artifacts at "
+            f"{field_path}: {value}"
+        )
+
+
+def _looks_like_absolute_path(raw_value: str) -> bool:
+    value = raw_value.strip()
+    if not value:
+        return False
+    if "://" in value:
+        return False
+    if value.startswith("/"):
+        return True
+    if value.startswith("\\\\"):
+        return True
+    return bool(_WINDOWS_DRIVE_RE.match(value))
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    _assert_no_absolute_paths(payload, context=str(path))
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -15,5 +15,11 @@
     "mae_score": 41.59800277006465
   },
   "n_rows": 94,
-  "n_subjects": 15
+  "n_subjects": 15,
+  "dataset_source": "stress_app_health_windows",
+  "dataset_uri": "local://user-provided-training-csv",
+  "dataset_sha256": null,
+  "dataset_version": "unknown",
+  "training_pipeline_version": "stress-scorecard-pipeline-v2",
+  "generated_at_utc": "2026-04-26T14:58:00.012214+00:00"
 }

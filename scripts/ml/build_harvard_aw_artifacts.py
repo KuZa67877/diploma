@@ -18,7 +18,9 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -44,12 +46,18 @@ MODEL_VERSION = "harvard-aw-xgb-v2"
 INPUT_NAME = "float_input"
 FEATURE_ENGINEERING_VERSION = "harvard-fe-v2"
 PREPROCESSOR_V2_VERSION = "harvard-preprocessor-v2"
+TRAINING_PIPELINE_VERSION = "harvard-aw-pipeline-v3"
 TARGET_COL = "activity_trimmed"
 DEFAULT_SEED = 42
 DEFAULT_TEST_SIZE = 0.10
 DEFAULT_VAL_SIZE = 0.20
 DEFAULT_EARLY_STOPPING_ROUNDS = 30
 DEFAULT_PARITY_SAMPLES = 8
+DEFAULT_DATASET_SOURCE = "kaggle_apple_watch_and_fitbit_data"
+DEFAULT_DATASET_URI = (
+    "kaggle://aleespinosa/apple-watch-and-fitbit-data/data_for_weka_aw.csv"
+)
+DEFAULT_DATASET_VERSION = "1"
 GROUP_COLUMN_CANDIDATES = (
     "participant_id",
     "subject_id",
@@ -78,6 +86,10 @@ class BuildConfig:
     dataset_path: Path
     output_dir: Path
     report_dir: Path
+    dataset_source: str = DEFAULT_DATASET_SOURCE
+    dataset_uri: str = DEFAULT_DATASET_URI
+    dataset_version: str = DEFAULT_DATASET_VERSION
+    training_pipeline_version: str = TRAINING_PIPELINE_VERSION
     seed: int = DEFAULT_SEED
     test_size: float = DEFAULT_TEST_SIZE
     val_size: float = DEFAULT_VAL_SIZE
@@ -610,6 +622,8 @@ def build(config: BuildConfig) -> Dict[str, Path]:
     metadata = {
         "model_version": MODEL_VERSION,
         "input_name": INPUT_NAME,
+        "training_pipeline_version": config.training_pipeline_version,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "split_strategy": split_result.strategy,
         "group_column": split_result.group_column,
         "seed": config.seed,
@@ -618,8 +632,10 @@ def build(config: BuildConfig) -> Dict[str, Path]:
             str(idx): label for idx, label in preprocessor.inverse_target_mapping.items()
         },
         "metrics": metrics,
-        "dataset_path": config.dataset_path.name,
+        "dataset_source": config.dataset_source,
+        "dataset_uri": config.dataset_uri,
         "dataset_sha256": _sha256_file(config.dataset_path),
+        "dataset_version": config.dataset_version,
         "artifact_hashes": artifact_hashes,
     }
     metadata_path = config.output_dir / "model_metadata.json"
@@ -859,8 +875,46 @@ def _json_safe_float(value: float) -> Optional[float]:
 
 def _write_json(path: Path, payload: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    json_payload = _json_safe(payload)
+    _assert_no_absolute_paths(json_payload, context=str(path))
     with path.open("w", encoding="utf-8") as output_file:
-        json.dump(_json_safe(payload), output_file, ensure_ascii=False, indent=2)
+        json.dump(json_payload, output_file, ensure_ascii=False, indent=2)
+
+
+_WINDOWS_DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
+
+
+def _assert_no_absolute_paths(payload: Any, context: str) -> None:
+    _walk_and_validate(payload, field_path=context)
+
+
+def _walk_and_validate(value: Any, field_path: str) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _walk_and_validate(item, field_path=f"{field_path}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _walk_and_validate(item, field_path=f"{field_path}[{index}]")
+        return
+    if isinstance(value, str) and _looks_like_absolute_path(value):
+        raise ValueError(
+            f"Absolute path is not allowed in serialized artifacts at "
+            f"{field_path}: {value}"
+        )
+
+
+def _looks_like_absolute_path(raw_value: str) -> bool:
+    value = raw_value.strip()
+    if not value:
+        return False
+    if "://" in value:
+        return False
+    if value.startswith("/"):
+        return True
+    if value.startswith("\\\\"):
+        return True
+    return bool(_WINDOWS_DRIVE_RE.match(value))
 
 
 def _sha256_file(path: Path) -> str:
@@ -893,6 +947,26 @@ def _parse_args() -> argparse.Namespace:
         help="Path to data_for_weka_aw.csv dataset.",
     )
     parser.add_argument(
+        "--dataset-source",
+        default=DEFAULT_DATASET_SOURCE,
+        help="Logical dataset identifier for model metadata.",
+    )
+    parser.add_argument(
+        "--dataset-uri",
+        default=DEFAULT_DATASET_URI,
+        help="Dataset URI for model metadata (URL, DOI, or registry URI).",
+    )
+    parser.add_argument(
+        "--dataset-version",
+        default=DEFAULT_DATASET_VERSION,
+        help="Dataset version string for model metadata.",
+    )
+    parser.add_argument(
+        "--training-pipeline-version",
+        default=TRAINING_PIPELINE_VERSION,
+        help="Version label of the training pipeline implementation.",
+    )
+    parser.add_argument(
         "--output-dir",
         default="assets/models/harvard_aw",
         help="Directory for ONNX + metadata + preprocessor manifests.",
@@ -921,6 +995,11 @@ def main() -> None:
             dataset_path=Path(args.dataset_path).expanduser().resolve(),
             output_dir=Path(args.output_dir).expanduser().resolve(),
             report_dir=Path(args.report_dir).expanduser().resolve(),
+            dataset_source=str(args.dataset_source).strip() or DEFAULT_DATASET_SOURCE,
+            dataset_uri=str(args.dataset_uri).strip() or DEFAULT_DATASET_URI,
+            dataset_version=str(args.dataset_version).strip() or DEFAULT_DATASET_VERSION,
+            training_pipeline_version=str(args.training_pipeline_version).strip()
+            or TRAINING_PIPELINE_VERSION,
             seed=int(args.seed),
             test_size=float(args.test_size),
             val_size=float(args.val_size),
