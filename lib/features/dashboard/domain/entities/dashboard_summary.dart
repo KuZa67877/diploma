@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../wellbeing/domain/entities/diary_health_adjustment.dart';
 import 'dashboard_insight.dart';
 import 'dashboard_metric.dart';
 
@@ -11,6 +12,7 @@ class DashboardSummary extends Equatable {
   final bool hasInsufficientModelData;
   final DashboardInsight insight;
   final List<DashboardMetric> metrics;
+  final int? objectiveHealthScore;
   final DashboardDataSnapshot dataSnapshot;
   final DashboardModelResults modelResults;
 
@@ -23,12 +25,13 @@ class DashboardSummary extends Equatable {
     this.hasInsufficientModelData = false,
     required this.insight,
     required this.metrics,
+    this.objectiveHealthScore,
     this.dataSnapshot = const DashboardDataSnapshot(),
     this.modelResults = const DashboardModelResults(),
   });
 
   @override
-  List<Object> get props => [
+  List<Object?> get props => [
     greetingKey,
     userName,
     healthScore,
@@ -37,6 +40,7 @@ class DashboardSummary extends Equatable {
     hasInsufficientModelData,
     insight,
     metrics,
+    objectiveHealthScore,
     dataSnapshot,
     modelResults,
   ];
@@ -72,6 +76,7 @@ class DashboardModelResults extends Equatable {
   final DashboardRecoveryModelResult recovery;
   final List<DashboardHealthDriver> healthDrivers;
   final double healthScoreConfidence;
+  final DiaryHealthAdjustment diaryAdjustment;
 
   const DashboardModelResults({
     this.activity = const DashboardActivityModelResult.insufficient(),
@@ -81,6 +86,7 @@ class DashboardModelResults extends Equatable {
     this.recovery = const DashboardRecoveryModelResult.insufficient(),
     this.healthDrivers = const <DashboardHealthDriver>[],
     this.healthScoreConfidence = 0,
+    this.diaryAdjustment = const DiaryHealthAdjustment.none(),
   });
 
   @override
@@ -92,6 +98,7 @@ class DashboardModelResults extends Equatable {
     recovery,
     healthDrivers,
     healthScoreConfidence,
+    diaryAdjustment,
   ];
 }
 

@@ -71,6 +71,7 @@ class DashboardCubit extends Cubit<DashboardState> {
         isTemporaryScore: healthScoreIsTemporary,
       ),
       overallExplanation: _overallExplanation(summary.modelResults),
+      diaryInfluence: _mapDiaryInfluence(summary),
       showInsufficientDataBanner:
           summary.hasInsufficientModelData ||
           dataStatus != DashboardDataStatusState.upToDate,
@@ -231,6 +232,49 @@ class DashboardCubit extends Cubit<DashboardState> {
     return DashboardLocalizedText(
       'dashboardOverallFactors',
       params: {'factors': top},
+    );
+  }
+
+  DashboardDiaryInfluenceUiModel? _mapDiaryInfluence(DashboardSummary summary) {
+    final adjustment = summary.modelResults.diaryAdjustment;
+    final objectiveScore = summary.objectiveHealthScore;
+    if (objectiveScore == null &&
+        adjustment.diaryScore == null &&
+        adjustment.reasons.isEmpty) {
+      return null;
+    }
+
+    final delta = adjustment.delta;
+    final deltaText = delta == 0
+        ? '0.0'
+        : '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(1)}';
+    final confidenceText =
+        '${(adjustment.confidence * 100).clamp(0, 100).round()}%';
+    final isApplied = adjustment.hasEffect;
+    final summaryText = isApplied
+        ? delta < 0
+              ? 'Дневник снизил оценку на ${delta.abs().toStringAsFixed(1)}.'
+              : 'Дневник повысил оценку на ${delta.toStringAsFixed(1)}.'
+        : 'Дневник не повлиял на оценку.';
+
+    final detailsParts = <String>[];
+    if (objectiveScore != null) {
+      detailsParts.add('Объективный score: $objectiveScore');
+    }
+    if (adjustment.diaryScore != null) {
+      detailsParts.add(
+        'Diary score: ${adjustment.diaryScore!.toStringAsFixed(0)}',
+      );
+    }
+
+    return DashboardDiaryInfluenceUiModel(
+      deltaText: deltaText,
+      confidenceText: confidenceText,
+      summary: summaryText,
+      details: detailsParts.isEmpty ? null : detailsParts.join(' • '),
+      reasons: adjustment.reasons,
+      isPositive: delta > 0,
+      isApplied: isApplied,
     );
   }
 

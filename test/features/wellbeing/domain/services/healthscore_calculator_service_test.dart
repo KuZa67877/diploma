@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medi_ai/features/wellbeing/domain/entities/wellbeing_entry.dart';
+import 'package:medi_ai/features/wellbeing/domain/entities/wellbeing_mood.dart';
 import 'package:medi_ai/features/wellbeing/domain/entities/health_score_band.dart';
 import 'package:medi_ai/features/wellbeing/domain/entities/health_score_input.dart';
 import 'package:medi_ai/features/wellbeing/domain/services/healthscore_calculator_service.dart';
@@ -28,10 +30,13 @@ void main() {
         );
 
         expect(result.score, 74);
+        expect(result.objectiveScore, 74);
         expect(result.band, HealthScoreBand.yellow);
         expect(result.confidence, closeTo(0.76, 1e-9));
         expect(result.alerts, isEmpty);
         expect(result.drivers.length, 5);
+        expect(result.diaryAdjustment.delta, 0);
+        expect(result.diaryAdjustment.confidence, 0);
         expect(result.inputQuality['completeness'], 1.0);
         expect(result.inputQuality['available_components'], [
           'base',
@@ -137,7 +142,9 @@ void main() {
         );
 
         expect(lowStressResult.score, 80);
+        expect(lowStressResult.objectiveScore, 80);
         expect(highStressResult.score, 62);
+        expect(highStressResult.objectiveScore, 62);
         expect(highStressResult.score!, lessThan(lowStressResult.score!));
         expect(
           highStressResult.alerts.map((alert) => alert.code),
@@ -145,5 +152,38 @@ void main() {
         );
       },
     );
+
+    test('applies diary modifier after objective score calculation', () {
+      final result = service.calculate(
+        HealthScoreInput(
+          baseScore: 80,
+          sleepScore: 70,
+          stressScore: 30,
+          anomalyScore: 20,
+          baselineDeviationScore: 40,
+          baseConfidence: 0.9,
+          sleepConfidence: 0.8,
+          stressConfidence: 0.7,
+          anomalyConfidence: 0.6,
+          baselineDeviationConfidence: 0.5,
+          computedAt: now,
+          wellbeingEntry: WellbeingEntry(
+            date: now,
+            mood: WellbeingMood.low,
+            tags: const <String>[],
+            note: null,
+            stressNow: 5,
+            fatigue: 5,
+            wellness: 1,
+          ),
+          scoreNow: now,
+        ),
+      );
+
+      expect(result.objectiveScore, 74);
+      expect(result.diaryAdjustment.delta, -10);
+      expect(result.score, 64);
+      expect(result.score, lessThan(result.objectiveScore!));
+    });
   });
 }

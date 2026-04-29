@@ -330,6 +330,14 @@ class AppLocalizations {
       'en': 'Main factors: {factors}.',
       'ru': 'Основные факторы: {factors}.',
     },
+    'dashboardDiaryInfluenceTitle': {
+      'en': 'Diary influence',
+      'ru': 'Влияние дневника',
+    },
+    'dashboardDiaryInfluenceConfidence': {
+      'en': 'Confidence',
+      'ru': 'Уверенность',
+    },
     'dashboardBadgeInsufficient': {
       'en': 'Insufficient data',
       'ru': 'Недостаточно данных',

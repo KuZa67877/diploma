@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'wellbeing_entry.dart';
+
 class HealthScoreInput extends Equatable {
   final double? baseScore;
   final double? sleepScore;
@@ -12,6 +14,8 @@ class HealthScoreInput extends Equatable {
   final double? anomalyConfidence;
   final double? baselineDeviationConfidence;
   final DateTime computedAt;
+  final WellbeingEntry? wellbeingEntry;
+  final DateTime? scoreNow;
 
   const HealthScoreInput({
     required this.baseScore,
@@ -25,6 +29,8 @@ class HealthScoreInput extends Equatable {
     required this.anomalyConfidence,
     required this.baselineDeviationConfidence,
     required this.computedAt,
+    this.wellbeingEntry,
+    this.scoreNow,
   });
 
   Map<String, double?> get componentScores => {
@@ -56,5 +62,7 @@ class HealthScoreInput extends Equatable {
     anomalyConfidence,
     baselineDeviationConfidence,
     computedAt,
+    wellbeingEntry,
+    scoreNow,
   ];
 }

@@ -12,6 +12,7 @@ class DashboardSummaryModel extends DashboardSummary {
     super.hasInsufficientModelData = false,
     required super.insight,
     required super.metrics,
+    super.objectiveHealthScore,
     super.dataSnapshot = const DashboardDataSnapshot(),
     super.modelResults = const DashboardModelResults(),
   });

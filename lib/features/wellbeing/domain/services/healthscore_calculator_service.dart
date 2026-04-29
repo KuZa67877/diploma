@@ -1,8 +1,10 @@
+import '../entities/diary_health_adjustment.dart';
 import '../entities/health_score_alert.dart';
 import '../entities/health_score_band.dart';
 import '../entities/health_score_driver.dart';
 import '../entities/health_score_input.dart';
 import '../entities/health_score_result.dart';
+import 'healthscore_diary_adjustment_service.dart';
 
 class HealthScoreCalculatorService {
   static const double _wBase = 0.35;
@@ -11,7 +13,12 @@ class HealthScoreCalculatorService {
   static const double _wAnomalyInv = 0.15;
   static const double _wBaselineInv = 0.10;
 
-  const HealthScoreCalculatorService();
+  final HealthScoreDiaryAdjustmentService _diaryAdjustmentService;
+
+  const HealthScoreCalculatorService({
+    HealthScoreDiaryAdjustmentService diaryAdjustmentService =
+        const HealthScoreDiaryAdjustmentService(),
+  }) : _diaryAdjustmentService = diaryAdjustmentService;
 
   HealthScoreResult calculate(HealthScoreInput input) {
     final computedAt = input.computedAt.toUtc();
@@ -68,6 +75,7 @@ class HealthScoreCalculatorService {
       final confidence = 0.0;
       return HealthScoreResult(
         score: null,
+        objectiveScore: null,
         band: HealthScoreBand.noAccess,
         confidence: confidence,
         drivers: const [],
@@ -83,6 +91,16 @@ class HealthScoreCalculatorService {
           confidence: confidence,
           available: const [],
           missing: missing,
+          diaryAdjustment: const DiaryHealthAdjustment.none(
+            reasons: <String>[
+              'Дневник не применен: объективный Health Score недоступен.',
+            ],
+          ),
+        ),
+        diaryAdjustment: const DiaryHealthAdjustment.none(
+          reasons: <String>[
+            'Дневник не применен: объективный Health Score недоступен.',
+          ],
         ),
       );
     }
@@ -113,8 +131,17 @@ class HealthScoreCalculatorService {
       );
     }
 
-    final score = rawScore.clamp(0.0, 100.0).round().clamp(0, 100);
+    final objectiveScore = rawScore.clamp(0.0, 100.0).round().clamp(0, 100);
     final confidence = (qualityWeighted * completeness).clamp(0.0, 1.0);
+    final diaryAdjustment = _diaryAdjustmentService.calculate(
+      entry: input.wellbeingEntry,
+      now: input.scoreNow ?? input.computedAt,
+    );
+    final score = clampDouble(
+      objectiveScore.toDouble() + diaryAdjustment.delta,
+      0,
+      100,
+    ).round().clamp(0, 100);
     final band = _bandForScore(score);
     final availableIds = available
         .map((component) => component.id)
@@ -122,6 +149,7 @@ class HealthScoreCalculatorService {
 
     return HealthScoreResult(
       score: score,
+      objectiveScore: objectiveScore,
       band: band,
       confidence: confidence,
       drivers: List.unmodifiable(drivers),
@@ -137,7 +165,9 @@ class HealthScoreCalculatorService {
         confidence: confidence,
         available: availableIds,
         missing: missing,
+        diaryAdjustment: diaryAdjustment,
       ),
+      diaryAdjustment: diaryAdjustment,
     );
   }
 
@@ -254,6 +284,7 @@ class HealthScoreCalculatorService {
     required double confidence,
     required List<String> available,
     required List<String> missing,
+    required DiaryHealthAdjustment diaryAdjustment,
   }) {
     return {
       'completeness': completeness,
@@ -262,6 +293,7 @@ class HealthScoreCalculatorService {
       'missing_components': List.unmodifiable(missing),
       'available_count': available.length,
       'missing_count': missing.length,
+      'diary_adjustment': diaryAdjustment.toJson(),
     };
   }
 

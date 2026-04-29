@@ -38,6 +38,7 @@ class DashboardContent extends StatelessWidget {
             overallState: viewData.overallState,
             summary: viewData.overallSummary,
             explanation: viewData.overallExplanation,
+            diaryInfluence: viewData.diaryInfluence,
             healthScoreIsTemporary: viewData.healthScoreIsTemporary,
           ),
           if (viewData.showInsufficientDataBanner)

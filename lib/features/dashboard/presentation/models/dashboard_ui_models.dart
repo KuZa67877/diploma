@@ -110,6 +110,7 @@ class DashboardViewData {
   final DashboardVisualState overallState;
   final DashboardLocalizedText overallSummary;
   final DashboardLocalizedText overallExplanation;
+  final DashboardDiaryInfluenceUiModel? diaryInfluence;
   final bool showInsufficientDataBanner;
   final List<String> recommendations;
   final DashboardInsightUiModel insight;
@@ -134,6 +135,7 @@ class DashboardViewData {
     required this.overallState,
     required this.overallSummary,
     required this.overallExplanation,
+    required this.diaryInfluence,
     required this.showInsufficientDataBanner,
     required this.recommendations,
     required this.insight,
@@ -144,5 +146,25 @@ class DashboardViewData {
     required this.noDataMessage,
     required this.noDataHint,
     required this.metrics,
+  });
+}
+
+class DashboardDiaryInfluenceUiModel {
+  final String deltaText;
+  final String confidenceText;
+  final String summary;
+  final String? details;
+  final List<String> reasons;
+  final bool isPositive;
+  final bool isApplied;
+
+  const DashboardDiaryInfluenceUiModel({
+    required this.deltaText,
+    required this.confidenceText,
+    required this.summary,
+    required this.details,
+    required this.reasons,
+    required this.isPositive,
+    required this.isApplied,
   });
 }

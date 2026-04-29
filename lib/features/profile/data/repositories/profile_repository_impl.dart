@@ -7,6 +7,8 @@ import '../../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../dashboard/data/datasources/health_model_output_remote_data_source.dart';
 import '../../../wellbeing/domain/entities/health_score_input.dart';
+import '../../../wellbeing/domain/entities/wellbeing_entry.dart';
+import '../../../wellbeing/domain/repositories/wellbeing_repository.dart';
 import '../../../wellbeing/domain/services/healthscore_base_component_service.dart';
 import '../../../wellbeing/domain/usecases/calculate_healthscore.dart';
 import '../../domain/entities/profile_data.dart';
@@ -28,6 +30,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   final HealthModelOutputRemoteDataSource modelOutputRemoteDataSource;
   final HealthScoreBaseComponentService healthScoreBaseComponentService;
   final CalculateHealthScore calculateHealthScore;
+  final WellbeingRepository wellbeingRepository;
   final _logger = AppLogger.instance;
 
   ProfileRepositoryImpl({
@@ -36,6 +39,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     required this.modelOutputRemoteDataSource,
     required this.healthScoreBaseComponentService,
     required this.calculateHealthScore,
+    required this.wellbeingRepository,
   });
 
   @override
@@ -92,6 +96,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       final stressOutput = latestOutputs['stress_score_v1'];
       final anomalyOutput = latestOutputs['personal_physiology_anomaly_v1'];
       final baselineOutput = latestOutputs['baseline_forecast_v1'];
+      final wellbeingEntry = await _loadLatestWellbeingEntry();
       final input = HealthScoreInput(
         baseScore: baseScore,
         sleepScore: _normalizeScore(sleepOutput?.score),
@@ -107,6 +112,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
           fallback: DateTime.now().toUtc(),
           outputs: [sleepOutput, stressOutput, anomalyOutput, baselineOutput],
         ),
+        wellbeingEntry: wellbeingEntry,
+        scoreNow: DateTime.now(),
       );
       final healthScoreResult = calculateHealthScore(input);
       final healthScore = healthScoreResult.score;
@@ -179,5 +186,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
       default:
         return current;
     }
+  }
+
+  Future<WellbeingEntry?> _loadLatestWellbeingEntry() async {
+    final result = await wellbeingRepository.getEntries();
+    return result.fold(
+      (_) => null,
+      (entries) => entries.isEmpty ? null : entries.first,
+    );
   }
 }

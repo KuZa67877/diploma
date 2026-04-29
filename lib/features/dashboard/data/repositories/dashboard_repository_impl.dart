@@ -11,6 +11,8 @@ import '../../../health_data/domain/entities/health_metric_type.dart';
 import '../../../wellbeing/domain/entities/health_score_band.dart';
 import '../../../wellbeing/domain/entities/health_score_input.dart';
 import '../../../wellbeing/domain/entities/health_score_result.dart';
+import '../../../wellbeing/domain/entities/wellbeing_entry.dart';
+import '../../../wellbeing/domain/repositories/wellbeing_repository.dart';
 import '../../../wellbeing/domain/services/healthscore_base_component_service.dart';
 import '../../../wellbeing/domain/usecases/calculate_healthscore.dart';
 import '../../domain/entities/dashboard_summary.dart';
@@ -37,6 +39,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
   final BaselineForecastInferenceModel baselineForecastModel;
   final HealthScoreBaseComponentService healthScoreBaseComponentService;
   final CalculateHealthScore calculateHealthScore;
+  final WellbeingRepository wellbeingRepository;
   final _logger = AppLogger.instance;
 
   DashboardRepositoryImpl({
@@ -51,6 +54,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required this.baselineForecastModel,
     required this.healthScoreBaseComponentService,
     required this.calculateHealthScore,
+    required this.wellbeingRepository,
   });
 
   @override
@@ -106,6 +110,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
       final normalizedBaselineDeviationScore = _normalizeBaselineDeviationScore(
         modelContext.baselineForecast.overallDeviationScore,
       );
+      final wellbeingEntry = await _loadLatestWellbeingEntry();
       final healthScoreInput = HealthScoreInput(
         baseScore: baseScore,
         sleepScore: normalizedSleepScore,
@@ -121,6 +126,8 @@ class DashboardRepositoryImpl implements DashboardRepository {
           modelContext: modelContext,
           fallback: DateTime.now().toUtc(),
         ),
+        wellbeingEntry: wellbeingEntry,
+        scoreNow: DateTime.now(),
       );
       final healthScoreResult = calculateHealthScore(healthScoreInput);
       final metrics = _buildTodayMetrics(
@@ -166,6 +173,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
               hasHealthScoreQualityAlerts,
           insight: localSummary.insight,
           metrics: metrics,
+          objectiveHealthScore: healthScoreResult.objectiveScore,
           dataSnapshot: DashboardDataSnapshot(
             connectedSources: modelContext.connectedSourceCount,
             wearableSampleCount: modelContext.wearableSamples.length,
@@ -495,13 +503,16 @@ class DashboardRepositoryImpl implements DashboardRepository {
         'confidence': result.confidence,
         'available_components': availableComponents ?? const <String>[],
         'missing_components': missingComponents ?? const <String>[],
+        'diary_confidence': result.diaryAdjustment.confidence,
       }),
       features: _safeJsonMap({
+        'objectiveScore': result.objectiveScore,
         'base': input.baseScore,
         'sleep': input.sleepScore,
         'stress': input.stressScore,
         'anomaly': input.anomalyScore,
         'baselineDeviation': input.baselineDeviationScore,
+        'diaryAdjustment': _safeJsonMap(result.diaryAdjustment.toJson()),
         'inversed': _safeJsonMap({
           'stress': inversedStress,
           'anomaly': inversedAnomaly,
@@ -642,7 +653,20 @@ class DashboardRepositoryImpl implements DashboardRepository {
       recovery: _mapRecoveryResult(recovery),
       healthScoreConfidence: healthScoreResult.confidence,
       healthDrivers: _mapHealthDrivers(healthScoreResult),
+      diaryAdjustment: healthScoreResult.diaryAdjustment,
     );
+  }
+
+  Future<WellbeingEntry?> _loadLatestWellbeingEntry() async {
+    final result = await wellbeingRepository.getEntries();
+    return result.fold((_) => null, _selectLatestWellbeingEntry);
+  }
+
+  WellbeingEntry? _selectLatestWellbeingEntry(List<WellbeingEntry> entries) {
+    if (entries.isEmpty) {
+      return null;
+    }
+    return entries.first;
   }
 
   DashboardActivityModelResult _mapActivityResult(

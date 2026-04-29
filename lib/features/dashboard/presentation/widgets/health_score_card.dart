@@ -12,6 +12,7 @@ class HealthScoreCard extends StatelessWidget {
   final DashboardVisualState overallState;
   final DashboardLocalizedText summary;
   final DashboardLocalizedText explanation;
+  final DashboardDiaryInfluenceUiModel? diaryInfluence;
   final bool healthScoreIsTemporary;
 
   const HealthScoreCard({
@@ -22,6 +23,7 @@ class HealthScoreCard extends StatelessWidget {
     required this.overallState,
     required this.summary,
     required this.explanation,
+    required this.diaryInfluence,
     required this.healthScoreIsTemporary,
   });
 
@@ -145,6 +147,10 @@ class HealthScoreCard extends StatelessWidget {
                           : AppColors.mutedForeground,
                     ),
                   ),
+                  if (diaryInfluence != null) ...[
+                    const SizedBox(height: 12),
+                    _DiaryInfluenceBlock(diaryInfluence: diaryInfluence!),
+                  ],
                 ],
               ),
             ),
@@ -209,5 +215,115 @@ class HealthScoreCard extends StatelessWidget {
       case DashboardScoreState.stable:
         return const Color(0x40FFFFFF);
     }
+  }
+}
+
+class _DiaryInfluenceBlock extends StatelessWidget {
+  final DashboardDiaryInfluenceUiModel diaryInfluence;
+
+  const _DiaryInfluenceBlock({required this.diaryInfluence});
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = diaryInfluence.isApplied
+        ? diaryInfluence.isPositive
+              ? const Color(0xFF15803D)
+              : const Color(0xFFB91C1C)
+        : isDark
+        ? AppColors.darkMutedForeground
+        : AppColors.mutedForeground;
+    final background = diaryInfluence.isApplied
+        ? diaryInfluence.isPositive
+              ? const Color(0xFFF0FDF4)
+              : const Color(0xFFFEF2F2)
+        : isDark
+        ? const Color(0xFF151B22)
+        : const Color(0xFFF8FAFB);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  localizations.get('dashboardDiaryInfluenceTitle'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? AppColors.darkForeground
+                        : AppColors.lightForeground,
+                  ),
+                ),
+              ),
+              Text(
+                diaryInfluence.deltaText,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            diaryInfluence.summary,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? AppColors.darkForeground
+                  : AppColors.lightForeground,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${localizations.get('dashboardDiaryInfluenceConfidence')}: ${diaryInfluence.confidenceText}',
+            style: TextStyle(
+              fontSize: 11,
+              color: isDark
+                  ? AppColors.darkMutedForeground
+                  : AppColors.mutedForeground,
+            ),
+          ),
+          if (diaryInfluence.details != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              diaryInfluence.details!,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark
+                    ? AppColors.darkMutedForeground
+                    : AppColors.mutedForeground,
+              ),
+            ),
+          ],
+          if (diaryInfluence.reasons.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              diaryInfluence.reasons.join(', '),
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark
+                    ? AppColors.darkMutedForeground
+                    : AppColors.mutedForeground,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

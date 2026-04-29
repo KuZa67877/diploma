@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'diary_health_adjustment.dart';
 import 'health_score_alert.dart';
 import 'health_score_band.dart';
 import 'health_score_driver.dart';
@@ -8,6 +9,7 @@ class HealthScoreResult extends Equatable {
   static const String versionId = 'healthscore-v1';
 
   final int? score;
+  final int? objectiveScore;
   final HealthScoreBand band;
   final double confidence;
   final List<HealthScoreDriver> drivers;
@@ -15,9 +17,11 @@ class HealthScoreResult extends Equatable {
   final String version;
   final DateTime computedAt;
   final Map<String, dynamic> inputQuality;
+  final DiaryHealthAdjustment diaryAdjustment;
 
   const HealthScoreResult({
     required this.score,
+    required this.objectiveScore,
     required this.band,
     required this.confidence,
     required this.drivers,
@@ -25,11 +29,13 @@ class HealthScoreResult extends Equatable {
     required this.version,
     required this.computedAt,
     required this.inputQuality,
+    this.diaryAdjustment = const DiaryHealthAdjustment.none(),
   });
 
   Map<String, dynamic> toJson() {
     return {
       'score': score,
+      'objective_score': objectiveScore,
       'band': band.code,
       'confidence': confidence,
       'drivers': drivers
@@ -39,12 +45,14 @@ class HealthScoreResult extends Equatable {
       'version': version,
       'computed_at': computedAt.toUtc().toIso8601String(),
       'input_quality': inputQuality,
+      'diary_adjustment': diaryAdjustment.toJson(),
     };
   }
 
   @override
   List<Object?> get props => [
     score,
+    objectiveScore,
     band,
     confidence,
     drivers,
@@ -52,5 +60,6 @@ class HealthScoreResult extends Equatable {
     version,
     computedAt,
     inputQuality,
+    diaryAdjustment,
   ];
 }
