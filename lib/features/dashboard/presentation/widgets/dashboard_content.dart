@@ -61,47 +61,53 @@ class DashboardContent extends StatelessWidget {
               ),
             ),
           ),
-          _sectionTitle(context, localizations.get('modelResults')),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark ? AppColors.darkBorder : AppColors.border,
+          if (viewData.modelCards.isNotEmpty) ...[
+            _sectionTitle(context, localizations.get('modelResults')),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkCard : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark ? AppColors.darkBorder : AppColors.border,
+                  ),
+                ),
+                child: Column(
+                  children: List.generate(viewData.modelCards.length, (index) {
+                    final model = viewData.modelCards[index];
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == viewData.modelCards.length - 1 ? 0 : 8,
+                      ),
+                      child: _buildModelCard(context, model),
+                    );
+                  }),
                 ),
               ),
-              child: Column(
-                children: List.generate(viewData.modelCards.length, (index) {
-                  final model = viewData.modelCards[index];
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom: index == viewData.modelCards.length - 1 ? 0 : 8,
-                    ),
-                    child: _buildModelCard(context, model),
-                  );
-                }),
+            ),
+          ],
+          if (viewData.aiRecommendations.isNotEmpty) ...[
+            _sectionTitle(context, localizations.get('aiRecommendationsToday')),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: _buildAiRecommendationsCard(
+                context,
+                viewData.aiRecommendations,
               ),
             ),
-          ),
-          _sectionTitle(context, localizations.get('aiRecommendationsToday')),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: _buildAiRecommendationsCard(
-              context,
-              viewData.aiRecommendations,
+          ],
+          if (viewData.keyMetrics.isNotEmpty) ...[
+            _sectionTitle(context, localizations.get('todayMetrics')),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: _buildTodayMetricsCard(context, viewData.keyMetrics),
             ),
-          ),
-          _sectionTitle(context, localizations.get('todayMetrics')),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: _buildTodayMetricsCard(context, viewData.keyMetrics),
-          ),
+          ],
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
             child: Text(

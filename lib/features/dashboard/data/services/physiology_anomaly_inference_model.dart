@@ -1285,16 +1285,18 @@ class PhysiologyAnomalyInferenceModel {
     final byDate = <String, _SleepNightAccumulator>{};
 
     for (final sample in samples) {
-      if (!_sleepTypes.contains(sample.type) || sample.value <= 0) continue;
-      final end = sample.timestamp.toUtc();
+      if (!_sleepTypes.contains(sample.type)) continue;
+      final end = sample.endAt;
       if (!_inRange(end, start, now)) continue;
+      final minutes = sample.intervalMinutes ?? sample.value;
+      if (!minutes.isFinite || minutes <= 0) continue;
       final date = end.hour < 18 ? end : end.add(const Duration(days: 1));
       final dateKey = _dateKey(date);
       final accumulator = byDate.putIfAbsent(
         dateKey,
         () => _SleepNightAccumulator(dateKey),
       );
-      accumulator.add(sample.type, sample.value, end);
+      accumulator.add(sample.type, minutes, end);
     }
 
     final nights =
@@ -1760,6 +1762,7 @@ class _SleepNight {
 class _SleepNightAccumulator {
   final String dateKey;
   DateTime? latestEnd;
+  DateTime? earliestStart;
   double genericAsleep = 0;
   double stagedAsleep = 0;
   double deep = 0;
@@ -1774,6 +1777,11 @@ class _SleepNightAccumulator {
   void add(HealthMetricType type, double minutes, DateTime end) {
     if (latestEnd == null || end.isAfter(latestEnd!)) {
       latestEnd = end;
+    }
+    final durationMs = (minutes * 60 * 1000).round();
+    final start = end.subtract(Duration(milliseconds: durationMs));
+    if (earliestStart == null || start.isBefore(earliestStart!)) {
+      earliestStart = start;
     }
 
     switch (type) {
@@ -1809,11 +1817,18 @@ class _SleepNightAccumulator {
 
   _SleepNight build() {
     final asleep = stagedAsleep > 0 ? stagedAsleep : genericAsleep;
+    final spanMinutes =
+        earliestStart != null &&
+            latestEnd != null &&
+            latestEnd!.isAfter(earliestStart!)
+        ? latestEnd!.difference(earliestStart!).inMinutes.toDouble()
+        : 0.0;
+    final inferredAwake = math.max(awake, math.max(0.0, spanMinutes - asleep));
     final resolvedInBed = inBed > 0
         ? inBed
         : session > 0
         ? session
-        : asleep + awake;
+        : math.max(asleep + inferredAwake, spanMinutes);
     final end =
         latestEnd ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     final start = end.subtract(
@@ -1826,7 +1841,7 @@ class _SleepNightAccumulator {
       sleepMinutes: asleep,
       deepMinutes: deep,
       remMinutes: rem,
-      awakeMinutes: awake,
+      awakeMinutes: inferredAwake,
       inBedMinutes: math.max(resolvedInBed, asleep),
     );
   }

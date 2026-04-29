@@ -121,6 +121,34 @@ void main() {
       expect(result.reason, 'missing_heart_rate');
       expect(result.missingModalities, contains('heart_rate'));
     });
+
+    test(
+      'infers reduced efficiency for fragmented sleep without awake samples',
+      () {
+        final samples = <HealthMetricSample>[
+          ..._baselineHeartRate(now, bpm: 72),
+          ..._baselineHrv(now, sdnn: 62, rmssd: 58),
+          ..._baselineResp(now, value: 14),
+          ..._sleepHistory(now, hours: 7.5),
+          ..._currentHeartRate(now, bpm: 76),
+          _sample(
+            HealthMetricType.sleepAsleep,
+            180,
+            DateTime.utc(2026, 4, 26, 1, 0),
+          ),
+          _sample(
+            HealthMetricType.sleepAsleep,
+            150,
+            DateTime.utc(2026, 4, 26, 6, 30),
+          ),
+        ];
+
+        final result = model.inferSync(samples: samples, now: now);
+
+        expect(result.features['sleep_hours_latest'], closeTo(5.5, 0.05));
+        expect(result.features['sleep_efficiency_latest'], closeTo(64.7, 0.6));
+      },
+    );
   });
 }
 

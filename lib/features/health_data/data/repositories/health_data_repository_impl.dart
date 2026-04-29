@@ -17,9 +17,10 @@ import '../models/health_metric_sample_model.dart';
 
 /// Реализация репозитория данных здоровья.
 class HealthDataRepositoryImpl implements HealthDataRepository {
-  static final DateTime _fullSyncStartDate = DateTime(2010, 1, 1);
   static const String _appleSourceId = 'apple_health';
   static const String _googleSourceId = 'google_fit';
+  static const Duration _externalImportWindow = Duration(days: 30);
+  static const Duration _incrementalSyncLookback = Duration(days: 3);
 
   /// Локальный источник данных.
   final HealthDataLocalDataSource localDataSource;
@@ -32,6 +33,7 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
 
   /// Источник данных Google Fit.
   final GoogleFitDataSource googleFitDataSource;
+  final DateTime Function() _nowProvider;
 
   /// Создает репозиторий данных здоровья.
   HealthDataRepositoryImpl({
@@ -39,7 +41,8 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
     required this.remoteDataSource,
     required this.healthKitDataSource,
     required this.googleFitDataSource,
-  });
+    DateTime Function()? nowProvider,
+  }) : _nowProvider = nowProvider ?? DateTime.now;
 
   @override
   Future<Either<Failure, List<HealthDataSource>>> getAvailableSources() async {
@@ -126,7 +129,7 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
         final matchesSource = localSourceIds.contains(sample.sourceId);
         final matchesType =
             query.types.isEmpty || query.types.contains(sample.type);
-        final matchesDate = query.range.contains(sample.timestamp);
+        final matchesDate = _sampleMatchesRange(sample, query.range);
         return matchesSource && matchesType && matchesDate;
       }).toList();
 
@@ -138,18 +141,19 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
             final matchesSource = allowedSourceIds.contains(normalizedSourceId);
             final matchesType =
                 query.types.isEmpty || query.types.contains(sample.type);
-            final matchesDate = query.range.contains(sample.timestamp);
+            final matchesDate = _sampleMatchesRange(sample, query.range);
             return matchesSource && matchesType && matchesDate;
           })
           .toList(growable: false);
 
       final externalSamples = <HealthMetricSample>[];
+      final externalRange = _capExternalRange(query.range);
       if (allowedSources.any(
         (source) => source.type == HealthDataSourceType.appleHealth,
       )) {
         externalSamples.addAll(
           await healthKitDataSource.getSamples(
-            range: query.range,
+            range: externalRange,
             types: query.types,
           ),
         );
@@ -159,29 +163,84 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       )) {
         externalSamples.addAll(
           await googleFitDataSource.getSamples(
-            range: query.range,
+            range: externalRange,
             types: query.types,
           ),
         );
       }
 
       if (externalSamples.isNotEmpty) {
-        final mergedCache = _mergeSamples(
-          existing: cachedExternalAll,
-          incoming: externalSamples.map(_toModel).toList(growable: false),
+        final mergedCache = _pruneExternalSamples(
+          _mergeSamples(
+            existing: cachedExternalAll,
+            incoming: externalSamples.map(_toModel).toList(growable: false),
+          ),
         );
         await localDataSource.saveCachedExternalSamples(mergedCache);
         await _syncLocalStateToRemote();
       }
 
-      final mergedExternalForResult = _mergeSamples(
-        existing: filteredCachedExternal,
-        incoming: externalSamples.map(_toModel).toList(growable: false),
+      final mergedExternalForResult = _pruneExternalSamples(
+        _mergeSamples(
+          existing: filteredCachedExternal,
+          incoming: externalSamples.map(_toModel).toList(growable: false),
+        ),
       );
 
       return Right([...filteredLocal, ...mergedExternalForResult]);
     } catch (error) {
       return Left(CacheFailure('Не удалось получить метрики.'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> syncConnectedSources() async {
+    try {
+      await _syncRemoteStateToLocal();
+      final sources = await localDataSource.getSources();
+      final connectedIds = await localDataSource.getConnectedSourceIds();
+      final cached = await localDataSource.getCachedExternalSamples();
+      final now = _now();
+
+      var merged = cached;
+      var updated = false;
+
+      final connectedExternalSources = sources
+          .where((source) {
+            if (!connectedIds.contains(source.id)) {
+              return false;
+            }
+            return source.type == HealthDataSourceType.appleHealth ||
+                source.type == HealthDataSourceType.googleFit;
+          })
+          .toList(growable: false);
+
+      for (final source in connectedExternalSources) {
+        final fetched = await _fetchIncrementalSourceSamples(
+          source: source,
+          cached: merged,
+          now: now,
+        );
+        if (fetched.isEmpty) {
+          continue;
+        }
+        final nextMerged = _pruneExternalSamples(
+          _mergeSamples(existing: merged, incoming: fetched),
+        );
+        if (!_sameSamples(merged, nextMerged)) {
+          merged = nextMerged;
+          updated = true;
+        }
+      }
+
+      if (updated) {
+        await localDataSource.saveCachedExternalSamples(merged);
+        await _syncLocalStateToRemote();
+      }
+
+      return const Right(unit);
+    } catch (error) {
+      return Left(CacheFailure('Не удалось синхронизировать внешние данные.'));
     }
   }
 
@@ -207,7 +266,9 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
         existing: localCached,
         incoming: remoteSnapshot.cachedSamples,
       );
-      await localDataSource.saveCachedExternalSamples(mergedCached);
+      await localDataSource.saveCachedExternalSamples(
+        _pruneExternalSamples(mergedCached),
+      );
     } on AuthFailure {
       // Ignore when there's no active user session.
     } catch (_) {
@@ -226,9 +287,8 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       await remoteDataSource.saveSnapshot(
         HealthRemoteSnapshot(
           connectedSourceIds: connected,
-          cachedSamples: _mergeSamples(
-            existing: const [],
-            incoming: cachedSamples,
+          cachedSamples: _pruneExternalSamples(
+            _mergeSamples(existing: const [], incoming: cachedSamples),
           ),
         ),
       );
@@ -266,7 +326,7 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       final model = _toModel(sample);
       final dedupeKey = model.id.isNotEmpty
           ? model.id
-          : '${model.type.key}_${model.timestamp.toIso8601String()}_${model.sourceId}';
+          : '${model.type.key}_${model.startAt.toIso8601String()}_${model.endAt.toIso8601String()}_${model.sourceId}';
       byId[dedupeKey] = model;
     }
 
@@ -291,6 +351,8 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
         value: sample.value,
         unit: sample.unit,
         timestamp: sample.timestamp,
+        intervalStart: sample.intervalStart,
+        intervalEnd: sample.intervalEnd,
         sourceId: _normalizeSourceId(sample.sourceId),
       );
     }
@@ -300,8 +362,16 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       value: sample.value,
       unit: sample.unit,
       timestamp: sample.timestamp,
+      intervalStart: sample.intervalStart,
+      intervalEnd: sample.intervalEnd,
       sourceId: _normalizeSourceId(sample.sourceId),
     );
+  }
+
+  bool _sampleMatchesRange(HealthMetricSample sample, HealthDateRange range) {
+    final start = sample.startAt;
+    final end = sample.endAt;
+    return !end.isBefore(range.start) && !start.isAfter(range.end);
   }
 
   String _normalizeSourceId(String sourceId) {
@@ -384,10 +454,8 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
       return;
     }
 
-    final range = HealthDateRange(
-      start: _fullSyncStartDate,
-      end: DateTime.now(),
-    );
+    final now = _now();
+    final range = HealthDateRange(start: _externalImportStart(now), end: now);
 
     List<HealthMetricSampleModel> fetched;
     switch (source.type) {
@@ -413,9 +481,102 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
     }
 
     final cached = await localDataSource.getCachedExternalSamples();
-    final merged = _mergeSamples(existing: cached, incoming: fetched);
+    final merged = _pruneExternalSamples(
+      _mergeSamples(existing: cached, incoming: fetched),
+    );
     await localDataSource.saveCachedExternalSamples(merged);
   }
+
+  Future<List<HealthMetricSampleModel>> _fetchIncrementalSourceSamples({
+    required HealthDataSource source,
+    required List<HealthMetricSampleModel> cached,
+    required DateTime now,
+  }) async {
+    final sourceId = _normalizeSourceId(source.id);
+    final latestSourceSample = _latestSampleForSource(cached, sourceId);
+    final range = HealthDateRange(
+      start: latestSourceSample == null
+          ? _externalImportStart(now)
+          : _incrementalImportStart(latestSourceSample.endAt, now),
+      end: now,
+    );
+
+    switch (source.type) {
+      case HealthDataSourceType.appleHealth:
+        return healthKitDataSource.getSamples(range: range, types: const []);
+      case HealthDataSourceType.googleFit:
+        return googleFitDataSource.getSamples(range: range, types: const []);
+      case HealthDataSourceType.local:
+      case HealthDataSourceType.unknown:
+        return const [];
+    }
+  }
+
+  HealthDateRange _capExternalRange(HealthDateRange range) {
+    final now = _now();
+    final cutoff = _externalImportStart(now);
+    final start = range.start.isBefore(cutoff) ? cutoff : range.start;
+    final end = range.end.isAfter(now) ? now : range.end;
+    return HealthDateRange(start: start, end: end);
+  }
+
+  DateTime _externalImportStart(DateTime end) {
+    return end.subtract(_externalImportWindow);
+  }
+
+  DateTime _incrementalImportStart(DateTime latestEnd, DateTime now) {
+    final cutoff = _externalImportStart(now);
+    final lookbackStart = latestEnd.subtract(_incrementalSyncLookback);
+    return lookbackStart.isBefore(cutoff) ? cutoff : lookbackStart;
+  }
+
+  List<HealthMetricSampleModel> _pruneExternalSamples(
+    List<HealthMetricSampleModel> samples,
+  ) {
+    final now = _now();
+    final cutoff = _externalImportStart(now);
+    return samples
+        .where((sample) => !sample.endAt.isBefore(cutoff))
+        .where((sample) => !sample.startAt.isAfter(now))
+        .toList(growable: false)
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+
+  HealthMetricSampleModel? _latestSampleForSource(
+    List<HealthMetricSampleModel> samples,
+    String sourceId,
+  ) {
+    HealthMetricSampleModel? latest;
+    for (final sample in samples) {
+      if (_normalizeSourceId(sample.sourceId) != sourceId) {
+        continue;
+      }
+      if (latest == null || sample.endAt.isAfter(latest.endAt)) {
+        latest = sample;
+      }
+    }
+    return latest;
+  }
+
+  bool _sameSamples(
+    List<HealthMetricSampleModel> previous,
+    List<HealthMetricSampleModel> next,
+  ) {
+    if (identical(previous, next)) {
+      return true;
+    }
+    if (previous.length != next.length) {
+      return false;
+    }
+    for (var i = 0; i < previous.length; i++) {
+      if (previous[i] != next[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  DateTime _now() => _nowProvider().toUtc();
 
   List<HealthMetricType> _supportedMetricsForSource(HealthDataSource source) {
     switch (source.type) {

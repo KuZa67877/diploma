@@ -19,4 +19,7 @@ abstract class HealthDataRepository {
   Future<Either<Failure, List<HealthMetricSample>>> getMetrics(
     HealthMetricsQuery query,
   );
+
+  /// Синхронизирует новые данные из подключенных внешних источников.
+  Future<Either<Failure, Unit>> syncConnectedSources();
 }

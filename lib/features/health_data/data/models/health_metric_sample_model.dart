@@ -10,6 +10,8 @@ class HealthMetricSampleModel extends HealthMetricSample {
     required super.value,
     required super.unit,
     required super.timestamp,
+    super.intervalStart,
+    super.intervalEnd,
     required super.sourceId,
   });
 
@@ -20,8 +22,12 @@ class HealthMetricSampleModel extends HealthMetricSample {
       type: HealthMetricTypeX.fromKey(json['type'] as String?),
       value: (json['value'] as num?)?.toDouble() ?? 0,
       unit: json['unit'] as String? ?? '',
-      timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ??
+      timestamp:
+          DateTime.tryParse(json['timestamp'] as String? ?? '') ??
+          DateTime.tryParse(json['intervalEnd'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      intervalStart: DateTime.tryParse(json['intervalStart'] as String? ?? ''),
+      intervalEnd: DateTime.tryParse(json['intervalEnd'] as String? ?? ''),
       sourceId: json['sourceId'] as String? ?? '',
     );
   }
@@ -34,6 +40,8 @@ class HealthMetricSampleModel extends HealthMetricSample {
       'value': value,
       'unit': unit,
       'timestamp': timestamp.toIso8601String(),
+      'intervalStart': intervalStart?.toIso8601String(),
+      'intervalEnd': intervalEnd?.toIso8601String(),
       'sourceId': sourceId,
     };
   }

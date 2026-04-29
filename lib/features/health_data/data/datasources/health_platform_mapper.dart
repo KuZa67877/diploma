@@ -53,18 +53,23 @@ class HealthPlatformMapper {
     HealthDataPoint point, {
     required String fallbackSourceId,
   }) {
-    final value = _extractNumericValue(point);
+    final start = point.dateFrom.toUtc();
+    final end = point.dateTo.toUtc();
+    final metricType = _mapPlatformType(point.type);
+    final value = _resolvedValue(point, metricType, start: start, end: end);
     final unit = point.unit.name;
     final sourceId = point.sourceId.isNotEmpty
         ? point.sourceId
         : fallbackSourceId;
 
     return HealthMetricSampleModel(
-      id: '${point.type.name}_${point.dateTo.toIso8601String()}_$sourceId',
-      type: _mapPlatformType(point.type),
+      id: '${point.type.name}_${start.toIso8601String()}_${end.toIso8601String()}_$sourceId',
+      type: metricType,
       value: value,
       unit: unit,
-      timestamp: point.dateTo,
+      timestamp: end,
+      intervalStart: start,
+      intervalEnd: end,
       sourceId: sourceId,
     );
   }
@@ -131,4 +136,30 @@ class HealthPlatformMapper {
 
     return 0;
   }
+
+  static double _resolvedValue(
+    HealthDataPoint point,
+    HealthMetricType metricType, {
+    required DateTime start,
+    required DateTime end,
+  }) {
+    if (_durationBackedSleepTypes.contains(metricType) && end.isAfter(start)) {
+      return end.difference(start).inMilliseconds / 60000.0;
+    }
+    return _extractNumericValue(point);
+  }
+
+  static const Set<HealthMetricType> _durationBackedSleepTypes = {
+    HealthMetricType.sleep,
+    HealthMetricType.sleepAsleep,
+    HealthMetricType.sleepAwake,
+    HealthMetricType.sleepAwakeInBed,
+    HealthMetricType.sleepDeep,
+    HealthMetricType.sleepInBed,
+    HealthMetricType.sleepLight,
+    HealthMetricType.sleepOutOfBed,
+    HealthMetricType.sleepRem,
+    HealthMetricType.sleepSession,
+    HealthMetricType.sleepUnknown,
+  };
 }

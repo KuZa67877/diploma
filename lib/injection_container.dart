@@ -9,6 +9,7 @@ import 'core/supabase/supabase_subject_resolver.dart';
 import 'features/analytics/di/analytics_di.dart';
 import 'features/auth/di/auth_di.dart';
 import 'features/dashboard/di/dashboard_di.dart';
+import 'features/export/di/export_di.dart';
 import 'features/data_input/di/data_input_di.dart';
 import 'features/diagnostics/di/diagnostics_di.dart';
 import 'features/health_data/di/health_data_di.dart';
@@ -55,6 +56,7 @@ Future<void> initDependencies() async {
   registerDashboard(getIt);
   registerDataInput(getIt);
   registerDiagnostics(getIt);
+  registerExport(getIt);
   registerHealthData(getIt);
   registerProfile(getIt);
   registerSplash(getIt);

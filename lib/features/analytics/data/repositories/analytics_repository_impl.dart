@@ -1,11 +1,11 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../dashboard/data/datasources/health_model_output_remote_data_source.dart';
 import '../../../health_data/domain/entities/health_date_range.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 import '../../../health_data/domain/entities/health_metrics_query.dart';
 import '../../../health_data/domain/repositories/health_data_repository.dart';
-import '../../../dashboard/data/services/sleep_quality_inference_model.dart';
 import '../../domain/entities/activity_sample.dart';
 import '../../domain/entities/analytics_data.dart';
 import '../../domain/entities/analytics_filter_option.dart';
@@ -15,11 +15,11 @@ import '../../domain/repositories/analytics_repository.dart';
 
 class AnalyticsRepositoryImpl implements AnalyticsRepository {
   final HealthDataRepository healthDataRepository;
-  final SleepQualityInferenceModel sleepQualityModel;
+  final HealthModelOutputRemoteDataSource modelOutputRemoteDataSource;
 
   const AnalyticsRepositoryImpl({
     required this.healthDataRepository,
-    required this.sleepQualityModel,
+    required this.modelOutputRemoteDataSource,
   });
 
   @override
@@ -64,7 +64,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
         averageHeartRate: averageHeartRate,
         averageSteps: averageSteps,
       );
-      final sleepAi = await _resolveSleepAi(now: now);
+      final sleepAi = await _resolveSleepAiFromOutputs();
 
       return Right(
         AnalyticsData(
@@ -236,89 +236,45 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     AnalyticsFilterOption(id: 'year', labelKey: 'year'),
   ];
 
-  static const int _sleepInferenceWindowDays = 30;
-  static const List<HealthMetricType> _sleepInferenceTypes = [
-    HealthMetricType.sleepAsleep,
-    HealthMetricType.sleepInBed,
-    HealthMetricType.sleepSession,
-    HealthMetricType.sleepAwake,
-    HealthMetricType.sleepAwakeInBed,
-    HealthMetricType.sleepDeep,
-    HealthMetricType.sleepLight,
-    HealthMetricType.sleepRem,
-    HealthMetricType.heartRate,
-    HealthMetricType.walkingHeartRate,
-    HealthMetricType.restingHeartRate,
-    HealthMetricType.heartRateVariabilitySdnn,
-    HealthMetricType.heartRateVariabilityRmssd,
-    HealthMetricType.steps,
-    HealthMetricType.distanceWalkingRunning,
-    HealthMetricType.distanceDelta,
-    HealthMetricType.activeEnergyBurned,
-    HealthMetricType.totalCaloriesBurned,
-  ];
+  Future<_SleepAiSnapshot> _resolveSleepAiFromOutputs() async {
+    try {
+      final outputs = await modelOutputRemoteDataSource
+          .getLatestOutputsByModelIds(const ['sleep_quality']);
+      final record = outputs['sleep_quality'];
+      if (record == null) {
+        return const _SleepAiSnapshot(
+          score: null,
+          confidence: 0,
+          status: 'unavailable',
+          reason: 'sleep_model_output_missing',
+        );
+      }
 
-  Future<_SleepAiSnapshot> _resolveSleepAi({required DateTime now}) async {
-    final sleepResult = await healthDataRepository.getMetrics(
-      HealthMetricsQuery(
-        range: HealthDateRange(
-          start: now.subtract(const Duration(days: _sleepInferenceWindowDays)),
-          end: now,
-        ),
-        types: _sleepInferenceTypes,
-      ),
-    );
-
-    Failure? failure;
-    List<HealthMetricSample>? metrics;
-    sleepResult.fold((left) => failure = left, (right) => metrics = right);
-    if (failure != null || metrics == null) {
+      return _SleepAiSnapshot(
+        score: _normalizeSleepScore(record.score),
+        confidence: record.confidence,
+        status: switch (record.status) {
+          'ready' || 'ok' => 'ok',
+          'insufficient' => 'insufficient',
+          _ => 'unavailable',
+        },
+        reason: record.reason ?? 'sleep_model_output_missing',
+      );
+    } on Failure {
       return const _SleepAiSnapshot(
         score: null,
         confidence: 0,
         status: 'unavailable',
-        reason: 'sleep_metrics_unavailable',
+        reason: 'sleep_model_output_unavailable',
       );
-    }
-
-    final wearable = metrics!
-        .where(
-          (sample) => sample.sourceId.trim().toLowerCase() != 'local_manual',
-        )
-        .toList(growable: false);
-    if (wearable.isEmpty) {
+    } catch (_) {
       return const _SleepAiSnapshot(
         score: null,
         confidence: 0,
-        status: 'insufficient',
-        reason: 'no_wearable_samples',
+        status: 'unavailable',
+        reason: 'sleep_model_output_unavailable',
       );
     }
-
-    final inferenceNow = _latestWearableTimestamp(wearable);
-    final inference = await sleepQualityModel.infer(
-      samples: wearable,
-      now: inferenceNow,
-    );
-    final score = _normalizeSleepScore(inference.score);
-    if (score != null) {
-      return _SleepAiSnapshot(
-        score: score,
-        confidence: inference.confidence,
-        status: 'ok',
-        reason: inference.reason,
-      );
-    }
-
-    final status = inference.reason.startsWith('model_not_ready')
-        ? 'unavailable'
-        : 'insufficient';
-    return _SleepAiSnapshot(
-      score: null,
-      confidence: inference.confidence,
-      status: status,
-      reason: inference.reason,
-    );
   }
 
   double? _normalizeSleepScore(double? value) {
@@ -326,20 +282,6 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
       return null;
     }
     return value.clamp(0.0, 100.0);
-  }
-
-  DateTime? _latestWearableTimestamp(List<HealthMetricSample> samples) {
-    if (samples.isEmpty) {
-      return null;
-    }
-    DateTime latest = samples.first.timestamp.toUtc();
-    for (final sample in samples) {
-      final ts = sample.timestamp.toUtc();
-      if (ts.isAfter(latest)) {
-        latest = ts;
-      }
-    }
-    return latest;
   }
 
   List<ActivitySample> _buildWeeklyActivity(List<HealthMetricSample> samples) {

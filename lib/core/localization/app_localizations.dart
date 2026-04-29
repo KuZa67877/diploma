@@ -33,6 +33,13 @@ class AppLocalizations {
     return _translations[key]?[language.code] ?? key;
   }
 
+  static String lookup(
+    String key, {
+    AppLanguage language = AppLanguage.english,
+  }) {
+    return _translations[key]?[language.code] ?? key;
+  }
+
   String getWithParams(
     String key, [
     Map<String, String> params = const <String, String>{},
@@ -887,6 +894,123 @@ class AppLocalizations {
     // Analytics
     'healthAnalytics': {'en': 'Health Analytics', 'ru': 'Аналитика здоровья'},
     'export': {'en': 'Export', 'ru': 'Экспорт'},
+    'exportDataTitle': {'en': 'Data export', 'ru': 'Экспорт данных'},
+    'exportDataSubtitle': {
+      'en': 'Copy structured health data for AI or a doctor.',
+      'ru':
+          'Скопируйте структурированные данные о состоянии, чтобы вставить их в нейросеть или показать врачу.',
+    },
+    'exportSensitiveWarning': {
+      'en':
+          'You are copying sensitive medical data. Share it only with services you trust.',
+      'ru':
+          'Вы копируете медицинские данные. Вставляйте их только в сервисы, которым доверяете.',
+    },
+    'exportPeriod': {'en': 'Period', 'ru': 'Период'},
+    'exportToday': {'en': 'Today', 'ru': 'Сегодня'},
+    'exportYesterday': {'en': 'Yesterday', 'ru': 'Вчера'},
+    'exportLast7Days': {'en': 'Last 7 days', 'ru': '7 дней'},
+    'exportLast30Days': {'en': 'Last 30 days', 'ru': '30 дней'},
+    'exportChooseRange': {'en': 'Choose range', 'ru': 'Выбрать период'},
+    'exportWhat': {'en': 'What to export', 'ru': 'Что экспортировать'},
+    'exportPulse': {'en': 'Pulse', 'ru': 'Пульс'},
+    'exportRecommendations': {'en': 'Recommendations', 'ru': 'Рекомендации'},
+    'exportRawMetrics': {'en': 'Raw metrics', 'ru': 'Сырые показатели'},
+    'exportOnlyAnomalies': {
+      'en': 'Only deviations',
+      'ru': 'Только отклонения от нормы',
+    },
+    'exportFormatTitle': {'en': 'Format', 'ru': 'Формат'},
+    'exportFormatAi': {'en': 'For AI', 'ru': 'Для нейросети'},
+    'exportFormatDoctor': {'en': 'For doctor', 'ru': 'Для врача'},
+    'exportFormatMarkdown': {'en': 'Markdown', 'ru': 'Markdown'},
+    'exportFormatJson': {'en': 'JSON', 'ru': 'JSON'},
+    'exportFormatCsv': {'en': 'CSV', 'ru': 'CSV'},
+    'exportFormatShort': {'en': 'Short', 'ru': 'Кратко'},
+    'exportFormatDetailed': {'en': 'Detailed report', 'ru': 'Подробный отчёт'},
+    'exportPromptTitle': {'en': 'AI prompt', 'ru': 'Промт для нейросети'},
+    'exportPromptAssess': {
+      'en': 'Assess my state',
+      'ru': 'Оцени моё состояние',
+    },
+    'exportPromptAnomalies': {
+      'en': 'Find anomalies',
+      'ru': 'Найди возможные отклонения',
+    },
+    'exportPromptRecommendations': {
+      'en': 'Recommend my day',
+      'ru': 'Составь рекомендации на день',
+    },
+    'exportPromptDoctorQuestions': {
+      'en': 'Questions for doctor',
+      'ru': 'Подготовь вопросы врачу',
+    },
+    'exportPromptSimple': {
+      'en': 'Explain simply',
+      'ru': 'Объясни простыми словами',
+    },
+    'exportPromptCustom': {
+      'en': 'Custom prompt',
+      'ru': 'Пользовательский промт',
+    },
+    'exportPromptCustomHint': {
+      'en': 'Describe what AI should do with the export.',
+      'ru': 'Опишите, что нейросеть должна сделать с этими данными.',
+    },
+    'exportIncludePersonalData': {
+      'en': 'Include personal data',
+      'ru': 'Включить личные данные',
+    },
+    'exportIncludePersonalDataHint': {
+      'en': 'Disabled by default to keep export de-identified.',
+      'ru': 'По умолчанию выключено, чтобы экспорт оставался обезличенным.',
+    },
+    'exportPreviewTitle': {'en': 'Preview', 'ru': 'Preview'},
+    'exportActionsTitle': {'en': 'Actions', 'ru': 'Действия'},
+    'exportCopyCurrent': {
+      'en': 'Copy current format',
+      'ru': 'Скопировать текущий формат',
+    },
+    'exportCopyAi': {'en': 'Copy for AI', 'ru': 'Скопировать для нейросети'},
+    'exportCopyDoctor': {
+      'en': 'Copy for doctor',
+      'ru': 'Скопировать отчёт для врача',
+    },
+    'exportSaveFile': {'en': 'Export file', 'ru': 'Экспортировать файл'},
+    'exportCopied': {'en': 'Data copied', 'ru': 'Данные скопированы'},
+    'exportFileCreated': {
+      'en': 'File created: {file}',
+      'ru': 'Файл создан: {file}',
+    },
+    'exportShareFailed': {
+      'en': 'Unable to export or share file.',
+      'ru': 'Не удалось экспортировать или отправить файл.',
+    },
+    'exportLoading': {
+      'en': 'Collecting data for export.',
+      'ru': 'Собираем данные для экспорта.',
+    },
+    'exportPartialData': {
+      'en': 'Part of the requested data is missing',
+      'ru': 'Часть данных отсутствует',
+    },
+    'exportNoData': {
+      'en': 'Not enough data for export.',
+      'ru': 'Недостаточно данных для экспорта.',
+    },
+    'exportNoDataHint': {
+      'en': 'Choose another period or sync health data.',
+      'ru':
+          'Недостаточно данных для экспорта. Попробуйте другой период или синхронизируйте данные.',
+    },
+    'exportReadyState': {
+      'en': 'Ready: {records} records from {sources} sources.',
+      'ru': 'Готово: {records} записей из {sources} источников.',
+    },
+    'exportSoftError': {
+      'en': 'Unable to prepare export right now.',
+      'ru': 'Не удалось подготовить экспорт. Попробуйте ещё раз.',
+    },
     'trackTrendsMetricsShared': {
       'en': 'Track trends for the metrics you shared',
       'ru': 'Отслеживайте тренды по метрикам, которыми вы поделились',

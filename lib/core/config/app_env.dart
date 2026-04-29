@@ -20,7 +20,7 @@ class AppEnv {
       return compileTimeFlavor.toLowerCase();
     }
 
-    final envFlavor = (dotenv.env['APP_FLAVOR'] ?? '').trim().toLowerCase();
+    final envFlavor = (_readEnv('APP_FLAVOR') ?? '').trim().toLowerCase();
     if (envFlavor.isNotEmpty) {
       return envFlavor;
     }
@@ -34,29 +34,37 @@ class AppEnv {
 
   /// URL проекта Supabase.
   static String get supabaseUrl =>
-      dotenv.env['SUPABASE_URL'] ?? 'https://YOUR_PROJECT.supabase.co';
+      _readEnv('SUPABASE_URL') ?? 'https://YOUR_PROJECT.supabase.co';
 
   /// Анонимный ключ Supabase.
   static String get supabaseAnonKey =>
-      dotenv.env['SUPABASE_ANON_KEY'] ?? 'YOUR_SUPABASE_ANON_KEY';
+      _readEnv('SUPABASE_ANON_KEY') ?? 'YOUR_SUPABASE_ANON_KEY';
 
   /// Redirect URL для OAuth-провайдеров Supabase.
   static String get supabaseRedirectUrl =>
-      dotenv.env['SUPABASE_REDIRECT_URL'] ??
+      _readEnv('SUPABASE_REDIRECT_URL') ??
       'io.supabase.medi_ai://login-callback';
 
   /// Флаг отображения соц. авторизации в UI.
   static bool get enableSocialAuth =>
-      (dotenv.env['ENABLE_SOCIAL_AUTH'] ?? 'false').toLowerCase() == 'true';
+      (_readEnv('ENABLE_SOCIAL_AUTH') ?? 'false').toLowerCase() == 'true';
 
   /// Dev-флаг для пропуска реальной авторизации.
   static bool get enableAuthBypass =>
-      (dotenv.env['ENABLE_AUTH_BYPASS'] ?? 'false').toLowerCase() == 'true';
+      (_readEnv('ENABLE_AUTH_BYPASS') ?? 'false').toLowerCase() == 'true';
 
   /// Признак того, что Supabase настроен.
   static bool get isSupabaseConfigured {
     final urlOk = !supabaseUrl.contains('YOUR_PROJECT');
     final keyOk = !supabaseAnonKey.contains('YOUR_SUPABASE_ANON_KEY');
     return urlOk && keyOk;
+  }
+
+  static String? _readEnv(String key) {
+    try {
+      return dotenv.env[key];
+    } catch (_) {
+      return null;
+    }
   }
 }

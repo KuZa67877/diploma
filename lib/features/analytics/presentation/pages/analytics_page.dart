@@ -8,17 +8,39 @@ import '../widgets/analytics_content.dart';
 import '../widgets/analytics_error_state.dart';
 
 class AnalyticsPage extends StatefulWidget {
-  const AnalyticsPage({super.key});
+  final VoidCallback onOpenExport;
+
+  const AnalyticsPage({super.key, required this.onOpenExport});
 
   @override
   State<AnalyticsPage> createState() => _AnalyticsPageState();
 }
 
 class _AnalyticsPageState extends State<AnalyticsPage> {
+  late final AnalyticsCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = getIt<AnalyticsCubit>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _cubit.load();
+    });
+  }
+
+  @override
+  void dispose() {
+    _cubit.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => getIt<AnalyticsCubit>()..load(),
+    return BlocProvider.value(
+      value: _cubit,
       child: BlocBuilder<AnalyticsCubit, AnalyticsState>(
         builder: (context, state) {
           final viewData = state.whenOrNull(loaded: (data) => data);
@@ -50,6 +72,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               child: SafeArea(
                 child: AnalyticsContent(
                   viewData: viewData,
+                  onOpenExport: widget.onOpenExport,
                   onFilterSelected: (filterId) =>
                       context.read<AnalyticsCubit>().selectFilter(filterId),
                 ),

@@ -1,6 +1,6 @@
 import 'package:get_it/get_it.dart';
+import '../../dashboard/data/datasources/health_model_output_remote_data_source.dart';
 import '../../health_data/domain/repositories/health_data_repository.dart';
-import '../../dashboard/data/services/sleep_quality_inference_model.dart';
 import '../data/repositories/analytics_repository_impl.dart';
 import '../domain/repositories/analytics_repository.dart';
 import '../domain/usecases/get_analytics_data.dart';
@@ -11,7 +11,7 @@ void registerAnalytics(GetIt getIt) {
   getIt.registerLazySingleton<AnalyticsRepository>(
     () => AnalyticsRepositoryImpl(
       healthDataRepository: getIt<HealthDataRepository>(),
-      sleepQualityModel: getIt<SleepQualityInferenceModel>(),
+      modelOutputRemoteDataSource: getIt<HealthModelOutputRemoteDataSource>(),
     ),
   );
 

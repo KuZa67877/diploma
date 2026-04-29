@@ -46,6 +46,7 @@ class HealthScoreCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
+              width: double.infinity,
               height: 290,
               child: Stack(
                 alignment: Alignment.center,

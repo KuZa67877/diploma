@@ -25,6 +25,8 @@ abstract class HealthKitDataSource {
 
 /// Реализация HealthKit на базе пакета health.
 class HealthKitDataSourceImpl implements HealthKitDataSource {
+  static const Duration _fetchChunk = Duration(days: 7);
+
   final Health _health;
   bool _isAuthorized = false;
 
@@ -57,9 +59,13 @@ class HealthKitDataSourceImpl implements HealthKitDataSource {
     if (!authorized) return const [];
 
     final platformTypes = HealthPlatformMapper.toPlatformTypes(types);
-    final points = await _health.getHealthDataFromTypes(
-      startTime: range.start,
-      endTime: range.end,
+    if (platformTypes.isEmpty || range.end.isBefore(range.start)) {
+      return const [];
+    }
+
+    final points = await _fetchPointsInChunks(
+      start: range.start,
+      end: range.end,
       types: platformTypes,
     );
     final unique = _health.removeDuplicates(points);
@@ -73,6 +79,33 @@ class HealthKitDataSourceImpl implements HealthKitDataSource {
         .where((sample) => sample.type != HealthMetricType.unknown)
         .toList(growable: false);
   }
+
+  Future<List<HealthDataPoint>> _fetchPointsInChunks({
+    required DateTime start,
+    required DateTime end,
+    required List<HealthDataType> types,
+  }) async {
+    final points = <HealthDataPoint>[];
+    var cursor = start;
+
+    while (!cursor.isAfter(end)) {
+      final chunkEnd = _minDate(cursor.add(_fetchChunk), end);
+      final chunk = await _health.getHealthDataFromTypes(
+        startTime: cursor,
+        endTime: chunkEnd,
+        types: types,
+      );
+      points.addAll(chunk);
+      if (chunkEnd.isAtSameMomentAs(end)) {
+        break;
+      }
+      cursor = chunkEnd.add(const Duration(milliseconds: 1));
+    }
+
+    return points;
+  }
+
+  DateTime _minDate(DateTime a, DateTime b) => a.isBefore(b) ? a : b;
 
   Future<bool> _requestAuthorization(List<HealthMetricType> types) async {
     final platformTypes = HealthPlatformMapper.toPlatformTypes(types);

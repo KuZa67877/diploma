@@ -70,6 +70,12 @@ abstract class HealthModelOutputRemoteDataSource {
   Future<Map<String, HealthModelOutputRecord>> getLatestOutputsByModelIds(
     List<String> modelIds,
   );
+
+  Future<List<HealthModelOutputRecord>> getOutputsByModelIdsForRange({
+    required List<String> modelIds,
+    required DateTime start,
+    required DateTime end,
+  });
 }
 
 class HealthModelOutputRemoteDataSourceImpl
@@ -192,6 +198,76 @@ class HealthModelOutputRemoteDataSourceImpl
     }
 
     return latestByModel;
+  }
+
+  @override
+  Future<List<HealthModelOutputRecord>> getOutputsByModelIdsForRange({
+    required List<String> modelIds,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final normalizedModelIds = modelIds
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (normalizedModelIds.isEmpty) {
+      return const <HealthModelOutputRecord>[];
+    }
+
+    final user = _clientProvider().auth.currentUser;
+    if (user == null) {
+      throw const AuthFailure('No active session. Please sign in again.');
+    }
+
+    final subjectId = await _subjectResolver.resolveSubjectId();
+    final rows = await _clientProvider()
+        .from('health_model_outputs')
+        .select(
+          'model_id, model_version, window_start, window_end, score, confidence, status, source, reason, reason_codes, data_quality, features',
+        )
+        .eq('subject_id', subjectId)
+        .inFilter('model_id', normalizedModelIds)
+        .lte('window_start', end.toUtc().toIso8601String())
+        .gte('window_end', start.toUtc().toIso8601String())
+        .order('window_end', ascending: false);
+
+    final records = <HealthModelOutputRecord>[];
+    for (final row in rows) {
+      final modelId = row['model_id']?.toString().trim() ?? '';
+      if (modelId.isEmpty) {
+        continue;
+      }
+
+      final windowStart = DateTime.tryParse(
+        row['window_start']?.toString() ?? '',
+      )?.toUtc();
+      final windowEnd = DateTime.tryParse(
+        row['window_end']?.toString() ?? '',
+      )?.toUtc();
+      if (windowStart == null || windowEnd == null) {
+        continue;
+      }
+
+      records.add(
+        HealthModelOutputRecord(
+          modelId: modelId,
+          modelVersion: row['model_version']?.toString() ?? '',
+          windowStart: windowStart,
+          windowEnd: windowEnd,
+          score: _toDoubleOrNull(row['score']),
+          confidence: _toDouble(row['confidence']).clamp(0.0, 1.0),
+          status: row['status']?.toString() ?? 'unknown',
+          source: row['source']?.toString(),
+          reason: row['reason']?.toString(),
+          reasonCodes: _toListOfMap(row['reason_codes']),
+          dataQuality: _toMap(row['data_quality']),
+          features: _toMap(row['features']),
+        ),
+      );
+    }
+
+    return records;
   }
 
   double _toDouble(Object? value) {

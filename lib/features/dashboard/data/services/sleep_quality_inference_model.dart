@@ -678,12 +678,21 @@ class SleepQualityInferenceModel {
     final inBedMinutes = segments
         .where((item) => item.type == HealthMetricType.sleepInBed)
         .fold<double>(0, (sum, item) => sum + item.durationMinutes);
-    final awakeInBedMinutes = segments
-        .where((item) => item.type == HealthMetricType.sleepAwakeInBed)
+    final awakeMinutes = segments
+        .where(
+          (item) =>
+              item.type == HealthMetricType.sleepAwake ||
+              item.type == HealthMetricType.sleepAwakeInBed,
+        )
         .fold<double>(0, (sum, item) => sum + item.durationMinutes);
-    final resolvedInBed = inBedMinutes > 0
-        ? inBedMinutes
-        : (resolvedAsleep + awakeInBedMinutes);
+    final resolvedInBed = max(
+      windowMinutes,
+      inBedMinutes > 0
+          ? inBedMinutes
+          : (sessionMinutes > 0
+                ? sessionMinutes
+                : (resolvedAsleep + awakeMinutes)),
+    );
 
     final windowSamples = allSamples
         .where((sample) {
@@ -815,9 +824,25 @@ class SleepQualityInferenceModel {
   }
 
   _SleepSegment? _segmentFromSample(HealthMetricSample sample) {
+    final explicitStart = sample.intervalStart?.toUtc();
+    final explicitEnd = sample.intervalEnd?.toUtc();
+    if (explicitStart != null &&
+        explicitEnd != null &&
+        explicitEnd.isAfter(explicitStart)) {
+      final durationMinutes =
+          explicitEnd.difference(explicitStart).inMilliseconds / 60000.0;
+      if (!durationMinutes.isFinite || durationMinutes <= 0) return null;
+      return _SleepSegment(
+        type: sample.type,
+        startUtc: explicitStart,
+        endUtc: explicitEnd,
+        durationMinutes: durationMinutes,
+      );
+    }
+
     final minutes = sample.value;
     if (!minutes.isFinite || minutes <= 0) return null;
-    final endUtc = sample.timestamp.toUtc();
+    final endUtc = sample.endAt;
     final durationMs = (minutes * 60 * 1000).round();
     final startUtc = endUtc.subtract(Duration(milliseconds: durationMs));
     return _SleepSegment(

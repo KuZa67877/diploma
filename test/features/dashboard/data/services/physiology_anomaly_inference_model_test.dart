@@ -74,6 +74,73 @@ void main() {
       expect(json['reason_codes'], isA<List<dynamic>>());
       expect(json['data_quality'], isA<Map<String, dynamic>>());
     });
+
+    test(
+      'treats gaps between sleep segments as fragmentation when awake is absent',
+      () {
+        final fragmentedCurrentDay = <HealthMetricSample>[
+          _sample(
+            HealthMetricType.restingHeartRate,
+            61,
+            DateTime.utc(2026, 4, 26, 8),
+          ),
+          _sample(
+            HealthMetricType.heartRate,
+            66,
+            DateTime.utc(2026, 4, 26, 12),
+          ),
+          _sample(HealthMetricType.heartRate, 56, DateTime.utc(2026, 4, 26, 6)),
+          _sample(
+            HealthMetricType.heartRateVariabilitySdnn,
+            62,
+            DateTime.utc(2026, 4, 26, 7),
+          ),
+          _sample(
+            HealthMetricType.respiratoryRate,
+            14,
+            DateTime.utc(2026, 4, 26, 7),
+          ),
+          _sample(
+            HealthMetricType.sleepWristTemperature,
+            36.4,
+            DateTime.utc(2026, 4, 26, 7),
+          ),
+          _sample(
+            HealthMetricType.bloodOxygen,
+            97,
+            DateTime.utc(2026, 4, 26, 7),
+          ),
+          _sample(
+            HealthMetricType.sleepAsleep,
+            180,
+            DateTime.utc(2026, 4, 26, 1),
+          ),
+          _sample(
+            HealthMetricType.sleepAsleep,
+            150,
+            DateTime.utc(2026, 4, 26, 6, 30),
+          ),
+          _sample(HealthMetricType.steps, 8200, DateTime.utc(2026, 4, 26, 20)),
+          _sample(
+            HealthMetricType.activeEnergyBurned,
+            510,
+            DateTime.utc(2026, 4, 26, 20),
+          ),
+        ];
+
+        final result = model.inferSync(
+          samples: _baselineSamples(now) + fragmentedCurrentDay,
+          now: now,
+        );
+
+        expect(result.features['sleep_total_minutes'], closeTo(330, 0.1));
+        expect(result.features['sleep_awake_minutes'], closeTo(180, 0.1));
+        expect(
+          result.features['sleep_fragmentation_index'],
+          closeTo(0.353, 0.01),
+        );
+      },
+    );
   });
 }
 

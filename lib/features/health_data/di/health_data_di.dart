@@ -7,6 +7,7 @@ import '../data/datasources/health_data_local_data_source.dart';
 import '../data/datasources/health_data_remote_data_source.dart';
 import '../data/datasources/health_kit_data_source.dart';
 import '../data/repositories/health_data_repository_impl.dart';
+import '../data/services/health_data_sync_service.dart';
 import '../domain/repositories/health_data_repository.dart';
 import '../domain/usecases/connect_health_source.dart';
 import '../domain/usecases/disconnect_health_source.dart';
@@ -41,6 +42,9 @@ void registerHealthData(GetIt getIt) {
       healthKitDataSource: getIt<HealthKitDataSource>(),
       googleFitDataSource: getIt<GoogleFitDataSource>(),
     ),
+  );
+  getIt.registerLazySingleton<HealthDataSyncService>(
+    () => HealthDataSyncService(getIt<HealthDataRepository>()),
   );
 
   getIt.registerLazySingleton(

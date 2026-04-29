@@ -9,6 +9,7 @@ import '../../features/analytics/presentation/pages/analytics_page.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/data_input/presentation/pages/data_input_page.dart';
+import '../../features/export/presentation/pages/export_data_page.dart';
 import '../../features/health_data/presentation/pages/health_import_preview_page.dart';
 import '../../features/health_data/presentation/pages/health_sources_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -42,6 +43,7 @@ class AppRouter {
   static const String analyticsPath = '/analytics';
   static const String settingsPath = '/settings';
   static const String profilePath = '/profile';
+  static const String exportDataPath = '/analytics/export';
   static const String debugLogsPath = '/debug-logs';
   static const String sleepModelDebugPath = '/sleep-model-debug';
   static const String stressModelDebugPath = '/stress-model-debug';
@@ -60,6 +62,7 @@ class AppRouter {
   static const String analyticsRoute = 'analytics';
   static const String settingsRoute = 'settings';
   static const String profileRoute = 'profile';
+  static const String exportDataRoute = 'export-data';
   static const String debugLogsRoute = 'debug-logs';
   static const String sleepModelDebugRoute = 'sleep-model-debug';
   static const String stressModelDebugRoute = 'stress-model-debug';
@@ -189,12 +192,21 @@ class AppRouter {
               GoRoute(
                 path: analyticsPath,
                 name: analyticsRoute,
-                pageBuilder: (context, state) =>
-                    NoTransitionPage(child: const AnalyticsPage()),
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: AnalyticsPage(
+                    onOpenExport: () => context.pushNamed(exportDataRoute),
+                  ),
+                ),
               ),
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: exportDataPath,
+        name: exportDataRoute,
+        builder: (context, state) =>
+            ExportDataPage(onBack: () => context.pop()),
       ),
       GoRoute(
         path: settingsPath,

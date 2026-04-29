@@ -63,14 +63,7 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
       final samples = <HealthMetricSampleModel>[];
       var offset = 0;
       while (true) {
-        final page = await _clientProvider()
-            .from('health_metric_samples')
-            .select(
-              'sample_id, metric_type, value, unit, observed_at, source_id',
-            )
-            .eq('subject_id', subjectId)
-            .order('observed_at', ascending: false)
-            .range(offset, offset + _pageSize - 1);
+        final page = await _selectSamplesPage(subjectId, offset);
         if (page.isEmpty) {
           break;
         }
@@ -86,6 +79,12 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
           if (observedAt == null) {
             continue;
           }
+          final intervalStart = DateTime.tryParse(
+            row['interval_start_at']?.toString() ?? '',
+          );
+          final intervalEnd = DateTime.tryParse(
+            row['interval_end_at']?.toString() ?? '',
+          );
 
           samples.add(
             HealthMetricSampleModel(
@@ -94,6 +93,8 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
               value: _toDouble(row['value']),
               unit: row['unit']?.toString() ?? '',
               timestamp: observedAt,
+              intervalStart: intervalStart,
+              intervalEnd: intervalEnd,
               sourceId: row['source_id']?.toString() ?? '',
             ),
           );
@@ -226,6 +227,21 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
             'value': sample.value,
             'unit': sample.unit,
             'observed_at': sample.timestamp.toIso8601String(),
+            'interval_start_at': sample.intervalStart?.toIso8601String(),
+            'interval_end_at': sample.intervalEnd?.toIso8601String(),
+            'source_id': sample.sourceId,
+          },
+        )
+        .toList(growable: false);
+    final legacyPayload = samples
+        .map(
+          (sample) => {
+            'subject_id': subjectId,
+            'sample_id': sample.id,
+            'metric_type': sample.type.key,
+            'value': sample.value,
+            'unit': sample.unit,
+            'observed_at': sample.timestamp.toIso8601String(),
             'source_id': sample.sourceId,
           },
         )
@@ -238,10 +254,60 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
             ? payload.length
             : i + _upsertChunkSize,
       );
-      await _clientProvider()
-          .from('health_metric_samples')
-          .upsert(chunk, onConflict: 'subject_id,sample_id');
+      final legacyChunk = legacyPayload.sublist(
+        i,
+        i + _upsertChunkSize > legacyPayload.length
+            ? legacyPayload.length
+            : i + _upsertChunkSize,
+      );
+      try {
+        await _clientProvider()
+            .from('health_metric_samples')
+            .upsert(chunk, onConflict: 'subject_id,sample_id');
+      } catch (error) {
+        if (!_isMissingIntervalColumnsError(error)) {
+          rethrow;
+        }
+        await _clientProvider()
+            .from('health_metric_samples')
+            .upsert(legacyChunk, onConflict: 'subject_id,sample_id');
+      }
     }
+  }
+
+  Future<List<dynamic>> _selectSamplesPage(String subjectId, int offset) async {
+    try {
+      return await _clientProvider()
+          .from('health_metric_samples')
+          .select(
+            'sample_id, metric_type, value, unit, observed_at, interval_start_at, interval_end_at, source_id',
+          )
+          .eq('subject_id', subjectId)
+          .order('observed_at', ascending: false)
+          .range(offset, offset + _pageSize - 1);
+    } catch (error) {
+      if (!_isMissingIntervalColumnsError(error)) {
+        rethrow;
+      }
+      return await _clientProvider()
+          .from('health_metric_samples')
+          .select('sample_id, metric_type, value, unit, observed_at, source_id')
+          .eq('subject_id', subjectId)
+          .order('observed_at', ascending: false)
+          .range(offset, offset + _pageSize - 1);
+    }
+  }
+
+  bool _isMissingIntervalColumnsError(Object error) {
+    if (error is! PostgrestException) {
+      return false;
+    }
+    if (error.code != '42703') {
+      return false;
+    }
+    final message = error.message.toLowerCase();
+    return message.contains('interval_start_at') ||
+        message.contains('interval_end_at');
   }
 
   double _toDouble(Object? value) {

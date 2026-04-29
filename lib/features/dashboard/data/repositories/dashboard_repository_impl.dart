@@ -222,6 +222,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
         now: inferenceNow,
       );
       await _persistModelOutputs(
+        activity: recommendationInference,
         sleep: sleepInference,
         stress: stressInference,
         physiologyAnomaly: physiologyAnomalyInference,
@@ -258,6 +259,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
   }
 
   Future<void> _persistModelOutputs({
+    required HarvardActivityRecommendationResult activity,
     required SleepQualityInferenceResult sleep,
     required StressInferenceResult stress,
     required PhysiologyAnomalyInferenceResult physiologyAnomaly,
@@ -270,6 +272,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
     try {
       await modelOutputRemoteDataSource.saveOutputs([
+        _activityOutputPayload(activity, now),
         _sleepOutputPayload(sleep, now),
         _stressOutputPayload(stress),
         _physiologyOutputPayload(physiologyAnomaly),
@@ -285,6 +288,35 @@ class DashboardRepositoryImpl implements DashboardRepository {
         payload: {'error': '$error', 'stackTrace': '$stackTrace'},
       );
     }
+  }
+
+  HealthModelOutputPayload _activityOutputPayload(
+    HarvardActivityRecommendationResult activity,
+    DateTime now,
+  ) {
+    return HealthModelOutputPayload(
+      modelId: 'harvard_activity_recommendation_v1',
+      modelVersion: activity.modelVersion,
+      windowStart: now.subtract(const Duration(days: 30)),
+      windowEnd: now,
+      score: activity.activityClass == HarvardActivityClass.insufficientData
+          ? null
+          : activity.confidence * 100.0,
+      confidence: activity.confidence,
+      status: _activityClassCode(activity.activityClass),
+      source: 'harvard_aw_model',
+      reason: activity.activityClass == HarvardActivityClass.insufficientData
+          ? 'insufficient_data'
+          : 'ok',
+      reasonCodes: const [],
+      dataQuality: _safeJsonMap({
+        'recommendations_count': activity.recommendationKeys.length,
+      }),
+      features: _safeJsonMap({
+        'activity_class': _activityClassCode(activity.activityClass),
+        'recommendation_keys': activity.recommendationKeys,
+      }),
+    );
   }
 
   Future<void> _persistHealthScoreOutput({
@@ -403,7 +435,18 @@ class DashboardRepositoryImpl implements DashboardRepository {
           )
           .toList(growable: false),
       dataQuality: _safeJsonMap(result.dataQuality.toJson()),
-      features: _safeJsonMap(result.features),
+      features: _safeJsonMap({
+        ...result.features,
+        'group_scores': result.groupScores
+            .map(
+              (group) => _safeJsonMap({
+                'code': group.code,
+                'score': group.score,
+                'confidence': group.confidence,
+              }),
+            )
+            .toList(growable: false),
+      }),
     );
   }
 
@@ -916,7 +959,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     final resolvedSeries = sanitizedSeries.isNotEmpty
         ? sanitizedSeries
         : safe == null
-        ? const <double>[0]
+        ? const <double>[]
         : <double>[safe];
     return DashboardMetric(
       id: id,

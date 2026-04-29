@@ -18,6 +18,7 @@ import 'core/supabase/supabase_initializer.dart';
 import 'core/config/app_env.dart';
 import 'core/logging/app_logger.dart';
 import 'core/widgets/dev_logs_overlay_button.dart';
+import 'features/health_data/data/services/health_data_sync_service.dart';
 
 late final GoRouter _router;
 
@@ -85,6 +86,8 @@ void main() async {
 
   _router = AppRouter(authStatusCubit: authStatusCubit).router;
   logger.info('app.lifecycle', 'Router configured');
+  getIt<HealthDataSyncService>().start();
+  logger.info('health.sync', 'Health sync service started');
 
   runApp(MainApp(router: _router));
 }
@@ -124,9 +127,12 @@ class MainApp extends StatelessWidget {
                   builder: (context, child) => DevLogsOverlayButton(
                     child: child ?? const SizedBox(),
                     onOpenLogs: () {
-                      final currentRouteName =
-                          router.routerDelegate.currentConfiguration.last.route
-                              .name;
+                      final currentRouteName = router
+                          .routerDelegate
+                          .currentConfiguration
+                          .last
+                          .route
+                          .name;
                       if (currentRouteName == AppRouter.debugLogsRoute) {
                         return;
                       }

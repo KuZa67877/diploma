@@ -45,6 +45,14 @@ class DashboardCubit extends Cubit<DashboardState> {
       healthScore: healthScore,
       noData: !summary.dataSnapshot.hasWearableSamples,
     );
+    final modelCards = _buildModelCards(summary.modelResults);
+    final keyMetrics = _mapKeyMetrics(summary.metrics);
+    final metrics = _mapMetrics(summary.metrics);
+    final aiRecommendations = _buildAiRecommendations(
+      modelResults: summary.modelResults,
+      dataStatus: dataStatus,
+      hasVisibleModelData: modelCards.isNotEmpty,
+    );
 
     return DashboardViewData(
       greetingKey: summary.greetingKey,
@@ -70,25 +78,31 @@ class DashboardCubit extends Cubit<DashboardState> {
           ? _recommendationsFor(scoreState)
           : summary.recommendationKeys.take(3).toList(growable: false),
       insight: _mapInsight(summary.insight),
-      modelCards: _buildModelCards(summary.modelResults),
-      aiRecommendations: _buildAiRecommendations(
-        modelResults: summary.modelResults,
-        dataStatus: dataStatus,
+      modelCards: modelCards,
+      aiRecommendations: aiRecommendations,
+      keyMetrics: keyMetrics,
+      showNoDataState: _showNoDataState(
+        summary,
+        dataStatus,
+        modelCards: modelCards,
+        keyMetrics: keyMetrics,
+        metrics: metrics,
       ),
-      keyMetrics: _mapKeyMetrics(summary.metrics),
-      showNoDataState: _showNoDataState(summary, dataStatus),
       noDataMessage: const DashboardLocalizedText('dashboardNoDataMessage'),
       noDataHint: const DashboardLocalizedText('dashboardNoDataHint'),
-      metrics: _mapMetrics(summary.metrics),
+      metrics: metrics,
     );
   }
 
   bool _showNoDataState(
     DashboardSummary summary,
-    DashboardDataStatusState dataStatus,
-  ) {
+    DashboardDataStatusState dataStatus, {
+    required List<DashboardModelCardUiModel> modelCards,
+    required List<DashboardKeyMetricUiModel> keyMetrics,
+    required List<DashboardMetricUiModel> metrics,
+  }) {
     if (summary.dataSnapshot.hasWearableSamples) {
-      return false;
+      return modelCards.isEmpty && keyMetrics.isEmpty && metrics.isEmpty;
     }
     return dataStatus == DashboardDataStatusState.insufficient ||
         dataStatus == DashboardDataStatusState.syncRequired;
@@ -245,25 +259,14 @@ class DashboardCubit extends Cubit<DashboardState> {
       _stressCard(data.stress),
       _baselineCard(data.baseline),
       _recoveryCard(data.recovery),
-    ];
+    ].whereType<DashboardModelCardUiModel>().toList(growable: false);
   }
 
-  DashboardModelCardUiModel _activityCard(DashboardActivityModelResult result) {
+  DashboardModelCardUiModel? _activityCard(
+    DashboardActivityModelResult result,
+  ) {
     if (result.insufficientData) {
-      return const DashboardModelCardUiModel(
-        id: 'activity',
-        titleKey: 'activity',
-        state: DashboardVisualState.insufficient,
-        badge: DashboardLocalizedText('dashboardBadgeInsufficient'),
-        summary: DashboardLocalizedText('dashboardActivitySummaryInsufficient'),
-        explanation: DashboardLocalizedText(
-          'dashboardActivityExplainInsufficient',
-        ),
-        recommendation: DashboardLocalizedText(
-          'dashboardActivityRecInsufficient',
-        ),
-        progress: null,
-      );
+      return null;
     }
 
     final confidencePct = ((result.confidence ?? 0) * 100).round();
@@ -320,20 +323,9 @@ class DashboardCubit extends Cubit<DashboardState> {
     };
   }
 
-  DashboardModelCardUiModel _sleepCard(DashboardSleepModelResult result) {
+  DashboardModelCardUiModel? _sleepCard(DashboardSleepModelResult result) {
     if (result.insufficientData || result.score == null) {
-      return const DashboardModelCardUiModel(
-        id: 'sleep',
-        titleKey: 'dashboardSleepRecoveryTitle',
-        state: DashboardVisualState.insufficient,
-        badge: DashboardLocalizedText('dashboardBadgeInsufficient'),
-        summary: DashboardLocalizedText('dashboardSleepSummaryInsufficient'),
-        explanation: DashboardLocalizedText(
-          'dashboardSleepExplainInsufficient',
-        ),
-        recommendation: DashboardLocalizedText('dashboardSleepRecInsufficient'),
-        progress: null,
-      );
+      return null;
     }
 
     final hours = result.sleepMinutes == null
@@ -372,22 +364,9 @@ class DashboardCubit extends Cubit<DashboardState> {
     );
   }
 
-  DashboardModelCardUiModel _stressCard(DashboardStressModelResult result) {
+  DashboardModelCardUiModel? _stressCard(DashboardStressModelResult result) {
     if (result.insufficientData || result.score == null) {
-      return const DashboardModelCardUiModel(
-        id: 'stress',
-        titleKey: 'stress',
-        state: DashboardVisualState.insufficient,
-        badge: DashboardLocalizedText('dashboardBadgeInsufficient'),
-        summary: DashboardLocalizedText('dashboardStressSummaryInsufficient'),
-        explanation: DashboardLocalizedText(
-          'dashboardStressExplainInsufficient',
-        ),
-        recommendation: DashboardLocalizedText(
-          'dashboardStressRecInsufficient',
-        ),
-        progress: null,
-      );
+      return null;
     }
 
     final factors = <String>[];
@@ -443,22 +422,11 @@ class DashboardCubit extends Cubit<DashboardState> {
     return 'dashboardStressSummaryLow';
   }
 
-  DashboardModelCardUiModel _baselineCard(DashboardBaselineModelResult result) {
+  DashboardModelCardUiModel? _baselineCard(
+    DashboardBaselineModelResult result,
+  ) {
     if (result.insufficientData || result.score == null) {
-      return const DashboardModelCardUiModel(
-        id: 'baseline',
-        titleKey: 'dashboardBaselineTitle',
-        state: DashboardVisualState.insufficient,
-        badge: DashboardLocalizedText('dashboardBadgeInsufficient'),
-        summary: DashboardLocalizedText('dashboardBaselineSummaryInsufficient'),
-        explanation: DashboardLocalizedText(
-          'dashboardBaselineExplainInsufficient',
-        ),
-        recommendation: DashboardLocalizedText(
-          'dashboardBaselineRecInsufficient',
-        ),
-        progress: null,
-      );
+      return null;
     }
 
     final mainDeviation = result.deviations.isEmpty
@@ -524,22 +492,11 @@ class DashboardCubit extends Cubit<DashboardState> {
     };
   }
 
-  DashboardModelCardUiModel _recoveryCard(DashboardRecoveryModelResult result) {
+  DashboardModelCardUiModel? _recoveryCard(
+    DashboardRecoveryModelResult result,
+  ) {
     if (result.insufficientData || result.score == null) {
-      return const DashboardModelCardUiModel(
-        id: 'recovery',
-        titleKey: 'dashboardRecoveryTitle',
-        state: DashboardVisualState.insufficient,
-        badge: DashboardLocalizedText('dashboardBadgeInsufficient'),
-        summary: DashboardLocalizedText('dashboardRecoverySummaryInsufficient'),
-        explanation: DashboardLocalizedText(
-          'dashboardRecoveryExplainInsufficient',
-        ),
-        recommendation: DashboardLocalizedText(
-          'dashboardRecoveryRecInsufficient',
-        ),
-        progress: null,
-      );
+      return null;
     }
 
     final reason = result.reasons.isEmpty
@@ -583,6 +540,7 @@ class DashboardCubit extends Cubit<DashboardState> {
   List<DashboardAiRecommendationUiModel> _buildAiRecommendations({
     required DashboardModelResults modelResults,
     required DashboardDataStatusState dataStatus,
+    required bool hasVisibleModelData,
   }) {
     final items = <DashboardAiRecommendationUiModel>[];
 
@@ -627,7 +585,7 @@ class DashboardCubit extends Cubit<DashboardState> {
       );
     }
 
-    if (items.isEmpty) {
+    if (items.isEmpty && hasVisibleModelData) {
       items.add(
         const DashboardAiRecommendationUiModel(
           importance: DashboardVisualState.good,
@@ -658,6 +616,7 @@ class DashboardCubit extends Cubit<DashboardState> {
 
   List<DashboardMetricUiModel> _mapMetrics(List<DashboardMetric> metrics) {
     return metrics
+        .where((metric) => metric.value != '—' || metric.data.isNotEmpty)
         .map(
           (metric) => DashboardMetricUiModel(
             id: metric.id,

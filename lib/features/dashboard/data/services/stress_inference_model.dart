@@ -1357,10 +1357,11 @@ class StressInferenceModel {
     final start = now.subtract(const Duration(days: 30));
 
     for (final sample in samples) {
-      if (!_sleepTypes.contains(sample.type) || sample.value <= 0) continue;
-      final end = sample.timestamp.toUtc();
+      if (!_sleepTypes.contains(sample.type)) continue;
+      final end = sample.endAt;
       if (!_inRange(end, start, now)) continue;
-      final minutes = sample.value;
+      final minutes = sample.intervalMinutes ?? sample.value;
+      if (!minutes.isFinite || minutes <= 0) continue;
       final date = end.hour < 18 ? end : end.add(const Duration(days: 1));
       final dateKey =
           '${date.year.toString().padLeft(4, '0')}-'
@@ -1469,6 +1470,7 @@ class _SleepNight {
 class _SleepNightAccumulator {
   final String dateKey;
   DateTime? latestEnd;
+  DateTime? earliestStart;
   double genericAsleep = 0;
   double stagedAsleep = 0;
   double awake = 0;
@@ -1480,6 +1482,11 @@ class _SleepNightAccumulator {
   void add(HealthMetricType type, double minutes, DateTime end) {
     if (latestEnd == null || end.isAfter(latestEnd!)) {
       latestEnd = end;
+    }
+    final durationMs = (minutes * 60 * 1000).round();
+    final start = end.subtract(Duration(milliseconds: durationMs));
+    if (earliestStart == null || start.isBefore(earliestStart!)) {
+      earliestStart = start;
     }
 
     switch (type) {
@@ -1508,11 +1515,17 @@ class _SleepNightAccumulator {
 
   _SleepNight build() {
     final asleep = stagedAsleep > 0 ? stagedAsleep : genericAsleep;
+    final spanMinutes =
+        earliestStart != null &&
+            latestEnd != null &&
+            latestEnd!.isAfter(earliestStart!)
+        ? latestEnd!.difference(earliestStart!).inMinutes.toDouble()
+        : 0.0;
     final resolvedInBed = inBed > 0
         ? inBed
         : session > 0
         ? session
-        : asleep + awake;
+        : math.max(asleep + awake, spanMinutes);
     return _SleepNight(
       dateKey: dateKey,
       end: latestEnd ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
