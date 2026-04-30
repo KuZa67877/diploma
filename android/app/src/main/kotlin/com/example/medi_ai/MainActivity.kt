@@ -71,7 +71,7 @@ class MainActivity : FlutterFragmentActivity() {
     ) {
         val uri = FileProvider.getUriForFile(
             this,
-            "${BuildConfig.APPLICATION_ID}.fileprovider",
+            "$packageName.fileprovider",
             file
         )
         val intent = Intent(Intent.ACTION_SEND).apply {

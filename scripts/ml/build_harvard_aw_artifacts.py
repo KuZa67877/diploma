@@ -632,6 +632,7 @@ def build(config: BuildConfig) -> Dict[str, Path]:
             str(idx): label for idx, label in preprocessor.inverse_target_mapping.items()
         },
         "metrics": metrics,
+        "dataset_path": config.dataset_path.name,
         "dataset_source": config.dataset_source,
         "dataset_uri": config.dataset_uri,
         "dataset_sha256": _sha256_file(config.dataset_path),
