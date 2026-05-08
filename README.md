@@ -2,6 +2,47 @@
 
 Мобильное приложение на Flutter для персонального мониторинга самочувствия и исследования поведенческих/физиологических паттернов на основе локальных ML-моделей.
 
+## Интерфейс приложения
+
+Макеты экранов ниже экспортированы из [`assets/data/design.pen`](./assets/data/design.pen).
+
+<p align="center">
+  <img src="./docs/readme/screens/LQkjD.png" width="220" alt="MediAI Splash screen" />
+  <img src="./docs/readme/screens/FtBau.png" width="220" alt="MediAI Auth screen" />
+  <img src="./docs/readme/screens/cIgQB.png" width="220" alt="MediAI Dashboard screen" />
+</p>
+
+<p align="center">
+  <img src="./docs/readme/screens/opZT1.png" width="220" alt="MediAI Analytics screen" />
+  <img src="./docs/readme/screens/x7VBNr.png" width="220" alt="MediAI AI chat empty state" />
+  <img src="./docs/readme/screens/J5ajM5.png" width="220" alt="MediAI AI chat filled state" />
+</p>
+
+## До / После
+
+Для демонстрации AI-чата можно показать состояние до взаимодействия и после получения ответа.
+
+<table>
+  <tr>
+    <td align="center"><b>До</b></td>
+    <td align="center"><b>После</b></td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="./docs/readme/screens/x7VBNr.png" width="260" alt="AI chat empty state" />
+    </td>
+    <td align="center">
+      <img src="./docs/readme/screens/J5ajM5.png" width="260" alt="AI chat with result" />
+    </td>
+  </tr>
+</table>
+
+## Видео-демо
+
+[![Смотреть видео-демо приложения](./docs/readme/screens/J5ajM5.png)](https://drive.google.com/file/d/1ofhHkBttY9t0AhrqCAMDQsqtIojaPOSO/view?usp=sharing)
+
+Прямая ссылка: https://drive.google.com/file/d/1ofhHkBttY9t0AhrqCAMDQsqtIojaPOSO/view?usp=sharing
+
 ## Feature map (`lib/features`)
 
 - `analytics`

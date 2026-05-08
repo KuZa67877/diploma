@@ -1,11 +1,9 @@
 import 'package:dartz/dartz.dart' show Either, Right, Unit, unit;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medi_ai/core/error/failures.dart';
 import 'package:medi_ai/core/localization/app_localizations.dart';
-import 'package:medi_ai/core/usecases/usecase.dart';
 import 'package:medi_ai/features/analytics/domain/entities/activity_sample.dart';
 import 'package:medi_ai/features/analytics/domain/entities/analytics_data.dart';
 import 'package:medi_ai/features/analytics/domain/entities/analytics_filter_option.dart';
@@ -474,6 +472,7 @@ class _AuthToDashboardFlowHostState extends State<_AuthToDashboardFlowHost> {
       _AuthStage.dashboard => DashboardPage(
         onOpenProfile: () {},
         onOpenHealthSources: () {},
+        onOpenAiAnalysis: () {},
       ),
     };
   }

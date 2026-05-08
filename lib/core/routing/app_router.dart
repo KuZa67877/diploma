@@ -6,6 +6,7 @@ import '../config/app_env.dart';
 import '../logging/app_logger.dart';
 import '../../injection_container.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
+import '../../features/ai_assistant/presentation/screens/deepseek_chat_screen.dart';
 import '../../features/auth/presentation/pages/auth_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/data_input/presentation/pages/data_input_page.dart';
@@ -15,6 +16,7 @@ import '../../features/health_data/presentation/pages/health_sources_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/baseline_forecast_debug_page.dart';
 import '../../features/settings/presentation/pages/debug_logs_page.dart';
+import '../../features/settings/presentation/pages/health_mock_data_page.dart';
 import '../../features/settings/presentation/pages/physiology_anomaly_debug_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/sleep_model_debug_page.dart';
@@ -44,11 +46,13 @@ class AppRouter {
   static const String settingsPath = '/settings';
   static const String profilePath = '/profile';
   static const String exportDataPath = '/analytics/export';
+  static const String aiAssistantPath = '/ai-assistant';
   static const String debugLogsPath = '/debug-logs';
   static const String sleepModelDebugPath = '/sleep-model-debug';
   static const String stressModelDebugPath = '/stress-model-debug';
   static const String physiologyAnomalyDebugPath = '/physiology-anomaly-debug';
   static const String baselineForecastDebugPath = '/baseline-forecast-debug';
+  static const String healthMockSeederPath = '/health-mock-seeder';
   static const String wellbeingCheckInPath = '/wellbeing-check-in';
 
   static const String splashRoute = 'splash';
@@ -63,11 +67,13 @@ class AppRouter {
   static const String settingsRoute = 'settings';
   static const String profileRoute = 'profile';
   static const String exportDataRoute = 'export-data';
+  static const String aiAssistantRoute = 'ai-assistant';
   static const String debugLogsRoute = 'debug-logs';
   static const String sleepModelDebugRoute = 'sleep-model-debug';
   static const String stressModelDebugRoute = 'stress-model-debug';
   static const String physiologyAnomalyDebugRoute = 'physiology-anomaly-debug';
   static const String baselineForecastDebugRoute = 'baseline-forecast-debug';
+  static const String healthMockSeederRoute = 'health-mock-seeder';
   static const String wellbeingCheckInRoute = 'wellbeing-check-in';
 
   late final GoRouter router = GoRouter(
@@ -163,6 +169,7 @@ class AppRouter {
                       healthSourcesRoute,
                       queryParameters: const {'from': 'dashboard'},
                     ),
+                    onOpenAiAnalysis: () => context.pushNamed(aiAssistantRoute),
                   ),
                 ),
               ),
@@ -209,6 +216,12 @@ class AppRouter {
             ExportDataPage(onBack: () => context.pop()),
       ),
       GoRoute(
+        path: aiAssistantPath,
+        name: aiAssistantRoute,
+        builder: (context, state) =>
+            AiAssistantChatScreen(onBack: () => context.pop()),
+      ),
+      GoRoute(
         path: settingsPath,
         name: settingsRoute,
         builder: (context, state) => SettingsPage(
@@ -217,6 +230,7 @@ class AppRouter {
             healthSourcesRoute,
             queryParameters: const {'from': 'settings'},
           ),
+          onOpenAiAnalysis: () => context.pushNamed(aiAssistantRoute),
           onOpenSleepModelDebug: AppLogger.instance.isEnabled
               ? () => context.pushNamed(sleepModelDebugRoute)
               : null,
@@ -228,6 +242,9 @@ class AppRouter {
               : null,
           onOpenBaselineForecastDebug: AppLogger.instance.isEnabled
               ? () => context.pushNamed(baselineForecastDebugRoute)
+              : null,
+          onOpenHealthMockSeeder: AppLogger.instance.isEnabled
+              ? () => context.pushNamed(healthMockSeederRoute)
               : null,
         ),
       ),
@@ -308,6 +325,13 @@ class AppRouter {
           builder: (context, state) =>
               BaselineForecastDebugPage(onBack: () => context.pop()),
         ),
+      if (AppLogger.instance.isEnabled)
+        GoRoute(
+          path: healthMockSeederPath,
+          name: healthMockSeederRoute,
+          builder: (context, state) =>
+              HealthMockDataPage(onBack: () => context.pop()),
+        ),
     ],
   );
 
@@ -339,6 +363,7 @@ class AppRouter {
     wellbeingPath,
     analyticsPath,
     settingsPath,
+    aiAssistantPath,
     wellbeingCheckInPath,
     profilePath,
     if (AppLogger.instance.isEnabled) debugLogsPath,
@@ -346,6 +371,7 @@ class AppRouter {
     if (AppLogger.instance.isEnabled) stressModelDebugPath,
     if (AppLogger.instance.isEnabled) physiologyAnomalyDebugPath,
     if (AppLogger.instance.isEnabled) baselineForecastDebugPath,
+    if (AppLogger.instance.isEnabled) healthMockSeederPath,
   ];
 }
 

@@ -12,19 +12,23 @@ import '../../../../core/widgets/gradient_background.dart';
 class SettingsPage extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenHealthSources;
+  final VoidCallback onOpenAiAnalysis;
   final VoidCallback? onOpenSleepModelDebug;
   final VoidCallback? onOpenStressModelDebug;
   final VoidCallback? onOpenPhysiologyAnomalyDebug;
   final VoidCallback? onOpenBaselineForecastDebug;
+  final VoidCallback? onOpenHealthMockSeeder;
 
   const SettingsPage({
     super.key,
     required this.onBack,
     required this.onOpenHealthSources,
+    required this.onOpenAiAnalysis,
     this.onOpenSleepModelDebug,
     this.onOpenStressModelDebug,
     this.onOpenPhysiologyAnomalyDebug,
     this.onOpenBaselineForecastDebug,
+    this.onOpenHealthMockSeeder,
   });
 
   @override
@@ -52,8 +56,8 @@ class SettingsPage extends StatelessWidget {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: ListView(
+              padding: EdgeInsets.zero,
               children: [
                 Row(
                   children: [
@@ -93,6 +97,14 @@ class SettingsPage extends StatelessWidget {
                         title: l10n.get('healthDataSources'),
                         subtitle: l10n.get('healthSourcesSummary'),
                         onTap: onOpenHealthSources,
+                      ),
+                      _DividerLine(color: borderColor),
+                      _SettingsRow(
+                        icon: LucideIcons.brain,
+                        iconBg: AppColors.accentLight,
+                        title: 'AI-чат состояния',
+                        subtitle: 'Groq, health-данные и анализ фото',
+                        onTap: onOpenAiAnalysis,
                       ),
                       _DividerLine(color: borderColor),
                       _SettingsRow(
@@ -179,6 +191,16 @@ class SettingsPage extends StatelessWidget {
                           title: l10n.get('baselineForecastDebug'),
                           subtitle: l10n.get('baselineForecastDebugSubtitle'),
                           onTap: onOpenBaselineForecastDebug,
+                        ),
+                        _DividerLine(color: borderColor),
+                        _SettingsRow(
+                          icon: LucideIcons.database,
+                          iconBg: isDark
+                              ? AppColors.darkMuted
+                              : AppColors.muted,
+                          title: 'Health mock seeder',
+                          subtitle: 'Запись 30 дней тестовых данных в Health',
+                          onTap: onOpenHealthMockSeeder,
                         ),
                       ],
                     ],

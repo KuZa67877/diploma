@@ -1199,7 +1199,7 @@
           "id": "BUpKq",
           "name": "boardSub",
           "fill": "#64748B",
-          "content": "Splash → Auth → Basic Data → Integrations → Home → Wellbeing Calendar → Analytics → Profile → State Check-in",
+          "content": "Splash → Auth → Basic Data → Integrations → Home → Wellbeing Calendar → Analytics → Profile → State Check-in → AI Chat",
           "fontFamily": "Inter",
           "fontSize": 14,
           "fontWeight": "normal"
@@ -9223,6 +9223,1875 @@
                               "fontFamily": "Inter",
                               "fontSize": 10,
                               "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "J5ajM5",
+              "name": "10 AI Chat",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "#F8FAFB",
+              "cornerRadius": 28,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E2E8F0"
+              },
+              "layout": "vertical",
+              "gap": 14,
+              "padding": [
+                24,
+                20,
+                20,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "PKfFS",
+                  "name": "chatBody",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "MsbRx",
+                      "name": "chatHeader",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "lsAlC",
+                          "name": "backWrap",
+                          "width": 36,
+                          "height": 36,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 12,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "Uf0f0",
+                              "name": "backIcon",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "chevron-left",
+                              "iconFontFamily": "lucide",
+                              "fill": "#64748B"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "HLNQ9",
+                          "name": "titleWrap",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "y4C2E",
+                              "name": "chatTitle",
+                              "fill": "#1E2D3D",
+                              "content": "AI-чат",
+                              "fontFamily": "Inter",
+                              "fontSize": 24,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "n3Qnwp",
+                              "name": "chatSubtitle",
+                              "fill": "#64748B",
+                              "content": "Помощник по вопросам о здоровье",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "rVrh4",
+                          "name": "modelBadge",
+                          "fill": "#E8F5F3",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#D6ECE8"
+                          },
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "CUbvX",
+                              "name": "modelBadgeText",
+                              "fill": "#1F7A71",
+                              "content": "MediAI",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PBlXS",
+                      "name": "helperCard",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 16,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E2E8F0"
+                      },
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "fMGV5",
+                          "name": "helperTitle",
+                          "fill": "#1E2D3D",
+                          "content": "Спросите про симптомы, сон или активность",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "L0q1Tq",
+                          "name": "helperBody",
+                          "fill": "#64748B",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Можно ввести вопрос текстом или приложить фото графика, часов или еды. Ассистент ответит с учётом вашего контекста здоровья.",
+                          "lineHeight": 1.4,
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "UIIsx",
+                      "name": "messagesArea",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "g0C56V",
+                          "name": "msg1Row",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "nmQYW",
+                              "name": "msg1Bubble",
+                              "width": 274,
+                              "fill": "#FFFFFF",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "layout": "vertical",
+                              "gap": 6,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Nd3uq",
+                                  "name": "msg1Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Ассистент",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Y65OHv",
+                                  "name": "msg1Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Привет. Отправьте вопрос о самочувствии или приложите фото, и я помогу его интерпретировать.",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "kdac5",
+                          "name": "msg2Row",
+                          "width": "fill_container",
+                          "justifyContent": "end",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "qshf8",
+                              "name": "msg2Bubble",
+                              "width": 258,
+                              "fill": "#E8F5F3",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#D6ECE8"
+                              },
+                              "layout": "vertical",
+                              "gap": 8,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "By3n5",
+                                  "name": "msg2Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Вы",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "ykEsN",
+                                  "name": "msg2Photo",
+                                  "width": "fill_container",
+                                  "height": 112,
+                                  "fill": "#F1F5F9",
+                                  "cornerRadius": 14,
+                                  "stroke": {
+                                    "align": "inside",
+                                    "thickness": 1,
+                                    "fill": "#D6ECE8"
+                                  },
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "XkUIO",
+                                      "name": "msg2PhotoMeta",
+                                      "fill": "#64748B",
+                                      "content": "Фото: запястье после прогулки",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "nZ738",
+                                  "name": "msg2Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Посмотри, пожалуйста, нормален ли для меня такой пульс после прогулки?",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "w3KYU",
+                          "name": "msg3Row",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "g1oB5B",
+                              "name": "msg3Bubble",
+                              "width": 282,
+                              "fill": "#FFFFFF",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "layout": "vertical",
+                              "gap": 6,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "gbCyC",
+                                  "name": "msg3Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Ассистент",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "h9mVk",
+                                  "name": "msg3Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "По фото я могу помочь с интерпретацией, но итог лучше сверять с вашим обычным диапазоном. Если хотите, уточню по пульсу, нагрузке и сну за день.",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YrlCe",
+                      "name": "composerWrap",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 18,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E2E8F0"
+                      },
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ucq6e",
+                          "name": "draftAttach",
+                          "width": "fill_container",
+                          "fill": "#F8FAFB",
+                          "cornerRadius": 14,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "XHk9g",
+                              "name": "draftThumb",
+                              "width": 44,
+                              "height": 44,
+                              "fill": "#D6ECE8",
+                              "cornerRadius": 12,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "WYLib",
+                                  "name": "draftThumbLabel",
+                                  "fill": "#1F7A71",
+                                  "content": "IMG",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b1UWPR",
+                              "name": "draftInfo",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ITIz0",
+                                  "name": "draftName",
+                                  "fill": "#1E2D3D",
+                                  "content": "pulse_walk.jpg",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Sk1SC",
+                                  "name": "draftMeta",
+                                  "fill": "#64748B",
+                                  "content": "1 фото прикреплено",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "o6SSSe",
+                          "name": "inputRow",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "U210A",
+                              "name": "photoBtn",
+                              "fill": "#F1F5F9",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                11,
+                                12
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "C5mtqT",
+                                  "name": "photoBtnLabel",
+                                  "fill": "#1E2D3D",
+                                  "content": "+ Фото",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "RHM7k",
+                              "name": "inputField",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                12,
+                                14
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "aOLdW",
+                                  "name": "inputPlaceholder",
+                                  "fill": "#94A3B8",
+                                  "content": "Введите вопрос",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "F1V1nG",
+                              "name": "sendBtn",
+                              "fill": "#1F7A71",
+                              "cornerRadius": 16,
+                              "padding": [
+                                11,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "yog1v",
+                                  "name": "sendText",
+                                  "fill": "#FFFFFF",
+                                  "content": "Send",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x7VBNr",
+              "name": "11 AI Chat Empty",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "#F8FAFB",
+              "cornerRadius": 28,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E2E8F0"
+              },
+              "layout": "vertical",
+              "gap": 14,
+              "padding": [
+                24,
+                20,
+                20,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "TSvab",
+                  "name": "chatBody",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "L6L8u7",
+                      "name": "chatHeader",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WpAxM",
+                          "name": "emptyBack",
+                          "width": 36,
+                          "height": 36,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 12,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "YpC0T",
+                              "name": "emptyBackIcon",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "chevron-left",
+                              "iconFontFamily": "lucide",
+                              "fill": "#64748B"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LMStn",
+                          "name": "emptyTitleWrap",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "wdxdK",
+                              "name": "emptyTitle",
+                              "fill": "#1E2D3D",
+                              "content": "AI-чат",
+                              "fontFamily": "Inter",
+                              "fontSize": 24,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Ns6OD",
+                              "name": "emptySubtitle",
+                              "fill": "#64748B",
+                              "content": "Помощник по вопросам о здоровье",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "w9BclF",
+                          "name": "emptyBadge",
+                          "fill": "#E8F5F3",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#D6ECE8"
+                          },
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "DviEb",
+                              "name": "emptyBadgeText",
+                              "fill": "#1F7A71",
+                              "content": "MediAI",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PbWye",
+                      "name": "messagesArea",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 14,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "SciYI",
+                          "name": "emptyIconWrap",
+                          "width": 72,
+                          "height": 72,
+                          "fill": "#E8F5F3",
+                          "cornerRadius": 24,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "X1VpAU",
+                              "name": "emptyIcon",
+                              "width": 28,
+                              "height": 28,
+                              "iconFontName": "message-circle",
+                              "iconFontFamily": "lucide",
+                              "fill": "#1F7A71"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "T65nI",
+                          "name": "emptyHeroTitle",
+                          "fill": "#1E2D3D",
+                          "content": "Пока нет диалога",
+                          "fontFamily": "Inter",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "KOQ5b",
+                          "name": "emptyHeroDesc",
+                          "fill": "#64748B",
+                          "textGrowth": "fixed-width",
+                          "width": 248,
+                          "content": "Задайте вопрос про сон, пульс, стресс или питание. Можно также прикрепить фото и получить краткое пояснение.",
+                          "lineHeight": 1.45,
+                          "textAlign": "center",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "x8F6E",
+                      "name": "composerWrap",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 18,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E2E8F0"
+                      },
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zramE",
+                          "name": "inputRow",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "QGJ8y",
+                              "name": "emptyPhotoBtn",
+                              "fill": "#F1F5F9",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                11,
+                                12
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "D9g7WQ",
+                                  "name": "emptyPhotoText",
+                                  "fill": "#1E2D3D",
+                                  "content": "+ Фото",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b8JYi",
+                              "name": "emptyInputField",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                12,
+                                14
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "RRMyO",
+                                  "name": "emptyPlaceholder",
+                                  "fill": "#94A3B8",
+                                  "content": "Например: Почему я так устал?",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Q6E8Kr",
+                              "name": "emptySendBtn",
+                              "fill": "#1F7A71",
+                              "cornerRadius": 16,
+                              "padding": [
+                                11,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "C6KWSt",
+                                  "name": "emptySendText",
+                                  "fill": "#FFFFFF",
+                                  "content": "Send",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "J3okh",
+              "name": "12 AI Chat Loading",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "#F8FAFB",
+              "cornerRadius": 28,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E2E8F0"
+              },
+              "layout": "vertical",
+              "gap": 14,
+              "padding": [
+                24,
+                20,
+                20,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "iPhsz",
+                  "name": "chatBody",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Ehkd0",
+                      "name": "chatHeader",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Gu3WA",
+                          "name": "loadingBack",
+                          "width": 36,
+                          "height": 36,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 12,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "vSBro",
+                              "name": "loadingBackIcon",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "chevron-left",
+                              "iconFontFamily": "lucide",
+                              "fill": "#64748B"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "GEy6T",
+                          "name": "loadingTitleWrap",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "tciGq",
+                              "name": "loadingTitle",
+                              "fill": "#1E2D3D",
+                              "content": "AI-чат",
+                              "fontFamily": "Inter",
+                              "fontSize": 24,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "XVwR4",
+                              "name": "loadingSubtitle",
+                              "fill": "#64748B",
+                              "content": "Помощник по вопросам о здоровье",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "uS5Xs",
+                          "name": "loadingBadge",
+                          "fill": "#E8F5F3",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#D6ECE8"
+                          },
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "nwZZM",
+                              "name": "loadingBadgeText",
+                              "fill": "#1F7A71",
+                              "content": "MediAI",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nDWU2",
+                      "name": "messagesArea",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Kk0IF",
+                          "name": "loadingMsg1Row",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "i75bC",
+                              "name": "loadingMsg1Bubble",
+                              "width": 274,
+                              "fill": "#FFFFFF",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "layout": "vertical",
+                              "gap": 6,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "r1E4U5",
+                                  "name": "loadingMsg1Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Ассистент",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Xulrv",
+                                  "name": "loadingMsg1Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Опишите, что вас беспокоит, и я помогу сопоставить это с данными о сне, пульсе и нагрузке.",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cT5eo",
+                          "name": "loadingMsg2Row",
+                          "width": "fill_container",
+                          "justifyContent": "end",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "ZdtwH",
+                              "name": "loadingMsg2Bubble",
+                              "width": 258,
+                              "fill": "#E8F5F3",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#D6ECE8"
+                              },
+                              "layout": "vertical",
+                              "gap": 6,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "b4wC5m",
+                                  "name": "loadingMsg2Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Вы",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "EQcrq",
+                                  "name": "loadingMsg2Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Сравни мой сон за последние 3 дня и скажи, что могло сильнее всего повлиять на восстановление.",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "AtvpB",
+                          "name": "loadingMsg3Row",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "fCqBJ",
+                              "name": "loadingMsg3Bubble",
+                              "width": 170,
+                              "fill": "#FFFFFF",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "layout": "vertical",
+                              "gap": 10,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Zn1MS",
+                                  "name": "loadingMsg3Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Ассистент",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "z8NNVW",
+                                  "name": "loadingDots",
+                                  "gap": 6,
+                                  "children": [
+                                    {
+                                      "type": "ellipse",
+                                      "id": "c1Uefa",
+                                      "name": "dot1",
+                                      "fill": "#CBD5E1",
+                                      "width": 8,
+                                      "height": 8
+                                    },
+                                    {
+                                      "type": "ellipse",
+                                      "id": "BpBIh",
+                                      "name": "dot2",
+                                      "fill": "#94A3B8",
+                                      "width": 8,
+                                      "height": 8
+                                    },
+                                    {
+                                      "type": "ellipse",
+                                      "id": "H180CX",
+                                      "name": "dot3",
+                                      "fill": "#CBD5E1",
+                                      "width": 8,
+                                      "height": 8
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "J1cGh",
+                                  "name": "loadingStatus",
+                                  "fill": "#64748B",
+                                  "content": "Анализирую ответ...",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EZ2V6",
+                      "name": "composerWrap",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 18,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E2E8F0"
+                      },
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "b9zfl3",
+                          "name": "inputRow",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "bPs5a",
+                              "name": "loadingPhotoBtn",
+                              "fill": "#F1F5F9",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                11,
+                                12
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "G1neCP",
+                                  "name": "loadingPhotoText",
+                                  "fill": "#1E2D3D",
+                                  "content": "+ Фото",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "XuOok",
+                              "name": "loadingInputField",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                12,
+                                14
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "kH3m5",
+                                  "name": "loadingPlaceholder",
+                                  "fill": "#94A3B8",
+                                  "content": "Дождитесь ответа...",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Nd4je",
+                              "name": "loadingSendBtn",
+                              "fill": "#CBD5E1",
+                              "cornerRadius": 16,
+                              "padding": [
+                                11,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "BGmo7",
+                                  "name": "loadingSendText",
+                                  "fill": "#FFFFFF",
+                                  "content": "...",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xnKg4",
+              "name": "13 AI Chat Photo Error",
+              "clip": true,
+              "width": 390,
+              "height": 844,
+              "fill": "#F8FAFB",
+              "cornerRadius": 28,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E2E8F0"
+              },
+              "layout": "vertical",
+              "gap": 14,
+              "padding": [
+                24,
+                20,
+                20,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "UpCr4",
+                  "name": "chatBody",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "b18SjK",
+                      "name": "chatHeader",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Hv2z5",
+                          "name": "errorBack",
+                          "width": 36,
+                          "height": 36,
+                          "fill": "#FFFFFF",
+                          "cornerRadius": 12,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#E2E8F0"
+                          },
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "q09WQ",
+                              "name": "errorBackIcon",
+                              "width": 16,
+                              "height": 16,
+                              "iconFontName": "chevron-left",
+                              "iconFontFamily": "lucide",
+                              "fill": "#64748B"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "R6JdN",
+                          "name": "errorTitleWrap",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "bFw8r",
+                              "name": "errorTitle",
+                              "fill": "#1E2D3D",
+                              "content": "AI-чат",
+                              "fontFamily": "Inter",
+                              "fontSize": 24,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "SwvX8",
+                              "name": "errorSubtitle",
+                              "fill": "#64748B",
+                              "content": "Помощник по вопросам о здоровье",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "TgJIw",
+                          "name": "errorBadge",
+                          "fill": "#E8F5F3",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#D6ECE8"
+                          },
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "wyVkw",
+                              "name": "errorBadgeText",
+                              "fill": "#1F7A71",
+                              "content": "MediAI",
+                              "fontFamily": "Inter",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "blZfd",
+                      "name": "messagesArea",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "justifyContent": "end",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "p38G5m",
+                          "name": "errorMsg1Row",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Uoo4L",
+                              "name": "errorMsg1Bubble",
+                              "width": 274,
+                              "fill": "#FFFFFF",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "layout": "vertical",
+                              "gap": 6,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "yMJAI",
+                                  "name": "errorMsg1Label",
+                                  "fill": "#1F7A71",
+                                  "content": "Ассистент",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "qaZaw",
+                                  "name": "errorMsg1Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Прикрепите фото, если хотите, чтобы я помог интерпретировать снимок или график самочувствия.",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "XZdra",
+                          "name": "errorMsg2Row",
+                          "width": "fill_container",
+                          "justifyContent": "end",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "C31Dx",
+                              "name": "errorMsg2Bubble",
+                              "width": 258,
+                              "fill": "#FEE2E2",
+                              "cornerRadius": 18,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#FECACA"
+                              },
+                              "layout": "vertical",
+                              "gap": 8,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "JomUJ",
+                                  "name": "errorMsg2Label",
+                                  "fill": "#991B1B",
+                                  "content": "Вы",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "xJKEb",
+                                  "name": "errorMsg2Photo",
+                                  "width": "fill_container",
+                                  "height": 112,
+                                  "fill": "#FFF5F5",
+                                  "cornerRadius": 14,
+                                  "stroke": {
+                                    "align": "inside",
+                                    "thickness": 1,
+                                    "fill": "#FECACA"
+                                  },
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "OhN5c",
+                                      "name": "errorMsg2PhotoText",
+                                      "fill": "#991B1B",
+                                      "content": "Фото не удалось загрузить",
+                                      "fontFamily": "Inter",
+                                      "fontSize": 12,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "vZb8s",
+                                  "name": "errorMsg2Text",
+                                  "fill": "#1E2D3D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Хотела отправить фото часов после тренировки.",
+                                  "lineHeight": 1.45,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "xHMeu",
+                          "name": "errorCardRow",
+                          "width": "fill_container",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "LXOik",
+                              "name": "errorCard",
+                              "width": 250,
+                              "fill": "#FEF2F2",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#FECACA"
+                              },
+                              "layout": "vertical",
+                              "gap": 6,
+                              "padding": 12,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "TyTab",
+                                  "name": "errorCardTitle",
+                                  "fill": "#991B1B",
+                                  "content": "Ошибка отправки",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "FCXH3",
+                                  "name": "errorCardText",
+                                  "fill": "#7F1D1D",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Проверьте подключение или попробуйте загрузить фото ещё раз.",
+                                  "lineHeight": 1.4,
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "knobd",
+                      "name": "composerWrap",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 18,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E2E8F0"
+                      },
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 10,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "dlthm",
+                          "name": "errorAttach",
+                          "width": "fill_container",
+                          "fill": "#FEF2F2",
+                          "cornerRadius": 14,
+                          "stroke": {
+                            "align": "inside",
+                            "thickness": 1,
+                            "fill": "#FECACA"
+                          },
+                          "gap": 10,
+                          "padding": [
+                            8,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "IiqSo",
+                              "name": "errorThumb",
+                              "width": 44,
+                              "height": 44,
+                              "fill": "#FEE2E2",
+                              "cornerRadius": 12,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "l4VvLg",
+                                  "name": "errorThumbText",
+                                  "fill": "#991B1B",
+                                  "content": "ERR",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "afYpJ",
+                              "name": "errorInfo",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "UUmXC",
+                                  "name": "errorFileName",
+                                  "fill": "#1E2D3D",
+                                  "content": "sleep_watch.jpg",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "600"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "WqBUE",
+                                  "name": "errorFileMeta",
+                                  "fill": "#991B1B",
+                                  "content": "Не удалось отправить фото",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 11,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "zxCbu",
+                          "name": "errorActions",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "PINtU",
+                              "name": "retryBtn",
+                              "width": "fill_container",
+                              "fill": "#FEE2E2",
+                              "cornerRadius": 14,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#FECACA"
+                              },
+                              "padding": [
+                                10,
+                                12
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "GqB0V",
+                                  "name": "retryText",
+                                  "fill": "#991B1B",
+                                  "content": "Повторить",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Cw32s",
+                              "name": "deleteBtn",
+                              "width": "fill_container",
+                              "fill": "#F1F5F9",
+                              "cornerRadius": 14,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                10,
+                                12
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "HyE6s",
+                                  "name": "deleteText",
+                                  "fill": "#1E2D3D",
+                                  "content": "Удалить",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Pg0Z0",
+                          "name": "inputRow",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "kP2qS",
+                              "name": "errorPhotoBtn",
+                              "fill": "#F1F5F9",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                11,
+                                12
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ie93i",
+                                  "name": "errorPhotoText",
+                                  "fill": "#1E2D3D",
+                                  "content": "+ Фото",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Dlc8j",
+                              "name": "errorInputField",
+                              "width": "fill_container",
+                              "fill": "#F8FAFB",
+                              "cornerRadius": 16,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E2E8F0"
+                              },
+                              "padding": [
+                                12,
+                                14
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "TQFVV",
+                                  "name": "errorPlaceholder",
+                                  "fill": "#94A3B8",
+                                  "content": "Добавьте комментарий",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "p4KYt",
+                              "name": "errorSendBtn",
+                              "fill": "#CBD5E1",
+                              "cornerRadius": 16,
+                              "padding": [
+                                11,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ynkpP",
+                                  "name": "errorSendText",
+                                  "fill": "#FFFFFF",
+                                  "content": "Send",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 12,
+                                  "fontWeight": "700"
+                                }
+                              ]
                             }
                           ]
                         }

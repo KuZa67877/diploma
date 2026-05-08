@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../models/dashboard_ui_models.dart';
+import 'ai_diagnostics_button.dart';
 import 'dashboard_header.dart';
 import 'health_score_card.dart';
 
@@ -12,12 +13,14 @@ class DashboardContent extends StatelessWidget {
   final DashboardViewData viewData;
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenHealthSources;
+  final VoidCallback onOpenAiAnalysis;
 
   const DashboardContent({
     super.key,
     required this.viewData,
     required this.onOpenProfile,
     required this.onOpenHealthSources,
+    required this.onOpenAiAnalysis,
   });
 
   @override
@@ -62,6 +65,8 @@ class DashboardContent extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 4),
+          AiDiagnosticsButton(onPressed: onOpenAiAnalysis),
           if (viewData.modelCards.isNotEmpty) ...[
             _sectionTitle(context, localizations.get('modelResults')),
             const SizedBox(height: 8),

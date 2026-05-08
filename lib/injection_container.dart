@@ -7,6 +7,7 @@ import 'core/auth/auth_status_cubit.dart';
 import 'core/supabase/anonymous_user_snapshot_data_source.dart';
 import 'core/supabase/supabase_subject_resolver.dart';
 import 'features/analytics/di/analytics_di.dart';
+import 'features/ai_assistant/di/ai_assistant_di.dart';
 import 'features/auth/di/auth_di.dart';
 import 'features/dashboard/di/dashboard_di.dart';
 import 'features/export/di/export_di.dart';
@@ -57,6 +58,7 @@ Future<void> initDependencies() async {
   registerDataInput(getIt);
   registerDiagnostics(getIt);
   registerExport(getIt);
+  registerAiAssistant(getIt);
   registerHealthData(getIt);
   registerProfile(getIt);
   registerSplash(getIt);

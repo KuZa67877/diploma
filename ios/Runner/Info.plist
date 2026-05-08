@@ -49,5 +49,7 @@
 	<string>Allow access to health data to provide analytics and reports.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Allow writing health data to Apple Health when needed.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Приложению нужен доступ к фото, чтобы отправлять изображения в AI-чат.</string>
 </dict>
 </plist>

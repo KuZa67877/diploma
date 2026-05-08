@@ -60,6 +60,37 @@ class AppEnv {
     return urlOk && keyOk;
   }
 
+  /// Groq API key. Legacy DeepSeek keys are also respected for backwards compatibility.
+  static String get groqApiKey =>
+      _readEnv('GROQ_API_KEY') ?? _readEnv('DEEPSEEK_API_KEY') ?? '';
+
+  /// Groq OpenAI-compatible base URL.
+  static String get groqBaseUrl =>
+      _readEnv('GROQ_BASE_URL') ??
+      _readEnv('DEEPSEEK_BASE_URL') ??
+      'https://api.groq.com/openai/v1';
+
+  /// Default text-only model for Groq.
+  static String get groqTextModel =>
+      _readEnv('GROQ_TEXT_MODEL') ??
+      _readEnv('GROQ_MODEL') ??
+      _readEnv('DEEPSEEK_MODEL') ??
+      'llama-3.1-8b-instant';
+
+  /// Default vision-capable model for Groq.
+  static String get groqVisionModel =>
+      _readEnv('GROQ_VISION_MODEL') ??
+      'meta-llama/llama-4-scout-17b-16e-instruct';
+
+  /// Legacy getter kept to avoid broad refactors in older code.
+  static String get deepSeekApiKey => groqApiKey;
+
+  /// Legacy getter kept to avoid broad refactors in older code.
+  static String get deepSeekBaseUrl => groqBaseUrl;
+
+  /// Legacy getter kept to avoid broad refactors in older code.
+  static String get deepSeekModel => groqTextModel;
+
   static String? _readEnv(String key) {
     try {
       return dotenv.env[key];

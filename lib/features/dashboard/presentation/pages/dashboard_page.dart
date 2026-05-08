@@ -10,11 +10,13 @@ import '../widgets/dashboard_error_state.dart';
 class DashboardPage extends StatefulWidget {
   final VoidCallback onOpenProfile;
   final VoidCallback onOpenHealthSources;
+  final VoidCallback onOpenAiAnalysis;
 
   const DashboardPage({
     super.key,
     required this.onOpenProfile,
     required this.onOpenHealthSources,
+    required this.onOpenAiAnalysis,
   });
 
   @override
@@ -59,6 +61,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   viewData: viewData,
                   onOpenProfile: widget.onOpenProfile,
                   onOpenHealthSources: widget.onOpenHealthSources,
+                  onOpenAiAnalysis: widget.onOpenAiAnalysis,
                 ),
               ),
             ),
