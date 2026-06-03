@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../../../core/perf/perf_probe.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 
@@ -192,141 +193,155 @@ class PhysiologyAnomalyInferenceModel {
     required List<HealthMetricSample> samples,
     DateTime? now,
   }) {
-    final utcNow = (now ?? DateTime.now()).toUtc();
-    final windowStart = utcNow.subtract(dailyWindow);
-    final relevantSamples = samples
-        .where(
-          (sample) => sample.sourceId.trim().toLowerCase() != 'local_manual',
-        )
-        .where((sample) => _trackedTypes.contains(sample.type))
-        .where((sample) => !sample.timestamp.toUtc().isAfter(utcNow))
-        .toList(growable: false);
+    return PerfProbe.measureSync(
+      'model.physiology_anomaly.infer_sync',
+      () {
+        final utcNow = (now ?? DateTime.now()).toUtc();
+        final windowStart = utcNow.subtract(dailyWindow);
+        final relevantSamples = samples
+            .where(
+              (sample) =>
+                  sample.sourceId.trim().toLowerCase() != 'local_manual',
+            )
+            .where((sample) => _trackedTypes.contains(sample.type))
+            .where((sample) => !sample.timestamp.toUtc().isAfter(utcNow))
+            .toList(growable: false);
 
-    if (relevantSamples.isEmpty) {
-      return PhysiologyAnomalyInferenceResult.insufficient(
-        now: utcNow,
-        reason: 'no_wearable_samples',
-      );
-    }
-
-    final features = _buildFeatures(
-      samples: relevantSamples,
-      now: utcNow,
-      windowStart: windowStart,
-    );
-    final quality = _estimateDataQuality(features);
-    final reasonCodes = _buildReasonCodes(features, quality);
-    final baselineDays = (features['baseline_days_60'] ?? 0).round();
-
-    if (baselineDays < 7 || quality.overall < _minQualityForModel) {
-      final fallbackScore = _fallbackScore(features);
-      return PhysiologyAnomalyInferenceResult.insufficient(
-        now: utcNow,
-        reason: baselineDays < 7 ? 'insufficient_baseline' : 'low_data_quality',
-        fallbackScore: fallbackScore,
-        confidence: math.min(quality.overall, 0.35),
-        dataQuality: quality,
-        reasonCodes: [
-          ...reasonCodes,
-          PhysiologyReasonCode(
-            code: baselineDays < 7 ? 'insufficient_data' : 'low_data_quality',
-            message: baselineDays < 7
-                ? 'Нужно больше дней истории для персональной нормы'
-                : 'Качество данных слишком низкое для надежной оценки',
-            impact: baselineDays < 7 ? 1.0 : 1.0 - quality.overall,
-          ),
-        ],
-        features: features,
-      );
-    }
-
-    final groupScores = _scoreGroups(features, quality);
-    final robustScore = _weightedScore(
-      groupScores,
-    ).clamp(0.0, 100.0).toDouble();
-    final forestPrediction =
-        baselineDays >= _minIsolationForestBaselineDays &&
-            quality.overall >= 0.45
-        ? _runIsolationForest(
-            samples: relevantSamples,
+        if (relevantSamples.isEmpty) {
+          return PhysiologyAnomalyInferenceResult.insufficient(
             now: utcNow,
-            currentFeatures: features,
-          )
-        : null;
-    final blendedScore = forestPrediction == null
-        ? robustScore
-        : ((robustScore * 0.60) + (forestPrediction.score * 0.40));
-    final score = blendedScore.clamp(0.0, 100.0).toDouble();
-    final confidence = _confidenceFor(
-      quality: quality,
-      baselineDays: baselineDays,
-    );
-    final resolvedReasons =
-        forestPrediction != null && forestPrediction.score >= 45
-        ? [
-            PhysiologyReasonCode(
-              code: 'recovery_profile_unusual',
-              message:
-                  'Профиль восстановления отличается от вашей обычной нормы',
-              impact: (forestPrediction.score / 100.0)
-                  .clamp(0.0, 1.0)
-                  .toDouble(),
-            ),
-            ...reasonCodes,
-          ]
-        : reasonCodes;
+            reason: 'no_wearable_samples',
+          );
+        }
 
-    return PhysiologyAnomalyInferenceResult(
-      modelId: modelId,
-      modelVersion: modelVersion,
-      inferenceTimestamp: utcNow,
-      windowStart: windowStart,
-      windowEnd: utcNow,
-      anomalyScore: score,
-      confidence: forestPrediction == null
-          ? confidence
-          : math.min(1.0, confidence + (0.08 * forestPrediction.confidence)),
-      status: _statusForScore(score),
-      source: forestPrediction == null
-          ? baselineDays < 14
-                ? 'preliminary_robust_zscore'
-                : 'robust_zscore_v1'
-          : 'isolation_forest_v1_5',
-      reason: 'ok',
-      insufficientData: baselineDays < 14 || quality.overall < 0.45,
-      dataQuality: quality,
-      reasonCodes: resolvedReasons,
-      groupScores: groupScores,
-      features: {
-        ...features,
-        'robust_zscore_anomaly_score': robustScore,
-        'isolation_forest_score': forestPrediction?.score,
-        'isolation_forest_raw_score': forestPrediction?.rawScore,
-        'isolation_forest_training_days': forestPrediction?.trainingRows
-            .toDouble(),
-        'recovery_deviation_score': _groupValue(
+        final features = _buildFeatures(
+          samples: relevantSamples,
+          now: utcNow,
+          windowStart: windowStart,
+        );
+        final quality = _estimateDataQuality(features);
+        final reasonCodes = _buildReasonCodes(features, quality);
+        final baselineDays = (features['baseline_days_60'] ?? 0).round();
+
+        if (baselineDays < 7 || quality.overall < _minQualityForModel) {
+          final fallbackScore = _fallbackScore(features);
+          return PhysiologyAnomalyInferenceResult.insufficient(
+            now: utcNow,
+            reason: baselineDays < 7
+                ? 'insufficient_baseline'
+                : 'low_data_quality',
+            fallbackScore: fallbackScore,
+            confidence: math.min(quality.overall, 0.35),
+            dataQuality: quality,
+            reasonCodes: [
+              ...reasonCodes,
+              PhysiologyReasonCode(
+                code: baselineDays < 7
+                    ? 'insufficient_data'
+                    : 'low_data_quality',
+                message: baselineDays < 7
+                    ? 'Нужно больше дней истории для персональной нормы'
+                    : 'Качество данных слишком низкое для надежной оценки',
+                impact: baselineDays < 7 ? 1.0 : 1.0 - quality.overall,
+              ),
+            ],
+            features: features,
+          );
+        }
+
+        final groupScores = _scoreGroups(features, quality);
+        final robustScore = _weightedScore(
           groupScores,
-          'recovery_deviation_score',
-        ),
-        'cardio_deviation_score': _groupValue(
-          groupScores,
-          'cardio_anomaly_score',
-        ),
-        'sleep_deviation_score': _groupValue(
-          groupScores,
-          'sleep_anomaly_score',
-        ),
-        'load_deviation_score': _groupValue(
-          groupScores,
-          'activity_load_anomaly_score',
-        ),
-        'temperature_respiration_deviation_score': _groupValue(
-          groupScores,
-          'respiration_temp_anomaly_score',
-        ),
-        'data_quality_score': quality.overall,
-        'missingness_ratio': quality.missingnessRatio,
+        ).clamp(0.0, 100.0).toDouble();
+        final forestPrediction =
+            baselineDays >= _minIsolationForestBaselineDays &&
+                quality.overall >= 0.45
+            ? _runIsolationForest(
+                samples: relevantSamples,
+                now: utcNow,
+                currentFeatures: features,
+              )
+            : null;
+        final blendedScore = forestPrediction == null
+            ? robustScore
+            : ((robustScore * 0.60) + (forestPrediction.score * 0.40));
+        final score = blendedScore.clamp(0.0, 100.0).toDouble();
+        final confidence = _confidenceFor(
+          quality: quality,
+          baselineDays: baselineDays,
+        );
+        final resolvedReasons =
+            forestPrediction != null && forestPrediction.score >= 45
+            ? [
+                PhysiologyReasonCode(
+                  code: 'recovery_profile_unusual',
+                  message:
+                      'Профиль восстановления отличается от вашей обычной нормы',
+                  impact: (forestPrediction.score / 100.0)
+                      .clamp(0.0, 1.0)
+                      .toDouble(),
+                ),
+                ...reasonCodes,
+              ]
+            : reasonCodes;
+
+        return PhysiologyAnomalyInferenceResult(
+          modelId: modelId,
+          modelVersion: modelVersion,
+          inferenceTimestamp: utcNow,
+          windowStart: windowStart,
+          windowEnd: utcNow,
+          anomalyScore: score,
+          confidence: forestPrediction == null
+              ? confidence
+              : math.min(
+                  1.0,
+                  confidence + (0.08 * forestPrediction.confidence),
+                ),
+          status: _statusForScore(score),
+          source: forestPrediction == null
+              ? baselineDays < 14
+                    ? 'preliminary_robust_zscore'
+                    : 'robust_zscore_v1'
+              : 'isolation_forest_v1_5',
+          reason: 'ok',
+          insufficientData: baselineDays < 14 || quality.overall < 0.45,
+          dataQuality: quality,
+          reasonCodes: resolvedReasons,
+          groupScores: groupScores,
+          features: {
+            ...features,
+            'robust_zscore_anomaly_score': robustScore,
+            'isolation_forest_score': forestPrediction?.score,
+            'isolation_forest_raw_score': forestPrediction?.rawScore,
+            'isolation_forest_training_days': forestPrediction?.trainingRows
+                .toDouble(),
+            'recovery_deviation_score': _groupValue(
+              groupScores,
+              'recovery_deviation_score',
+            ),
+            'cardio_deviation_score': _groupValue(
+              groupScores,
+              'cardio_anomaly_score',
+            ),
+            'sleep_deviation_score': _groupValue(
+              groupScores,
+              'sleep_anomaly_score',
+            ),
+            'load_deviation_score': _groupValue(
+              groupScores,
+              'activity_load_anomaly_score',
+            ),
+            'temperature_respiration_deviation_score': _groupValue(
+              groupScores,
+              'respiration_temp_anomaly_score',
+            ),
+            'data_quality_score': quality.overall,
+            'missingness_ratio': quality.missingnessRatio,
+          },
+        );
       },
+      payload: <String, Object?>{'sample_count': samples.length},
     );
   }
 

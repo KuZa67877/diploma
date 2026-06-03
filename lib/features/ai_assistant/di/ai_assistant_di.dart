@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/config/app_env.dart';
+import '../../../core/firebase/firebase_initializer.dart';
 import '../../dashboard/domain/usecases/get_dashboard_summary.dart';
 import '../../export/data/services/historical_model_output_service.dart';
 import '../../health_data/domain/usecases/get_health_metrics.dart';
@@ -22,7 +25,16 @@ void registerAiAssistant(GetIt getIt) {
     ),
   );
   getIt.registerLazySingleton<DeepSeekRemoteDataSource>(
-    () => DeepSeekRemoteDataSourceImpl(),
+    () => DeepSeekRemoteDataSourceImpl(
+      proxyUrlProvider: () => AppEnv.aiProxyUrl,
+      authTokenProvider: () async {
+        if (!isFirebaseReady) {
+          return null;
+        }
+        final user = getIt<FirebaseAuth Function()>()().currentUser;
+        return user?.getIdToken();
+      },
+    ),
   );
   getIt.registerLazySingleton<DeepSeekChatRepository>(
     () => DeepSeekChatRepositoryImpl(
@@ -34,9 +46,7 @@ void registerAiAssistant(GetIt getIt) {
     () => const TokenEstimatorService(),
   );
   getIt.registerLazySingleton<AiUsageLimiterService>(
-    () => AiUsageLimiterService(
-      sharedPreferences: getIt<SharedPreferences>(),
-    ),
+    () => AiUsageLimiterService(sharedPreferences: getIt<SharedPreferences>()),
   );
   getIt.registerLazySingleton<HealthDataPromptBuilder>(
     () => const HealthDataPromptBuilder(),

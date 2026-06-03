@@ -1,8 +1,8 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/logging/app_logger.dart';
-import '../../../../core/supabase/supabase_subject_resolver.dart';
 import '../../domain/entities/wellbeing_entry.dart';
 import '../../domain/entities/wellbeing_mood.dart';
 
@@ -15,45 +15,27 @@ abstract class WellbeingRemoteDataSource {
 }
 
 class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
-  static const String _legacyMetadataKey = 'wellbeing_entries';
-
-  final SupabaseClient Function() _clientProvider;
-  final SupabaseSubjectResolver _subjectResolver;
+  final FirebaseAuth Function() _authProvider;
+  final FirebaseFirestore Function() _firestoreProvider;
   final _logger = AppLogger.instance;
 
   WellbeingRemoteDataSourceImpl({
-    required SupabaseClient Function() clientProvider,
-    required SupabaseSubjectResolver subjectResolver,
-  }) : _clientProvider = clientProvider,
-       _subjectResolver = subjectResolver;
+    required FirebaseAuth Function() authProvider,
+    required FirebaseFirestore Function() firestoreProvider,
+  }) : _authProvider = authProvider,
+       _firestoreProvider = firestoreProvider;
 
   @override
   Future<List<WellbeingEntry>> getEntries() async {
     final user = _requireUser();
-    final subjectId = await _subjectResolver.resolveSubjectId();
 
     final entries = <WellbeingEntry>[];
-    List<Map<String, dynamic>> rows = const [];
-    try {
-      final fetched = await _clientProvider()
-          .from('wellbeing_entries')
-          .select('entry_date, mood, tags, note, stress_now, fatigue, wellness')
-          .eq('subject_id', subjectId)
-          .order('entry_date', ascending: false);
-      rows = fetched;
-    } catch (error, stackTrace) {
-      _logger.warning(
-        'wellbeing.remote',
-        'Failed loading wellbeing entries from table, using legacy metadata fallback',
-        payload: {
-          'subjectId': subjectId,
-          'error': error.toString(),
-          'stackTrace': stackTrace.toString(),
-        },
-      );
-    }
+    final query = await _wellbeingCollection(
+      user.uid,
+    ).orderBy('entry_date', descending: true).get();
 
-    for (final row in rows) {
+    for (final doc in query.docs) {
+      final row = doc.data();
       final moodValue = row['mood'];
       final mood = moodValue is String
           ? WellbeingMood.fromStorageValue(moodValue)
@@ -96,65 +78,7 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
     }
 
     entries.sort((a, b) => b.date.compareTo(a.date));
-    if (entries.isNotEmpty) {
-      return entries;
-    }
-
-    // Legacy fallback from user_metadata for migration.
-    final metadata = Map<String, dynamic>.from(user.userMetadata ?? const {});
-    final raw = metadata[_legacyMetadataKey];
-    if (raw is! Map) {
-      return const [];
-    }
-    final legacyEntries = <WellbeingEntry>[];
-    raw.forEach((dateKey, payload) {
-      if (dateKey is! String || payload is! Map) {
-        return;
-      }
-      final moodValue = payload['mood'];
-      final mood = moodValue is String
-          ? WellbeingMood.fromStorageValue(moodValue)
-          : null;
-      if (mood == null) {
-        return;
-      }
-      final date = _fromDateKey(dateKey);
-      if (date == null) {
-        return;
-      }
-      final rawTags = payload['tags'];
-      final tags = rawTags is List
-          ? rawTags
-                .whereType<String>()
-                .where((item) => item.trim().isNotEmpty)
-                .toSet()
-                .toList(growable: false)
-          : const <String>[];
-      final noteRaw = payload['note'];
-      final note = noteRaw is String && noteRaw.trim().isNotEmpty
-          ? noteRaw.trim()
-          : null;
-      legacyEntries.add(
-        WellbeingEntry(
-          date: date,
-          mood: mood,
-          tags: tags,
-          note: note,
-          stressNow: _toScale(payload['stressNow'] ?? payload['stress_now']),
-          fatigue: _toScale(payload['fatigue']),
-          wellness: _toScale(payload['wellness']),
-        ),
-      );
-    });
-    legacyEntries.sort((a, b) => b.date.compareTo(a.date));
-    if (legacyEntries.isNotEmpty) {
-      try {
-        await saveEntries(legacyEntries);
-      } catch (_) {
-        // No-op, migration is best-effort.
-      }
-    }
-    return legacyEntries;
+    return entries;
   }
 
   @override
@@ -168,52 +92,42 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
   @override
   Future<void> saveEntries(List<WellbeingEntry> entries) async {
     final user = _requireUser();
-    final subjectId = await _subjectResolver.resolveSubjectId();
-    final rows = entries
-        .map(
-          (entry) => {
-            'subject_id': subjectId,
-            'entry_date': _dateKey(entry.date),
-            'mood': entry.mood.storageValue,
-            'tags': entry.tags.toSet().toList(growable: false),
-            'note': entry.note?.trim(),
-            'stress_now': entry.stressNow,
-            'fatigue': entry.fatigue,
-            'wellness': entry.wellness,
-          },
-        )
-        .toList(growable: false);
+    final batch = _firestoreProvider().batch();
+    final collection = _wellbeingCollection(user.uid);
 
     _logger.info(
       'wellbeing.remote',
-      'Sync wellbeing entries to Supabase table wellbeing_entries',
-      payload: {'subjectId': subjectId, 'entriesCount': entries.length},
+      'Sync wellbeing entries to Firestore',
+      payload: {'userId': user.uid, 'entriesCount': entries.length},
     );
 
     try {
-      if (rows.isEmpty) {
-        await _clientProvider()
-            .from('wellbeing_entries')
-            .delete()
-            .eq('subject_id', subjectId);
-        return;
+      final existing = await collection.get();
+      for (final doc in existing.docs) {
+        batch.delete(doc.reference);
       }
 
-      await _clientProvider()
-          .from('wellbeing_entries')
-          .upsert(rows, onConflict: 'subject_id,entry_date');
-    } catch (error, stackTrace) {
-      try {
-        await _saveLegacyToMetadata(user, entries);
-      } catch (_) {
-        // no-op, original table error handled below
+      for (final entry in entries) {
+        final dateKey = _dateKey(entry.date);
+        batch.set(collection.doc(dateKey), {
+          'entry_date': dateKey,
+          'mood': entry.mood.storageValue,
+          'tags': entry.tags.toSet().toList(growable: false),
+          'note': entry.note?.trim(),
+          'stress_now': entry.stressNow,
+          'fatigue': entry.fatigue,
+          'wellness': entry.wellness,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
       }
+
+      await batch.commit();
+    } catch (error, stackTrace) {
       _logger.error(
         'wellbeing.remote',
-        'Failed to sync wellbeing entries to Supabase table',
+        'Failed to sync wellbeing entries to Firestore',
         payload: {
-          'userId': user.id,
-          'subjectId': subjectId,
+          'userId': user.uid,
           'entriesCount': entries.length,
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
@@ -223,27 +137,15 @@ class WellbeingRemoteDataSourceImpl implements WellbeingRemoteDataSource {
     }
   }
 
-  Future<void> _saveLegacyToMetadata(
-    User user,
-    List<WellbeingEntry> entries,
-  ) async {
-    final metadata = Map<String, dynamic>.from(user.userMetadata ?? const {});
-    metadata[_legacyMetadataKey] = {
-      for (final entry in entries)
-        _dateKey(entry.date): {
-          'mood': entry.mood.storageValue,
-          'tags': entry.tags.toSet().toList(growable: false),
-          'note': entry.note?.trim(),
-          'stressNow': entry.stressNow,
-          'fatigue': entry.fatigue,
-          'wellness': entry.wellness,
-        },
-    };
-    await _clientProvider().auth.updateUser(UserAttributes(data: metadata));
+  CollectionReference<Map<String, dynamic>> _wellbeingCollection(String uid) {
+    return _firestoreProvider()
+        .collection('users')
+        .doc(uid)
+        .collection('wellbeing');
   }
 
   User _requireUser() {
-    final user = _clientProvider().auth.currentUser;
+    final user = _authProvider().currentUser;
     if (user == null) {
       throw const AuthFailure('No active session. Please sign in again.');
     }

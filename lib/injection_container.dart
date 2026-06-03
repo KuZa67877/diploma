@@ -1,11 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/theme_cubit.dart';
 import 'core/localization/language_cubit.dart';
 import 'core/auth/auth_status_cubit.dart';
+import 'core/perf/perf_trace_service.dart';
 import 'core/supabase/anonymous_user_snapshot_data_source.dart';
-import 'core/supabase/supabase_subject_resolver.dart';
 import 'features/analytics/di/analytics_di.dart';
 import 'features/ai_assistant/di/ai_assistant_di.dart';
 import 'features/auth/di/auth_di.dart';
@@ -24,17 +25,22 @@ Future<void> initDependencies() async {
   // External dependencies
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
-  getIt.registerLazySingleton<SupabaseClient Function()>(
+  getIt.registerLazySingleton<FirebaseAuth Function()>(
     () =>
-        () => Supabase.instance.client,
+        () => FirebaseAuth.instance,
   );
-  getIt.registerLazySingleton<SupabaseSubjectResolver>(
-    () => SupabaseSubjectResolverImpl(clientProvider: getIt()),
+  getIt.registerLazySingleton<FirebaseFirestore Function()>(
+    () =>
+        () => FirebaseFirestore.instance,
+  );
+  getIt.registerLazySingleton<String? Function()>(
+    () =>
+        () => FirebaseAuth.instance.currentUser?.uid,
   );
   getIt.registerLazySingleton<AnonymousUserSnapshotDataSource>(
     () => AnonymousUserSnapshotDataSourceImpl(
-      clientProvider: getIt(),
-      subjectResolver: getIt(),
+      authProvider: getIt<FirebaseAuth Function()>(),
+      firestoreProvider: getIt<FirebaseFirestore Function()>(),
     ),
   );
 
@@ -50,6 +56,7 @@ Future<void> initDependencies() async {
 
   // Core - Auth status
   getIt.registerLazySingleton<AuthStatusCubit>(() => AuthStatusCubit());
+  getIt.registerLazySingleton<PerfTraceService>(() => PerfTraceService());
 
   // Features
   registerAnalytics(getIt);

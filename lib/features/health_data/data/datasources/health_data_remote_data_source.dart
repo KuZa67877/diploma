@@ -1,7 +1,8 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../../../core/error/failures.dart';
 import '../../../../core/logging/app_logger.dart';
-import '../../../../core/supabase/supabase_subject_resolver.dart';
 import '../../domain/entities/health_metric_type.dart';
 import '../models/health_metric_sample_model.dart';
 
@@ -24,148 +25,108 @@ abstract class HealthDataRemoteDataSource {
 }
 
 class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
-  static const int _pageSize = 1000;
-  static const int _upsertChunkSize = 500;
-  static const String _legacyConnectedSourcesKey = 'health_connected_sources';
-  static const String _legacyCachedSamplesKey = 'health_cached_samples';
+  static const int _pageSize = 500;
 
-  final SupabaseClient Function() _clientProvider;
-  final SupabaseSubjectResolver _subjectResolver;
+  final FirebaseAuth Function() _authProvider;
+  final FirebaseFirestore Function() _firestoreProvider;
   final _logger = AppLogger.instance;
 
   HealthDataRemoteDataSourceImpl({
-    required SupabaseClient Function() clientProvider,
-    required SupabaseSubjectResolver subjectResolver,
-  }) : _clientProvider = clientProvider,
-       _subjectResolver = subjectResolver;
+    required FirebaseAuth Function() authProvider,
+    required FirebaseFirestore Function() firestoreProvider,
+  }) : _authProvider = authProvider,
+       _firestoreProvider = firestoreProvider;
 
   @override
   Future<HealthRemoteSnapshot> getSnapshot() async {
     final user = _requireUser();
-    final subjectId = await _subjectResolver.resolveSubjectId();
+    final root = _userDoc(user.uid);
 
-    try {
-      final connected = <String>{};
-      final connectionRows = await _clientProvider()
-          .from('health_source_connections')
-          .select('source_id, is_connected')
-          .eq('subject_id', subjectId);
-      for (final row in connectionRows) {
-        if (row['is_connected'] != true) {
+    final connected = <String>{};
+    final connectionRows = await root.collection('health_connections').get();
+    for (final doc in connectionRows.docs) {
+      final row = doc.data();
+      if (row['is_connected'] != true) {
+        continue;
+      }
+      final sourceId = row['source_id']?.toString().trim() ?? '';
+      if (sourceId.isNotEmpty) {
+        connected.add(sourceId);
+      }
+    }
+
+    final samples = <HealthMetricSampleModel>[];
+    QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument;
+    while (true) {
+      Query<Map<String, dynamic>> query = root
+          .collection('health_samples')
+          .orderBy('observed_at', descending: true)
+          .limit(_pageSize);
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+      final page = await query.get();
+      if (page.docs.isEmpty) {
+        break;
+      }
+
+      for (final doc in page.docs) {
+        final row = doc.data();
+        final sampleId = row['sample_id']?.toString() ?? doc.id;
+        final observedAt = _dateOrNull(row['observed_at']);
+        if (sampleId.isEmpty || observedAt == null) {
           continue;
         }
-        final sourceId = row['source_id']?.toString().trim() ?? '';
-        if (sourceId.isNotEmpty) {
-          connected.add(sourceId);
-        }
+        samples.add(
+          HealthMetricSampleModel(
+            id: sampleId,
+            type: HealthMetricTypeX.fromKey(row['metric_type']?.toString()),
+            value: _toDouble(row['value']),
+            unit: row['unit']?.toString() ?? '',
+            timestamp: observedAt,
+            intervalStart: _dateOrNull(row['interval_start_at']),
+            intervalEnd: _dateOrNull(row['interval_end_at']),
+            sourceId: row['source_id']?.toString() ?? '',
+          ),
+        );
       }
 
-      final samples = <HealthMetricSampleModel>[];
-      var offset = 0;
-      while (true) {
-        final page = await _selectSamplesPage(subjectId, offset);
-        if (page.isEmpty) {
-          break;
-        }
-
-        for (final row in page) {
-          final sampleId = row['sample_id']?.toString() ?? '';
-          if (sampleId.isEmpty) {
-            continue;
-          }
-          final observedAt = DateTime.tryParse(
-            row['observed_at']?.toString() ?? '',
-          );
-          if (observedAt == null) {
-            continue;
-          }
-          final intervalStart = DateTime.tryParse(
-            row['interval_start_at']?.toString() ?? '',
-          );
-          final intervalEnd = DateTime.tryParse(
-            row['interval_end_at']?.toString() ?? '',
-          );
-
-          samples.add(
-            HealthMetricSampleModel(
-              id: sampleId,
-              type: HealthMetricTypeX.fromKey(row['metric_type']?.toString()),
-              value: _toDouble(row['value']),
-              unit: row['unit']?.toString() ?? '',
-              timestamp: observedAt,
-              intervalStart: intervalStart,
-              intervalEnd: intervalEnd,
-              sourceId: row['source_id']?.toString() ?? '',
-            ),
-          );
-        }
-
-        if (page.length < _pageSize) {
-          break;
-        }
-        offset += _pageSize;
+      if (page.docs.length < _pageSize) {
+        break;
       }
-
-      final snapshot = HealthRemoteSnapshot(
-        connectedSourceIds: connected,
-        cachedSamples: samples,
-      );
-      if (!snapshot.isEmpty) {
-        return snapshot;
-      }
-    } catch (error, stackTrace) {
-      _logger.warning(
-        'health.remote',
-        'Failed loading health snapshot from tables, using legacy metadata fallback',
-        payload: {
-          'subjectId': subjectId,
-          'error': error.toString(),
-          'stackTrace': stackTrace.toString(),
-        },
-      );
+      lastDocument = page.docs.last;
     }
 
-    final legacySnapshot = _loadLegacySnapshot(user);
-    if (!legacySnapshot.isEmpty) {
-      try {
-        await saveSnapshot(legacySnapshot);
-      } catch (_) {
-        // No-op, migration is best-effort.
-      }
-    }
-    return legacySnapshot;
+    return HealthRemoteSnapshot(
+      connectedSourceIds: connected,
+      cachedSamples: samples,
+    );
   }
 
   @override
   Future<void> saveSnapshot(HealthRemoteSnapshot snapshot) async {
     final user = _requireUser();
-    final subjectId = await _subjectResolver.resolveSubjectId();
+    final root = _userDoc(user.uid);
 
     _logger.info(
       'health.remote',
-      'Sync health snapshot to Supabase tables',
+      'Sync health snapshot to Firestore',
       payload: {
-        'subjectId': subjectId,
+        'userId': user.uid,
         'connectedSources': snapshot.connectedSourceIds.length,
         'samples': snapshot.cachedSamples.length,
       },
     );
 
     try {
-      await _syncConnections(subjectId, snapshot.connectedSourceIds);
-      await _syncSamples(subjectId, snapshot.cachedSamples);
+      await _replaceConnections(root, snapshot.connectedSourceIds);
+      await _replaceSamples(root, snapshot.cachedSamples);
     } catch (error, stackTrace) {
-      try {
-        await _saveLegacySnapshot(user, snapshot);
-      } catch (_) {
-        // No-op, primary error handled below.
-      }
       _logger.error(
         'health.remote',
         'Failed to sync health snapshot',
         payload: {
-          'userId': user.id,
-          'subjectId': subjectId,
+          'userId': user.uid,
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
         },
@@ -174,140 +135,111 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
     }
   }
 
+  Future<void> _replaceConnections(
+    DocumentReference<Map<String, dynamic>> root,
+    Set<String> connectedSourceIds,
+  ) async {
+    final collection = root.collection('health_connections');
+    await _deleteAll(collection);
+
+    if (connectedSourceIds.isEmpty) {
+      return;
+    }
+
+    var batch = _firestoreProvider().batch();
+    var operations = 0;
+    for (final sourceId in connectedSourceIds) {
+      batch.set(collection.doc(sourceId), {
+        'source_id': sourceId,
+        'is_connected': true,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      operations += 1;
+      if (operations == 400) {
+        await batch.commit();
+        batch = _firestoreProvider().batch();
+        operations = 0;
+      }
+    }
+    if (operations > 0) {
+      await batch.commit();
+    }
+  }
+
+  Future<void> _replaceSamples(
+    DocumentReference<Map<String, dynamic>> root,
+    List<HealthMetricSampleModel> samples,
+  ) async {
+    final collection = root.collection('health_samples');
+    await _deleteAll(collection);
+    if (samples.isEmpty) {
+      return;
+    }
+
+    var batch = _firestoreProvider().batch();
+    var operations = 0;
+    for (final sample in samples) {
+      batch.set(collection.doc(sample.id), {
+        'sample_id': sample.id,
+        'metric_type': sample.type.key,
+        'value': sample.value,
+        'unit': sample.unit,
+        'observed_at': sample.timestamp.toUtc().toIso8601String(),
+        'interval_start_at': sample.intervalStart?.toUtc().toIso8601String(),
+        'interval_end_at': sample.intervalEnd?.toUtc().toIso8601String(),
+        'source_id': sample.sourceId,
+      });
+      operations += 1;
+      if (operations == 400) {
+        await batch.commit();
+        batch = _firestoreProvider().batch();
+        operations = 0;
+      }
+    }
+    if (operations > 0) {
+      await batch.commit();
+    }
+  }
+
+  Future<void> _deleteAll(
+    CollectionReference<Map<String, dynamic>> collection,
+  ) async {
+    while (true) {
+      final page = await collection.limit(_pageSize).get();
+      if (page.docs.isEmpty) {
+        return;
+      }
+      final batch = _firestoreProvider().batch();
+      for (final doc in page.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      if (page.docs.length < _pageSize) {
+        return;
+      }
+    }
+  }
+
+  DocumentReference<Map<String, dynamic>> _userDoc(String uid) {
+    return _firestoreProvider().collection('users').doc(uid);
+  }
+
   User _requireUser() {
-    final user = _clientProvider().auth.currentUser;
+    final user = _authProvider().currentUser;
     if (user == null) {
       throw const AuthFailure('No active session. Please sign in again.');
     }
     return user;
   }
 
-  Future<void> _syncConnections(
-    String subjectId,
-    Set<String> connectedSourceIds,
-  ) async {
-    await _clientProvider()
-        .from('health_source_connections')
-        .delete()
-        .eq('subject_id', subjectId);
-
-    if (connectedSourceIds.isEmpty) {
-      return;
+  DateTime? _dateOrNull(Object? value) {
+    if (value == null) {
+      return null;
     }
-
-    final rows = connectedSourceIds
-        .map(
-          (sourceId) => {
-            'subject_id': subjectId,
-            'source_id': sourceId,
-            'is_connected': true,
-            'updated_at': DateTime.now().toIso8601String(),
-          },
-        )
-        .toList(growable: false);
-    await _clientProvider()
-        .from('health_source_connections')
-        .upsert(rows, onConflict: 'subject_id,source_id');
-  }
-
-  Future<void> _syncSamples(
-    String subjectId,
-    List<HealthMetricSampleModel> samples,
-  ) async {
-    if (samples.isEmpty) {
-      return;
+    if (value is Timestamp) {
+      return value.toDate();
     }
-
-    final payload = samples
-        .map(
-          (sample) => {
-            'subject_id': subjectId,
-            'sample_id': sample.id,
-            'metric_type': sample.type.key,
-            'value': sample.value,
-            'unit': sample.unit,
-            'observed_at': sample.timestamp.toIso8601String(),
-            'interval_start_at': sample.intervalStart?.toIso8601String(),
-            'interval_end_at': sample.intervalEnd?.toIso8601String(),
-            'source_id': sample.sourceId,
-          },
-        )
-        .toList(growable: false);
-    final legacyPayload = samples
-        .map(
-          (sample) => {
-            'subject_id': subjectId,
-            'sample_id': sample.id,
-            'metric_type': sample.type.key,
-            'value': sample.value,
-            'unit': sample.unit,
-            'observed_at': sample.timestamp.toIso8601String(),
-            'source_id': sample.sourceId,
-          },
-        )
-        .toList(growable: false);
-
-    for (var i = 0; i < payload.length; i += _upsertChunkSize) {
-      final chunk = payload.sublist(
-        i,
-        i + _upsertChunkSize > payload.length
-            ? payload.length
-            : i + _upsertChunkSize,
-      );
-      final legacyChunk = legacyPayload.sublist(
-        i,
-        i + _upsertChunkSize > legacyPayload.length
-            ? legacyPayload.length
-            : i + _upsertChunkSize,
-      );
-      try {
-        await _clientProvider()
-            .from('health_metric_samples')
-            .upsert(chunk, onConflict: 'subject_id,sample_id');
-      } catch (error) {
-        if (!_isMissingIntervalColumnsError(error)) {
-          rethrow;
-        }
-        await _clientProvider()
-            .from('health_metric_samples')
-            .upsert(legacyChunk, onConflict: 'subject_id,sample_id');
-      }
-    }
-  }
-
-  Future<List<dynamic>> _selectSamplesPage(String subjectId, int offset) async {
-    try {
-      return await _clientProvider()
-          .from('health_metric_samples')
-          .select(
-            'sample_id, metric_type, value, unit, observed_at, interval_start_at, interval_end_at, source_id',
-          )
-          .eq('subject_id', subjectId)
-          .order('observed_at', ascending: false)
-          .range(offset, offset + _pageSize - 1);
-    } catch (error) {
-      if (!_isMissingIntervalColumnsError(error)) {
-        rethrow;
-      }
-      return await _clientProvider()
-          .from('health_metric_samples')
-          .select('sample_id, metric_type, value, unit, observed_at, source_id')
-          .eq('subject_id', subjectId)
-          .order('observed_at', ascending: false)
-          .range(offset, offset + _pageSize - 1);
-    }
-  }
-
-  bool _isMissingIntervalColumnsError(Object error) {
-    if (error is! PostgrestException) {
-      return false;
-    }
-    if (error.code != '42703') {
-      return false;
-    }
-    final message = error.message.toLowerCase();
-    return message.contains('interval_start_at') ||
-        message.contains('interval_end_at');
+    return DateTime.tryParse(value.toString());
   }
 
   double _toDouble(Object? value) {
@@ -318,53 +250,5 @@ class HealthDataRemoteDataSourceImpl implements HealthDataRemoteDataSource {
       return value.toDouble();
     }
     return double.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  HealthRemoteSnapshot _loadLegacySnapshot(User user) {
-    final metadata = Map<String, dynamic>.from(user.userMetadata ?? const {});
-    final connected = <String>{};
-    final connectedRaw = metadata[_legacyConnectedSourcesKey];
-    if (connectedRaw is List) {
-      for (final item in connectedRaw) {
-        final sourceId = item?.toString().trim() ?? '';
-        if (sourceId.isNotEmpty) {
-          connected.add(sourceId);
-        }
-      }
-    }
-
-    final samples = <HealthMetricSampleModel>[];
-    final samplesRaw = metadata[_legacyCachedSamplesKey];
-    if (samplesRaw is List) {
-      for (final item in samplesRaw) {
-        if (item is! Map<String, dynamic>) {
-          continue;
-        }
-        try {
-          samples.add(HealthMetricSampleModel.fromJson(item));
-        } catch (_) {
-          // Skip malformed item.
-        }
-      }
-    }
-
-    return HealthRemoteSnapshot(
-      connectedSourceIds: connected,
-      cachedSamples: samples,
-    );
-  }
-
-  Future<void> _saveLegacySnapshot(
-    User user,
-    HealthRemoteSnapshot snapshot,
-  ) async {
-    final metadata = Map<String, dynamic>.from(user.userMetadata ?? const {});
-    metadata[_legacyConnectedSourcesKey] = snapshot.connectedSourceIds.toList(
-      growable: false,
-    );
-    metadata[_legacyCachedSamplesKey] = snapshot.cachedSamples
-        .map((sample) => sample.toJson())
-        .toList(growable: false);
-    await _clientProvider().auth.updateUser(UserAttributes(data: metadata));
   }
 }

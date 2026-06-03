@@ -41,6 +41,33 @@ class OnboardingProfileSnapshot {
     required this.wellbeingEntryDates,
   });
 
+  factory OnboardingProfileSnapshot.fromAuthUser({
+    required String? email,
+    String? displayName,
+  }) {
+    return OnboardingProfileSnapshot(
+      firstName: null,
+      lastName: null,
+      fullName: _stringOrNull(displayName),
+      email: _stringOrNull(email),
+      age: null,
+      sex: null,
+      heightCm: null,
+      weightKg: null,
+      systolic: null,
+      diastolic: null,
+      glucose: null,
+      temperatureC: null,
+      recordedAt: null,
+      completedAt: null,
+      symptoms: const <String>[],
+      wellbeingEntriesCount: 0,
+      healthSamplesCount: 0,
+      connectedHealthSourceIds: const <String>[],
+      wellbeingEntryDates: const <DateTime>[],
+    );
+  }
+
   factory OnboardingProfileSnapshot.fromUserMetadata(
     Map<String, dynamic>? userMetadata, {
     String? email,

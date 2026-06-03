@@ -21,7 +21,7 @@ class ActivityChartCard extends StatelessWidget {
 
     final weeklyAverage = activityData.isEmpty
         ? 0
-        : (activityData.map((item) => item.steps).reduce((a, b) => a + b) /
+        : (activityData.map((item) => item.value).reduce((a, b) => a + b) /
                 activityData.length)
             .round();
 
@@ -116,7 +116,7 @@ class ActivityChartCard extends StatelessWidget {
                         x: entry.key,
                         barRods: [
                           BarChartRodData(
-                            toY: entry.value.steps.toDouble(),
+                            toY: entry.value.value,
                             color: AppColors.secondary,
                             width: 24,
                             borderRadius: const BorderRadius.vertical(

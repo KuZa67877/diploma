@@ -1,6 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import '../data/datasources/auth_local_data_source.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/datasources/auth_remote_data_source.dart';
 import '../data/repositories/auth_repository_impl.dart';
 import '../domain/repositories/auth_repository.dart';
@@ -16,7 +16,7 @@ void registerAuth(GetIt getIt) {
   );
   getIt.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(
-      clientProvider: () => Supabase.instance.client,
+      authProvider: getIt<FirebaseAuth Function()>(),
     ),
   );
 

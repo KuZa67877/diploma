@@ -1,7 +1,8 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../../../core/error/failures.dart';
 import '../../../../core/logging/app_logger.dart';
-import '../../../../core/supabase/supabase_subject_resolver.dart';
 import '../../domain/entities/data_input_entry.dart';
 
 abstract class DataInputRemoteDataSource {
@@ -9,20 +10,19 @@ abstract class DataInputRemoteDataSource {
 }
 
 class DataInputRemoteDataSourceImpl implements DataInputRemoteDataSource {
-  final SupabaseClient Function() _clientProvider;
-  final SupabaseSubjectResolver _subjectResolver;
+  final FirebaseAuth Function() _authProvider;
+  final FirebaseFirestore Function() _firestoreProvider;
   final _logger = AppLogger.instance;
 
   DataInputRemoteDataSourceImpl({
-    required SupabaseClient Function() clientProvider,
-    required SupabaseSubjectResolver subjectResolver,
-  }) : _clientProvider = clientProvider,
-       _subjectResolver = subjectResolver;
+    required FirebaseAuth Function() authProvider,
+    required FirebaseFirestore Function() firestoreProvider,
+  }) : _authProvider = authProvider,
+       _firestoreProvider = firestoreProvider;
 
   @override
   Future<void> saveEntry(DataInputEntry entry) async {
-    final client = _clientProvider();
-    final user = client.auth.currentUser;
+    final user = _authProvider().currentUser;
     if (user == null) {
       _logger.warning(
         'data_input.remote',
@@ -31,39 +31,31 @@ class DataInputRemoteDataSourceImpl implements DataInputRemoteDataSource {
       throw const AuthFailure('No active session. Please sign in again.');
     }
 
-    final subjectId = await _subjectResolver.resolveSubjectId();
-    final payload = _toPayload(subjectId, entry);
+    final payload = _toPayload(entry);
     _logger.info(
       'data_input.request',
-      'Saving onboarding data to Supabase table onboarding_profiles',
-      payload: {'subjectId': subjectId},
+      'Saving onboarding data to Firestore',
+      payload: {'userId': user.uid},
     );
 
     try {
-      await client
-          .from('onboarding_profiles')
-          .upsert(payload, onConflict: 'subject_id');
+      await _firestoreProvider()
+          .collection('users')
+          .doc(user.uid)
+          .collection('profile')
+          .doc('onboarding')
+          .set(payload, SetOptions(merge: true));
       _logger.info(
         'data_input.response',
-        'Onboarding data saved to onboarding_profiles',
-        payload: {'subjectId': subjectId},
+        'Onboarding data saved to Firestore',
+        payload: {'userId': user.uid},
       );
     } catch (error, stackTrace) {
-      try {
-        final metadata = Map<String, dynamic>.from(
-          user.userMetadata ?? const {},
-        );
-        metadata['onboarding_profile'] = _toLegacyMetadataPayload(entry);
-        metadata['onboarding_completed_at'] = DateTime.now().toIso8601String();
-        await client.auth.updateUser(UserAttributes(data: metadata));
-      } catch (_) {
-        // No-op, fallback is best-effort.
-      }
       _logger.error(
         'data_input.response',
-        'Failed to save onboarding data to onboarding_profiles',
+        'Failed to save onboarding data to Firestore',
         payload: {
-          'subjectId': subjectId,
+          'userId': user.uid,
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
         },
@@ -72,27 +64,10 @@ class DataInputRemoteDataSourceImpl implements DataInputRemoteDataSource {
     }
   }
 
-  Map<String, dynamic> _toPayload(String subjectId, DataInputEntry entry) {
+  Map<String, dynamic> _toPayload(DataInputEntry entry) {
     return {
-      'subject_id': subjectId,
-      'recorded_at': entry.recordedAt.toIso8601String(),
-      'first_name': entry.firstName,
-      'last_name': entry.lastName,
-      'height_cm': entry.height,
-      'weight_kg': entry.weight,
-      'age': entry.age,
-      'sex': entry.sex,
-      'blood_pressure_systolic': entry.systolic,
-      'blood_pressure_diastolic': entry.diastolic,
-      'glucose': entry.glucose,
-      'temperature_c': entry.temperature,
-      'symptoms': entry.symptoms,
-    };
-  }
-
-  Map<String, dynamic> _toLegacyMetadataPayload(DataInputEntry entry) {
-    return {
-      'recorded_at': entry.recordedAt.toIso8601String(),
+      'recorded_at': entry.recordedAt.toUtc().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
       'first_name': entry.firstName,
       'last_name': entry.lastName,
       'height_cm': entry.height,

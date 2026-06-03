@@ -1,7 +1,7 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/app_env.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/firebase/firebase_initializer.dart';
 import '../../../../core/logging/app_logger.dart';
 import '../../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
@@ -46,20 +46,20 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<Either<Failure, ProfileData>> getProfileData() async {
     try {
       final localData = await localDataSource.getProfileData();
-      if (!AppEnv.isSupabaseConfigured) {
+      if (!isFirebaseReady) {
         return Right(localData);
       }
 
-      final user = Supabase.instance.client.auth.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         return Right(localData);
       }
 
       final profile =
           await snapshotDataSource.getSnapshot() ??
-          OnboardingProfileSnapshot.fromUserMetadata(
-            user.userMetadata,
+          OnboardingProfileSnapshot.fromAuthUser(
             email: user.email,
+            displayName: user.displayName,
           );
       Map<String, HealthModelOutputRecord> latestOutputs = const {};
       try {

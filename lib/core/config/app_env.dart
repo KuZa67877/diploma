@@ -11,6 +11,20 @@ class AppEnv {
     'APP_FLAVOR',
     defaultValue: '',
   );
+  static const String _firebaseSyncFromDartDefine = String.fromEnvironment(
+    'ENABLE_FIREBASE_SYNC',
+    defaultValue: '',
+  );
+  static const String _socialAuthFromDartDefine = String.fromEnvironment(
+    'ENABLE_SOCIAL_AUTH',
+    defaultValue: '',
+  );
+  static const String _authBypassFromDartDefine = String.fromEnvironment(
+    'ENABLE_AUTH_BYPASS',
+    defaultValue: '',
+  );
+  static const String _firebasePerformanceFromDartDefine =
+      String.fromEnvironment('ENABLE_FIREBASE_PERFORMANCE', defaultValue: '');
 
   static String get appFlavor {
     final compileTimeFlavor = _flavorFromDartDefine.isNotEmpty
@@ -32,33 +46,36 @@ class AppEnv {
 
   static bool get isProdFlavor => appFlavor == 'prod';
 
-  /// URL проекта Supabase.
-  static String get supabaseUrl =>
-      _readEnv('SUPABASE_URL') ?? 'https://YOUR_PROJECT.supabase.co';
-
-  /// Анонимный ключ Supabase.
-  static String get supabaseAnonKey =>
-      _readEnv('SUPABASE_ANON_KEY') ?? 'YOUR_SUPABASE_ANON_KEY';
-
-  /// Redirect URL для OAuth-провайдеров Supabase.
-  static String get supabaseRedirectUrl =>
-      _readEnv('SUPABASE_REDIRECT_URL') ??
-      'io.supabase.medi_ai://login-callback';
+  /// Feature flag for remote Firebase sync/auth.
+  static bool get enableFirebaseSync => _readBool(
+    dartDefineValue: _firebaseSyncFromDartDefine,
+    envKey: 'ENABLE_FIREBASE_SYNC',
+    defaultValue: true,
+  );
 
   /// Флаг отображения соц. авторизации в UI.
-  static bool get enableSocialAuth =>
-      (_readEnv('ENABLE_SOCIAL_AUTH') ?? 'false').toLowerCase() == 'true';
+  static bool get enableSocialAuth => _readBool(
+    dartDefineValue: _socialAuthFromDartDefine,
+    envKey: 'ENABLE_SOCIAL_AUTH',
+    defaultValue: false,
+  );
 
   /// Dev-флаг для пропуска реальной авторизации.
-  static bool get enableAuthBypass =>
-      (_readEnv('ENABLE_AUTH_BYPASS') ?? 'false').toLowerCase() == 'true';
+  static bool get enableAuthBypass => _readBool(
+    dartDefineValue: _authBypassFromDartDefine,
+    envKey: 'ENABLE_AUTH_BYPASS',
+    defaultValue: false,
+  );
 
-  /// Признак того, что Supabase настроен.
-  static bool get isSupabaseConfigured {
-    final urlOk = !supabaseUrl.contains('YOUR_PROJECT');
-    final keyOk = !supabaseAnonKey.contains('YOUR_SUPABASE_ANON_KEY');
-    return urlOk && keyOk;
-  }
+  /// Флаг отправки custom traces в Firebase Performance Monitoring.
+  static bool get enableFirebasePerformance => _readBool(
+    dartDefineValue: _firebasePerformanceFromDartDefine,
+    envKey: 'ENABLE_FIREBASE_PERFORMANCE',
+    defaultValue: true,
+  );
+
+  /// Optional full URL of the AI proxy endpoint, e.g. https://foo.workers.dev/ai/chat
+  static String get aiProxyUrl => (_readEnv('AI_PROXY_URL') ?? '').trim();
 
   /// Groq API key. Legacy DeepSeek keys are also respected for backwards compatibility.
   static String get groqApiKey =>
@@ -97,5 +114,29 @@ class AppEnv {
     } catch (_) {
       return null;
     }
+  }
+
+  static bool _readBool({
+    required String dartDefineValue,
+    required String envKey,
+    required bool defaultValue,
+  }) {
+    final normalizedDartDefine = dartDefineValue.trim().toLowerCase();
+    if (normalizedDartDefine == 'true') {
+      return true;
+    }
+    if (normalizedDartDefine == 'false') {
+      return false;
+    }
+
+    final envValue = (_readEnv(envKey) ?? '').trim().toLowerCase();
+    if (envValue == 'true') {
+      return true;
+    }
+    if (envValue == 'false') {
+      return false;
+    }
+
+    return defaultValue;
   }
 }

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../../../../core/perf/perf_probe.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 
@@ -225,13 +226,19 @@ class StressInferenceModel {
     double? recentSleepScore,
     int? fallbackHealthScore,
   }) async {
-    final scorecard = await _loadScorecard();
-    return _inferInternal(
-      samples: samples,
-      now: now,
-      recentSleepScore: recentSleepScore,
-      fallbackHealthScore: fallbackHealthScore,
-      scorecard: scorecard,
+    return PerfProbe.measureAsync(
+      'model.stress.infer_async',
+      () async {
+        final scorecard = await _loadScorecard();
+        return _inferInternal(
+          samples: samples,
+          now: now,
+          recentSleepScore: recentSleepScore,
+          fallbackHealthScore: fallbackHealthScore,
+          scorecard: scorecard,
+        );
+      },
+      payload: <String, Object?>{'sample_count': samples.length},
     );
   }
 
@@ -241,12 +248,16 @@ class StressInferenceModel {
     double? recentSleepScore,
     int? fallbackHealthScore,
   }) {
-    return _inferInternal(
-      samples: samples,
-      now: now,
-      recentSleepScore: recentSleepScore,
-      fallbackHealthScore: fallbackHealthScore,
-      scorecard: _loadedScorecard,
+    return PerfProbe.measureSync(
+      'model.stress.infer_sync',
+      () => _inferInternal(
+        samples: samples,
+        now: now,
+        recentSleepScore: recentSleepScore,
+        fallbackHealthScore: fallbackHealthScore,
+        scorecard: _loadedScorecard,
+      ),
+      payload: <String, Object?>{'sample_count': samples.length},
     );
   }
 

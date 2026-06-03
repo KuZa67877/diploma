@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import '../../../../core/logging/app_logger.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../domain/entities/ai_assistant_settings.dart';
 import '../../domain/entities/ai_chat_completion.dart';
 import '../../domain/entities/ai_chat_message.dart';
@@ -23,6 +23,9 @@ typedef DeepSeekPostInvoker =
       required Duration timeout,
     });
 
+typedef AiProxyUrlProvider = String Function();
+typedef AiProxyAuthTokenProvider = Future<String?> Function();
+
 abstract class DeepSeekRemoteDataSource {
   Future<AiChatCompletion> createChatCompletion({
     required AiAssistantSettings settings,
@@ -34,10 +37,17 @@ class DeepSeekRemoteDataSourceImpl implements DeepSeekRemoteDataSource {
   static const Duration _defaultTimeout = Duration(seconds: 30);
 
   final DeepSeekPostInvoker _postInvoker;
+  final AiProxyUrlProvider? _proxyUrlProvider;
+  final AiProxyAuthTokenProvider? _authTokenProvider;
   final AppLogger _logger = AppLogger.instance;
 
-  DeepSeekRemoteDataSourceImpl({DeepSeekPostInvoker? postInvoker})
-    : _postInvoker = postInvoker ?? _defaultPostInvoker;
+  DeepSeekRemoteDataSourceImpl({
+    DeepSeekPostInvoker? postInvoker,
+    AiProxyUrlProvider? proxyUrlProvider,
+    AiProxyAuthTokenProvider? authTokenProvider,
+  }) : _postInvoker = postInvoker ?? _defaultPostInvoker,
+       _proxyUrlProvider = proxyUrlProvider,
+       _authTokenProvider = authTokenProvider;
 
   @override
   Future<AiChatCompletion> createChatCompletion({
@@ -45,6 +55,29 @@ class DeepSeekRemoteDataSourceImpl implements DeepSeekRemoteDataSource {
     required List<AiChatMessage> messages,
   }) async {
     final hasImage = messages.any((item) => item.hasImageAttachment);
+    final selectedModel = settings.resolveModel(hasImage: hasImage);
+    if (selectedModel.isEmpty) {
+      throw const ValidationFailure(
+        'Укажите модель Groq в .env перед отправкой запроса.',
+      );
+    }
+
+    final requestPayload = jsonEncode({
+      'model': selectedModel,
+      'messages': messages.map(_toApiMessage).toList(growable: false),
+      'temperature': settings.temperature,
+      'max_completion_tokens': settings.maxTokens,
+    });
+
+    final proxyUrl = _proxyUrlProvider?.call().trim() ?? '';
+    if (proxyUrl.isNotEmpty) {
+      return _requestViaProxy(
+        proxyUrl: proxyUrl,
+        requestBody: requestPayload,
+        fallbackModel: selectedModel,
+      );
+    }
+
     if (!settings.hasApiKey) {
       throw const AuthFailure(
         'Добавьте API-ключ Groq в .env (GROQ_API_KEY), чтобы использовать AI-чат.',
@@ -54,19 +87,147 @@ class DeepSeekRemoteDataSourceImpl implements DeepSeekRemoteDataSource {
     final uri = Uri.parse(
       '${settings.baseUrl.replaceFirst(RegExp(r'/$'), '')}/chat/completions',
     );
-    final selectedModel = settings.resolveModel(hasImage: hasImage);
-    if (selectedModel.isEmpty) {
-      throw const ValidationFailure(
-        'Укажите модель Groq в .env перед отправкой запроса.',
+
+    return _requestDirect(
+      uri: uri,
+      settings: settings,
+      requestBody: requestPayload,
+      fallbackModel: selectedModel,
+      hasImage: hasImage,
+    );
+  }
+
+  Future<AiChatCompletion> _requestViaProxy({
+    required String proxyUrl,
+    required String requestBody,
+    required String fallbackModel,
+  }) async {
+    final token = await _authTokenProvider?.call();
+    if (token == null || token.trim().isEmpty) {
+      throw const AuthFailure(
+        'Войдите в аккаунт, чтобы использовать AI-прокси.',
       );
     }
-    final requestBody = jsonEncode({
-      'model': selectedModel,
-      'messages': messages.map(_toApiMessage).toList(growable: false),
-      'temperature': settings.temperature,
-      'max_completion_tokens': settings.maxTokens,
-    });
 
+    final uri = Uri.parse(proxyUrl);
+    try {
+      final response = await _postInvoker(
+        uri: uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: requestBody,
+        timeout: _defaultTimeout,
+      );
+
+      if (response.statusCode == 401) {
+        throw const AuthFailure(
+          'Сессия истекла. Войдите в аккаунт снова, чтобы использовать AI-прокси.',
+        );
+      }
+      if (response.statusCode == 403) {
+        final apiError = _extractApiErrorMessage(response.body);
+        throw ServerFailure(apiError ?? 'AI-прокси отклонил запрос (403).');
+      }
+      if (response.statusCode == 429) {
+        throw const ServerFailure(
+          'AI-прокси временно достиг лимита запросов. Попробуйте позже.',
+        );
+      }
+      if (response.statusCode >= 500) {
+        throw ServerFailure(
+          'AI-прокси временно недоступен (${response.statusCode}). Попробуйте позже.',
+        );
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final apiError = _extractApiErrorMessage(response.body);
+        throw ServerFailure(
+          apiError ?? 'AI-прокси вернул ошибку ${response.statusCode}.',
+        );
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const ServerFailure(
+          'AI-прокси вернул неожиданный формат ответа.',
+        );
+      }
+
+      final content = decoded['content']?.toString().trim() ?? '';
+      if (content.isEmpty) {
+        throw const ServerFailure('AI-прокси вернул пустой ответ.');
+      }
+
+      return AiChatCompletion(
+        content: content,
+        model: decoded['model']?.toString() ?? fallbackModel,
+        promptTokens:
+            _toInt(decoded['promptTokens']) ?? _toInt(decoded['prompt_tokens']),
+        completionTokens:
+            _toInt(decoded['completionTokens']) ??
+            _toInt(decoded['completion_tokens']),
+      );
+    } on SocketException {
+      throw const NetworkFailure(
+        'Нет подключения к интернету. Проверьте сеть и попробуйте снова.',
+      );
+    } on Failure {
+      rethrow;
+    } on HandshakeException catch (error) {
+      _logger.error(
+        'ai.chat',
+        'TLS handshake error while requesting AI proxy',
+        payload: error.toString(),
+      );
+      throw const NetworkFailure(
+        'Не удалось установить защищенное соединение с AI-прокси.',
+      );
+    } on HttpException catch (error) {
+      _logger.error(
+        'ai.chat',
+        'HTTP exception while requesting AI proxy',
+        payload: error.toString(),
+      );
+      throw ServerFailure(
+        'HTTP ошибка при обращении к AI-прокси: ${error.message}',
+      );
+    } on FormatException catch (error) {
+      _logger.error(
+        'ai.chat',
+        'Failed to parse AI proxy response',
+        payload: error.toString(),
+      );
+      throw const ServerFailure(
+        'AI-прокси вернул ответ в неожиданном формате.',
+      );
+    } on TimeoutException {
+      throw const NetworkFailure(
+        'Запрос к AI-прокси превысил timeout. Попробуйте позже.',
+      );
+    } catch (error) {
+      _logger.error(
+        'ai.chat',
+        'Unexpected error while requesting AI proxy',
+        payload: {
+          'type': error.runtimeType.toString(),
+          'message': error.toString(),
+        },
+      );
+      throw ServerFailure(
+        'Неожиданная ошибка при обработке ответа AI-прокси: ${error.runtimeType}.',
+      );
+    }
+  }
+
+  Future<AiChatCompletion> _requestDirect({
+    required Uri uri,
+    required AiAssistantSettings settings,
+    required String requestBody,
+    required String fallbackModel,
+    required bool hasImage,
+  }) async {
     try {
       final response = await _postInvoker(
         uri: uri,
@@ -135,7 +296,7 @@ class DeepSeekRemoteDataSourceImpl implements DeepSeekRemoteDataSource {
 
       return AiChatCompletion(
         content: content,
-        model: decoded['model']?.toString() ?? settings.model,
+        model: decoded['model']?.toString() ?? fallbackModel,
         promptTokens: promptTokens,
         completionTokens: completionTokens,
       );
@@ -181,7 +342,7 @@ class DeepSeekRemoteDataSourceImpl implements DeepSeekRemoteDataSource {
         payload: {
           'type': error.runtimeType.toString(),
           'message': error.toString(),
-          'model': selectedModel,
+          'model': fallbackModel,
           'hasImage': hasImage,
         },
       );
@@ -251,6 +412,10 @@ class DeepSeekRemoteDataSourceImpl implements DeepSeekRemoteDataSource {
         if (message != null && message.isNotEmpty) {
           return message;
         }
+      }
+      final message = decoded['message']?.toString().trim();
+      if (message != null && message.isNotEmpty) {
+        return message;
       }
       return null;
     } catch (_) {

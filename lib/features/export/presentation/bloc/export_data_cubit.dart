@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/perf/perf_probe.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metrics_query.dart';
@@ -143,34 +144,47 @@ class ExportDataCubit extends Cubit<ExportDataState> {
   ExportPayload? _payload;
 
   Future<void> load() async {
-    emit(state.copyWith(status: ExportDataStatus.loading, clearError: true));
-    final metricsFuture = getHealthMetrics(
-      HealthMetricsQuery(range: state.range.toHealthDateRange()),
-    );
-    final modelOutputsFuture = historicalModelOutputService.loadForRange(
-      state.range,
-    );
+    await PerfProbe.measureAsync(
+      'export.generate_payload',
+      () async {
+        emit(
+          state.copyWith(status: ExportDataStatus.loading, clearError: true),
+        );
+        final metricsFuture = getHealthMetrics(
+          HealthMetricsQuery(range: state.range.toHealthDateRange()),
+        );
+        final modelOutputsFuture = historicalModelOutputService.loadForRange(
+          state.range,
+        );
 
-    final metricsResult = await metricsFuture;
-    try {
-      _modelOutputs = await modelOutputsFuture;
-    } catch (_) {
-      _modelOutputs = ExportModelOutputSnapshot.empty;
-    }
-
-    metricsResult.fold(
-      (failure) => emit(
-        state.copyWith(
-          status: ExportDataStatus.error,
-          errorMessage: _mapFailureMessage(failure),
-        ),
-      ),
-      (metrics) {
-        _metrics = metrics;
-        _rebuild();
-        if (state.includePersonalData && _profileData == null) {
-          unawaited(_loadProfileData());
+        final metricsResult = await metricsFuture;
+        try {
+          _modelOutputs = await modelOutputsFuture;
+        } catch (_) {
+          _modelOutputs = ExportModelOutputSnapshot.empty;
         }
+
+        metricsResult.fold(
+          (failure) => emit(
+            state.copyWith(
+              status: ExportDataStatus.error,
+              errorMessage: _mapFailureMessage(failure),
+            ),
+          ),
+          (metrics) {
+            _metrics = metrics;
+            _rebuild();
+            if (state.includePersonalData && _profileData == null) {
+              unawaited(_loadProfileData());
+            }
+          },
+        );
+      },
+      payload: <String, Object?>{
+        'range_preset': state.range.preset.name,
+        'format': state.format.name,
+        'selected_types': state.selectedTypes.length,
+        'include_personal_data': state.includePersonalData,
       },
     );
   }

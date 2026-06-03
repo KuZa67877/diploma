@@ -1,8 +1,8 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/logging/app_logger.dart';
-import '../../../../core/supabase/supabase_subject_resolver.dart';
 
 class HealthModelOutputPayload {
   final String modelId;
@@ -80,15 +80,15 @@ abstract class HealthModelOutputRemoteDataSource {
 
 class HealthModelOutputRemoteDataSourceImpl
     implements HealthModelOutputRemoteDataSource {
-  final SupabaseClient Function() _clientProvider;
-  final SupabaseSubjectResolver _subjectResolver;
+  final FirebaseAuth Function() _authProvider;
+  final FirebaseFirestore Function() _firestoreProvider;
   final _logger = AppLogger.instance;
 
   HealthModelOutputRemoteDataSourceImpl({
-    required SupabaseClient Function() clientProvider,
-    required SupabaseSubjectResolver subjectResolver,
-  }) : _clientProvider = clientProvider,
-       _subjectResolver = subjectResolver;
+    required FirebaseAuth Function() authProvider,
+    required FirebaseFirestore Function() firestoreProvider,
+  }) : _authProvider = authProvider,
+       _firestoreProvider = firestoreProvider;
 
   @override
   Future<void> saveOutputs(List<HealthModelOutputPayload> outputs) async {
@@ -96,44 +96,46 @@ class HealthModelOutputRemoteDataSourceImpl
       return;
     }
 
-    final user = _clientProvider().auth.currentUser;
+    final user = _authProvider().currentUser;
     if (user == null) {
       throw const AuthFailure('No active session. Please sign in again.');
     }
-    final subjectId = await _subjectResolver.resolveSubjectId();
-    final rows = outputs
-        .map(
-          (output) => {
-            'subject_id': subjectId,
-            'model_id': output.modelId,
-            'model_version': output.modelVersion,
-            'window_start': output.windowStart.toUtc().toIso8601String(),
-            'window_end': output.windowEnd.toUtc().toIso8601String(),
-            'score': output.score,
-            'confidence': output.confidence.clamp(0.0, 1.0),
-            'status': output.status,
-            'source': output.source,
-            'reason': output.reason,
-            'reason_codes': output.reasonCodes,
-            'data_quality': output.dataQuality,
-            'features': output.features,
-          },
-        )
-        .toList(growable: false);
+    final collection = _modelOutputsCollection(user.uid);
+    var batch = _firestoreProvider().batch();
+    var operations = 0;
 
     _logger.info(
       'health.model_outputs',
       'Save health model outputs',
-      payload: {'subjectId': subjectId, 'outputs': rows.length},
+      payload: {'userId': user.uid, 'outputs': outputs.length},
     );
 
-    await _clientProvider()
-        .from('health_model_outputs')
-        .upsert(
-          rows,
-          onConflict:
-              'subject_id,model_id,model_version,window_start,window_end',
-        );
+    for (final output in outputs) {
+      batch.set(collection.doc(_outputId(output)), {
+        'model_id': output.modelId,
+        'model_version': output.modelVersion,
+        'window_start': output.windowStart.toUtc().toIso8601String(),
+        'window_end': output.windowEnd.toUtc().toIso8601String(),
+        'score': output.score,
+        'confidence': output.confidence.clamp(0.0, 1.0),
+        'status': output.status,
+        'source': output.source,
+        'reason': output.reason,
+        'reason_codes': output.reasonCodes,
+        'data_quality': output.dataQuality,
+        'features': output.features,
+      }, SetOptions(merge: true));
+      operations += 1;
+      if (operations == 400) {
+        await batch.commit();
+        batch = _firestoreProvider().batch();
+        operations = 0;
+      }
+    }
+
+    if (operations > 0) {
+      await batch.commit();
+    }
   }
 
   @override
@@ -143,60 +145,19 @@ class HealthModelOutputRemoteDataSourceImpl
     final normalizedModelIds = modelIds
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
+        .toSet();
     if (normalizedModelIds.isEmpty) {
       return const {};
     }
 
-    final user = _clientProvider().auth.currentUser;
-    if (user == null) {
-      throw const AuthFailure('No active session. Please sign in again.');
-    }
-
-    final subjectId = await _subjectResolver.resolveSubjectId();
-    final rows = await _clientProvider()
-        .from('health_model_outputs')
-        .select(
-          'model_id, model_version, window_start, window_end, score, confidence, status, source, reason, reason_codes, data_quality, features',
-        )
-        .eq('subject_id', subjectId)
-        .inFilter('model_id', normalizedModelIds)
-        .order('window_end', ascending: false);
-
+    final records = await _loadAllRecords();
     final latestByModel = <String, HealthModelOutputRecord>{};
-    for (final row in rows) {
-      final modelId = row['model_id']?.toString().trim() ?? '';
-      if (modelId.isEmpty || latestByModel.containsKey(modelId)) {
+    for (final record in records) {
+      if (!normalizedModelIds.contains(record.modelId)) {
         continue;
       }
-
-      final windowStart = DateTime.tryParse(
-        row['window_start']?.toString() ?? '',
-      )?.toUtc();
-      final windowEnd = DateTime.tryParse(
-        row['window_end']?.toString() ?? '',
-      )?.toUtc();
-      if (windowStart == null || windowEnd == null) {
-        continue;
-      }
-
-      latestByModel[modelId] = HealthModelOutputRecord(
-        modelId: modelId,
-        modelVersion: row['model_version']?.toString() ?? '',
-        windowStart: windowStart,
-        windowEnd: windowEnd,
-        score: _toDoubleOrNull(row['score']),
-        confidence: _toDouble(row['confidence']).clamp(0.0, 1.0),
-        status: row['status']?.toString() ?? 'unknown',
-        source: row['source']?.toString(),
-        reason: row['reason']?.toString(),
-        reasonCodes: _toListOfMap(row['reason_codes']),
-        dataQuality: _toMap(row['data_quality']),
-        features: _toMap(row['features']),
-      );
+      latestByModel.putIfAbsent(record.modelId, () => record);
     }
-
     return latestByModel;
   }
 
@@ -209,42 +170,40 @@ class HealthModelOutputRemoteDataSourceImpl
     final normalizedModelIds = modelIds
         .map((item) => item.trim())
         .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
+        .toSet();
     if (normalizedModelIds.isEmpty) {
       return const <HealthModelOutputRecord>[];
     }
 
-    final user = _clientProvider().auth.currentUser;
+    final records = await _loadAllRecords();
+    return records
+        .where((record) {
+          return normalizedModelIds.contains(record.modelId) &&
+              !record.windowStart.isAfter(end.toUtc()) &&
+              !record.windowEnd.isBefore(start.toUtc());
+        })
+        .toList(growable: false);
+  }
+
+  Future<List<HealthModelOutputRecord>> _loadAllRecords() async {
+    final user = _authProvider().currentUser;
     if (user == null) {
       throw const AuthFailure('No active session. Please sign in again.');
     }
 
-    final subjectId = await _subjectResolver.resolveSubjectId();
-    final rows = await _clientProvider()
-        .from('health_model_outputs')
-        .select(
-          'model_id, model_version, window_start, window_end, score, confidence, status, source, reason, reason_codes, data_quality, features',
-        )
-        .eq('subject_id', subjectId)
-        .inFilter('model_id', normalizedModelIds)
-        .lte('window_start', end.toUtc().toIso8601String())
-        .gte('window_end', start.toUtc().toIso8601String())
-        .order('window_end', ascending: false);
-
+    final query = await _modelOutputsCollection(
+      user.uid,
+    ).orderBy('window_end', descending: true).get();
     final records = <HealthModelOutputRecord>[];
-    for (final row in rows) {
+    for (final doc in query.docs) {
+      final row = doc.data();
       final modelId = row['model_id']?.toString().trim() ?? '';
       if (modelId.isEmpty) {
         continue;
       }
 
-      final windowStart = DateTime.tryParse(
-        row['window_start']?.toString() ?? '',
-      )?.toUtc();
-      final windowEnd = DateTime.tryParse(
-        row['window_end']?.toString() ?? '',
-      )?.toUtc();
+      final windowStart = _dateOrNull(row['window_start'])?.toUtc();
+      final windowEnd = _dateOrNull(row['window_end'])?.toUtc();
       if (windowStart == null || windowEnd == null) {
         continue;
       }
@@ -266,8 +225,36 @@ class HealthModelOutputRemoteDataSourceImpl
         ),
       );
     }
-
     return records;
+  }
+
+  CollectionReference<Map<String, dynamic>> _modelOutputsCollection(
+    String uid,
+  ) {
+    return _firestoreProvider()
+        .collection('users')
+        .doc(uid)
+        .collection('model_outputs');
+  }
+
+  String _outputId(HealthModelOutputPayload output) {
+    final start = output.windowStart.toUtc().microsecondsSinceEpoch;
+    final end = output.windowEnd.toUtc().microsecondsSinceEpoch;
+    final version = output.modelVersion.replaceAll(
+      RegExp(r'[^a-zA-Z0-9_-]'),
+      '_',
+    );
+    return '${output.modelId}__${version}__${start}__$end';
+  }
+
+  DateTime? _dateOrNull(Object? value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    return DateTime.tryParse(value.toString());
   }
 
   double _toDouble(Object? value) {

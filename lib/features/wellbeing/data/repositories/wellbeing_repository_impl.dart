@@ -1,5 +1,4 @@
 import 'package:dartz/dartz.dart';
-import '../../../../core/config/app_env.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/wellbeing_entry.dart';
 import '../../domain/repositories/wellbeing_repository.dart';
@@ -19,10 +18,6 @@ class WellbeingRepositoryImpl implements WellbeingRepository {
   Future<Either<Failure, List<WellbeingEntry>>> getEntries() async {
     try {
       final localEntries = await localDataSource.getEntries();
-      if (!AppEnv.isSupabaseConfigured) {
-        return Right(localEntries);
-      }
-
       try {
         final remoteEntries = await remoteDataSource.getEntries();
         if (remoteEntries.isEmpty) {
@@ -61,10 +56,6 @@ class WellbeingRepositoryImpl implements WellbeingRepository {
   Future<Either<Failure, Unit>> saveEntry(WellbeingEntry entry) async {
     try {
       await localDataSource.saveEntry(entry);
-      if (!AppEnv.isSupabaseConfigured) {
-        return const Right(unit);
-      }
-
       try {
         await remoteDataSource.saveEntry(entry);
       } on AuthFailure {

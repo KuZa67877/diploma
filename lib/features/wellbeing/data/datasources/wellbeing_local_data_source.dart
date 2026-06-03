@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/wellbeing_entry.dart';
 import '../../domain/entities/wellbeing_mood.dart';
 
@@ -15,8 +14,12 @@ abstract class WellbeingLocalDataSource {
 class WellbeingLocalDataSourceImpl implements WellbeingLocalDataSource {
   static const String _storageKeyBase = 'wellbeing_entries_v1';
   final SharedPreferences sharedPreferences;
+  final String? Function() _currentUserIdProvider;
 
-  WellbeingLocalDataSourceImpl({required this.sharedPreferences});
+  WellbeingLocalDataSourceImpl({
+    required this.sharedPreferences,
+    required String? Function() currentUserIdProvider,
+  }) : _currentUserIdProvider = currentUserIdProvider;
 
   @override
   Future<List<WellbeingEntry>> getEntries() async {
@@ -124,7 +127,7 @@ class WellbeingLocalDataSourceImpl implements WellbeingLocalDataSource {
   String get _storageKey => '${_storageKeyBase}_${_currentScopeId()}';
 
   String _currentScopeId() {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final userId = _currentUserIdProvider();
     if (userId != null && userId.isNotEmpty) {
       return userId;
     }

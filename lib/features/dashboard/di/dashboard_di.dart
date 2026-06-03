@@ -1,11 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import '../../../core/supabase/anonymous_user_snapshot_data_source.dart';
-import '../../../core/supabase/supabase_subject_resolver.dart';
 import '../../health_data/data/datasources/health_data_remote_data_source.dart';
 import '../../wellbeing/domain/repositories/wellbeing_repository.dart';
 import '../../wellbeing/domain/services/healthscore_base_component_service.dart';
 import '../../wellbeing/domain/usecases/calculate_healthscore.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/datasources/dashboard_local_data_source.dart';
 import '../data/datasources/health_model_output_remote_data_source.dart';
 import '../data/repositories/dashboard_repository_impl.dart';
@@ -25,8 +25,8 @@ void registerDashboard(GetIt getIt) {
   );
   getIt.registerLazySingleton<HealthModelOutputRemoteDataSource>(
     () => HealthModelOutputRemoteDataSourceImpl(
-      clientProvider: getIt<SupabaseClient Function()>(),
-      subjectResolver: getIt<SupabaseSubjectResolver>(),
+      authProvider: getIt<FirebaseAuth Function()>(),
+      firestoreProvider: getIt<FirebaseFirestore Function()>(),
     ),
   );
   getIt.registerLazySingleton<HarvardActivityRecommendationModel>(

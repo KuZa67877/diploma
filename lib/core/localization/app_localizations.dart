@@ -1099,6 +1099,47 @@ class AppLocalizations {
       'en': 'AI: health data is being analyzed.',
       'ru': 'ИИ: данные здоровья анализируются.',
     },
+    'moreTrackedMetrics': {
+      'en': 'More tracked metrics',
+      'ru': 'Другие отслеживаемые метрики',
+    },
+    'tracked': {'en': 'tracked', 'ru': 'метрик'},
+    'openMetricToSeeLargerChart': {
+      'en': 'Open a metric to see the larger chart and related signals.',
+      'ru': 'Откройте метрику, чтобы увидеть большой график и связанные сигналы.',
+    },
+    'metricDetail': {'en': 'Detail view', 'ru': 'Детальный просмотр'},
+    'compareMetrics': {
+      'en': 'Compare metrics',
+      'ru': 'Сравнение метрик',
+    },
+    'chooseAdjacentCharts': {
+      'en': 'Choose adjacent charts',
+      'ru': 'Выберите смежные графики',
+    },
+    'combinedTrends': {
+      'en': 'Combined trends',
+      'ru': 'Совмещённые тренды',
+    },
+    'displayedOnChart': {
+      'en': 'Displayed on chart',
+      'ru': 'Показано на графике',
+    },
+    'scaleMode': {'en': 'Scale mode', 'ru': 'Режим шкалы'},
+    'normalized': {'en': 'Normalized', 'ru': 'Нормализованная'},
+    'absolute': {'en': 'Absolute', 'ru': 'Абсолютная'},
+    'normalizedScaleHint': {
+      'en': 'Use normalized scale when combining metrics with different units.',
+      'ru': 'Используйте нормализованную шкалу при сравнении метрик с разными единицами.',
+    },
+    'applyComparison': {
+      'en': 'Apply comparison',
+      'ru': 'Применить сравнение',
+    },
+    'visible': {'en': 'Visible', 'ru': 'Видно'},
+    'relatedSignals': {'en': 'Related signals', 'ru': 'Связанные сигналы'},
+    'vsAverage': {'en': 'vs average', 'ru': 'к среднему'},
+    'peak': {'en': 'Peak', 'ru': 'Пик'},
 
     // Reports
     'exportAndShare': {

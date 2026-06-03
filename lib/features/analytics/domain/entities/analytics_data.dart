@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'activity_sample.dart';
 import 'analytics_filter_option.dart';
 import 'analytics_insight.dart';
+import 'analytics_metric_series.dart';
 import 'heart_rate_sample.dart';
 
 class AnalyticsData extends Equatable {
@@ -9,6 +10,8 @@ class AnalyticsData extends Equatable {
   final String selectedFilterId;
   final List<HeartRateSample> heartRate;
   final List<ActivitySample> activity;
+  final List<AnalyticsMetricSeries> metricSeries;
+  final List<String> featuredMetricIds;
   final List<AnalyticsInsight> insights;
   final int recordsCount;
   final int sourceCount;
@@ -25,6 +28,8 @@ class AnalyticsData extends Equatable {
     required this.selectedFilterId,
     required this.heartRate,
     required this.activity,
+    this.metricSeries = const [],
+    this.featuredMetricIds = const [],
     required this.insights,
     this.recordsCount = 0,
     this.sourceCount = 0,
@@ -43,6 +48,8 @@ class AnalyticsData extends Equatable {
     selectedFilterId,
     heartRate,
     activity,
+    metricSeries,
+    featuredMetricIds,
     insights,
     recordsCount,
     sourceCount,

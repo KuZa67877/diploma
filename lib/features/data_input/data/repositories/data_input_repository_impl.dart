@@ -1,5 +1,5 @@
-import '../../../../core/config/app_env.dart';
 import 'package:dartz/dartz.dart';
+import '../../../../core/firebase/firebase_initializer.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/data_input_config.dart';
 import '../../domain/entities/data_input_entry.dart';
@@ -46,7 +46,7 @@ class DataInputRepositoryImpl implements DataInputRepository {
 
       await localDataSource.saveEntry(payload);
 
-      if (AppEnv.isSupabaseConfigured) {
+      if (isFirebaseReady) {
         await remoteDataSource.saveEntry(entry);
       }
 

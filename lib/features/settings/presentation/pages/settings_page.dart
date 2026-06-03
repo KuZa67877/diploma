@@ -18,6 +18,7 @@ class SettingsPage extends StatelessWidget {
   final VoidCallback? onOpenPhysiologyAnomalyDebug;
   final VoidCallback? onOpenBaselineForecastDebug;
   final VoidCallback? onOpenHealthMockSeeder;
+  final VoidCallback? onOpenPerformanceReport;
 
   const SettingsPage({
     super.key,
@@ -29,6 +30,7 @@ class SettingsPage extends StatelessWidget {
     this.onOpenPhysiologyAnomalyDebug,
     this.onOpenBaselineForecastDebug,
     this.onOpenHealthMockSeeder,
+    this.onOpenPerformanceReport,
   });
 
   @override
@@ -201,6 +203,16 @@ class SettingsPage extends StatelessWidget {
                           title: 'Health mock seeder',
                           subtitle: 'Запись 30 дней тестовых данных в Health',
                           onTap: onOpenHealthMockSeeder,
+                        ),
+                        _DividerLine(color: borderColor),
+                        _SettingsRow(
+                          icon: LucideIcons.gauge,
+                          iconBg: isDark
+                              ? AppColors.darkMuted
+                              : AppColors.muted,
+                          title: 'Performance report',
+                          subtitle: 'JSON-логи, Firebase Perf и экспорт метрик',
+                          onTap: onOpenPerformanceReport,
                         ),
                       ],
                     ],

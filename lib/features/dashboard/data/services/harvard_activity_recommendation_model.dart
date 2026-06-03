@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
 import '../../../../core/logging/app_logger.dart';
+import '../../../../core/perf/perf_probe.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
@@ -265,110 +266,116 @@ class HarvardActivityRecommendationModel {
     required List<HealthMetricSample> samples,
     DateTime? now,
   }) async {
-    final current = (now ?? DateTime.now()).toUtc();
-    final stats = _buildStats(samples: samples, now: current);
-    _logger.info(
-      'model.harvard',
-      'Starting recommendation inference',
-      payload: {
-        'samplesTotal': samples.length,
-        'windowDays': _windowDays,
-        'profile': {
-          'age': profile.age,
-          'sex': profile.sex,
-          'heightCm': profile.heightCm,
-          'weightKg': profile.weightKg,
-        },
-        'stats': {
-          'availableSignals': stats.availableSignals,
-          'stepsLatest': stats.stepsLatest,
-          'heartLatest': stats.heartLatest,
-          'caloriesLatest': stats.caloriesLatest,
-          'distanceLatest': stats.distanceLatest,
-          'restingLatest': stats.restingLatest,
-          'heartDays': stats.heartSeries.length,
-          'stepsDays': stats.stepsSeries.length,
-        },
-      },
-    );
-
-    if (stats.availableSignals < 2) {
-      return _insufficientResult(
-        reason: 'not_enough_signals',
-        payload: {'availableSignals': stats.availableSignals},
-      );
-    }
-
-    await _ensureInitialized();
-
-    if (_initFailed ||
-        _session == null ||
-        _featureNames.isEmpty ||
-        _featureNames.length != _mean.length ||
-        _featureNames.length != _std.length) {
-      return _insufficientResult(
-        reason: 'model_not_ready',
-        payload: {
-          'initFailed': _initFailed,
-          'sessionNull': _session == null,
-          'featureNames': _featureNames.length,
-          'mean': _mean.length,
-          'std': _std.length,
-        },
-      );
-    }
-
-    try {
-      final rawVector = _buildNotebookFeatureVector(profile, stats);
-      final scaled = _scale(rawVector);
-      _logger.debug(
-        'model.harvard',
-        'Feature vector prepared',
-        payload: {
-          'inputName': _inputName,
-          'featureCount': rawVector.length,
-          'firstFeatures': _featureNames.take(6).toList(growable: false),
-          'firstValues': rawVector.take(6).toList(growable: false),
-        },
-      );
-      final classId = await _runOnnx(scaled);
-      if (classId == null) {
-        return _insufficientResult(reason: 'onnx_output_unrecognized');
-      }
-      final label = _inverseTargetMapping[classId];
-      final activityClass = _mapLabelToClass(label);
-      if (activityClass == HarvardActivityClass.insufficientData) {
-        return _insufficientResult(
-          reason: 'class_mapping_failed',
-          payload: {'classId': classId, 'label': label},
+    return PerfProbe.measureAsync(
+      'model.harvard.infer',
+      () async {
+        final current = (now ?? DateTime.now()).toUtc();
+        final stats = _buildStats(samples: samples, now: current);
+        _logger.info(
+          'model.harvard',
+          'Starting recommendation inference',
+          payload: {
+            'samplesTotal': samples.length,
+            'windowDays': _windowDays,
+            'profile': {
+              'age': profile.age,
+              'sex': profile.sex,
+              'heightCm': profile.heightCm,
+              'weightKg': profile.weightKg,
+            },
+            'stats': {
+              'availableSignals': stats.availableSignals,
+              'stepsLatest': stats.stepsLatest,
+              'heartLatest': stats.heartLatest,
+              'caloriesLatest': stats.caloriesLatest,
+              'distanceLatest': stats.distanceLatest,
+              'restingLatest': stats.restingLatest,
+              'heartDays': stats.heartSeries.length,
+              'stepsDays': stats.stepsSeries.length,
+            },
+          },
         );
-      }
-      _logger.info(
-        'model.harvard',
-        'Inference success',
-        payload: {
-          'classId': classId,
-          'label': label,
-          'activityClass': activityClass.name,
-        },
-      );
-      return HarvardActivityRecommendationResult(
-        activityClass: activityClass,
-        confidence: _confidenceFromSignals(stats.availableSignals),
-        recommendationKeys: _recommendationsForClass(activityClass),
-        modelVersion: _modelVersion,
-      );
-    } catch (error, stackTrace) {
-      _logger.error(
-        'model.harvard',
-        'Inference failed with exception',
-        payload: {
-          'error': error.toString(),
-          'stackTrace': stackTrace.toString(),
-        },
-      );
-      return _insufficientResult(reason: 'inference_exception');
-    }
+
+        if (stats.availableSignals < 2) {
+          return _insufficientResult(
+            reason: 'not_enough_signals',
+            payload: {'availableSignals': stats.availableSignals},
+          );
+        }
+
+        await _ensureInitialized();
+
+        if (_initFailed ||
+            _session == null ||
+            _featureNames.isEmpty ||
+            _featureNames.length != _mean.length ||
+            _featureNames.length != _std.length) {
+          return _insufficientResult(
+            reason: 'model_not_ready',
+            payload: {
+              'initFailed': _initFailed,
+              'sessionNull': _session == null,
+              'featureNames': _featureNames.length,
+              'mean': _mean.length,
+              'std': _std.length,
+            },
+          );
+        }
+
+        try {
+          final rawVector = _buildNotebookFeatureVector(profile, stats);
+          final scaled = _scale(rawVector);
+          _logger.debug(
+            'model.harvard',
+            'Feature vector prepared',
+            payload: {
+              'inputName': _inputName,
+              'featureCount': rawVector.length,
+              'firstFeatures': _featureNames.take(6).toList(growable: false),
+              'firstValues': rawVector.take(6).toList(growable: false),
+            },
+          );
+          final classId = await _runOnnx(scaled);
+          if (classId == null) {
+            return _insufficientResult(reason: 'onnx_output_unrecognized');
+          }
+          final label = _inverseTargetMapping[classId];
+          final activityClass = _mapLabelToClass(label);
+          if (activityClass == HarvardActivityClass.insufficientData) {
+            return _insufficientResult(
+              reason: 'class_mapping_failed',
+              payload: {'classId': classId, 'label': label},
+            );
+          }
+          _logger.info(
+            'model.harvard',
+            'Inference success',
+            payload: {
+              'classId': classId,
+              'label': label,
+              'activityClass': activityClass.name,
+            },
+          );
+          return HarvardActivityRecommendationResult(
+            activityClass: activityClass,
+            confidence: _confidenceFromSignals(stats.availableSignals),
+            recommendationKeys: _recommendationsForClass(activityClass),
+            modelVersion: _modelVersion,
+          );
+        } catch (error, stackTrace) {
+          _logger.error(
+            'model.harvard',
+            'Inference failed with exception',
+            payload: {
+              'error': error.toString(),
+              'stackTrace': stackTrace.toString(),
+            },
+          );
+          return _insufficientResult(reason: 'inference_exception');
+        }
+      },
+      payload: <String, Object?>{'sample_count': samples.length},
+    );
   }
 
   Future<void> _ensureInitialized() async {

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../../../core/perf/perf_probe.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 
@@ -217,105 +218,116 @@ class BaselineForecastInferenceModel {
     DateTime? now,
     DateTime? forecastFor,
   }) {
-    final utcNow = (now ?? DateTime.now()).toUtc();
-    final forecastDay = startOfUtcDay(forecastFor ?? utcNow);
-    final windowStart = forecastDay.subtract(historyWindow);
-    final windowEnd = forecastDay.add(const Duration(days: 1));
-    final relevantSamples = samples
-        .where(
-          (sample) => sample.sourceId.trim().toLowerCase() != 'local_manual',
-        )
-        .where((sample) => _trackedTypes.contains(sample.type))
-        .where((sample) => !sample.timestamp.toUtc().isAfter(utcNow))
-        .where(
-          (sample) => sample.timestamp.toUtc().isAfter(
-            forecastDay.subtract(_loadWindow),
-          ),
-        )
-        .toList(growable: false);
+    return PerfProbe.measureSync(
+      'model.baseline_forecast.infer_sync',
+      () {
+        final utcNow = (now ?? DateTime.now()).toUtc();
+        final forecastDay = startOfUtcDay(forecastFor ?? utcNow);
+        final windowStart = forecastDay.subtract(historyWindow);
+        final windowEnd = forecastDay.add(const Duration(days: 1));
+        final relevantSamples = samples
+            .where(
+              (sample) =>
+                  sample.sourceId.trim().toLowerCase() != 'local_manual',
+            )
+            .where((sample) => _trackedTypes.contains(sample.type))
+            .where((sample) => !sample.timestamp.toUtc().isAfter(utcNow))
+            .where(
+              (sample) => sample.timestamp.toUtc().isAfter(
+                forecastDay.subtract(_loadWindow),
+              ),
+            )
+            .toList(growable: false);
 
-    if (relevantSamples.isEmpty) {
-      return BaselineForecastInferenceResult.insufficient(
-        now: utcNow,
-        forecastFor: forecastDay,
-        reason: 'no_wearable_samples',
-      );
-    }
+        if (relevantSamples.isEmpty) {
+          return BaselineForecastInferenceResult.insufficient(
+            now: utcNow,
+            forecastFor: forecastDay,
+            reason: 'no_wearable_samples',
+          );
+        }
 
-    final daily = _buildDailyMetrics(
-      samples: relevantSamples,
-      startDay: forecastDay.subtract(_loadWindow),
-      endExclusive: windowEnd,
-    );
+        final daily = _buildDailyMetrics(
+          samples: relevantSamples,
+          startDay: forecastDay.subtract(_loadWindow),
+          endExclusive: windowEnd,
+        );
 
-    final metricResults = <String, BaselineForecastMetricResult>{};
-    final dailyFeatureVector = <String, Object?>{};
+        final metricResults = <String, BaselineForecastMetricResult>{};
+        final dailyFeatureVector = <String, Object?>{};
 
-    for (final spec in _targetSpecs) {
-      final result = _forecastMetric(
-        spec: spec,
-        daily: daily,
-        forecastDay: forecastDay,
-        now: utcNow,
-      );
-      metricResults[spec.key] = result;
-      dailyFeatureVector[spec.key] = result.featureSnapshot;
-    }
+        for (final spec in _targetSpecs) {
+          final result = _forecastMetric(
+            spec: spec,
+            daily: daily,
+            forecastDay: forecastDay,
+            now: utcNow,
+          );
+          metricResults[spec.key] = result;
+          dailyFeatureVector[spec.key] = result.featureSnapshot;
+        }
 
-    final scoredMetrics = metricResults.values
-        .where((metric) => metric.expected != null)
-        .toList(growable: false);
-    final comparableMetrics = metricResults.values
-        .where((metric) => metric.delta != null && metric.robustZ != null)
-        .toList(growable: false);
-    final overallScore = comparableMetrics.isEmpty
-        ? null
-        : _overallDeviationScore(comparableMetrics);
-    final status = _statusForScore(overallScore);
-    final reasons = _mainReasons(metricResults.values);
-    final quality = _dataQuality(metricResults.values);
-    final confidence = _resultConfidence(metricResults.values, quality);
-    final insufficient = scoredMetrics.length < 3 || quality.overall < 0.25;
+        final scoredMetrics = metricResults.values
+            .where((metric) => metric.expected != null)
+            .toList(growable: false);
+        final comparableMetrics = metricResults.values
+            .where((metric) => metric.delta != null && metric.robustZ != null)
+            .toList(growable: false);
+        final overallScore = comparableMetrics.isEmpty
+            ? null
+            : _overallDeviationScore(comparableMetrics);
+        final status = _statusForScore(overallScore);
+        final reasons = _mainReasons(metricResults.values);
+        final quality = _dataQuality(metricResults.values);
+        final confidence = _resultConfidence(metricResults.values, quality);
+        final insufficient = scoredMetrics.length < 3 || quality.overall < 0.25;
 
-    return BaselineForecastInferenceResult(
-      modelId: modelId,
-      modelVersion: modelVersion,
-      inferenceTimestamp: utcNow,
-      windowStart: windowStart,
-      windowEnd: windowEnd,
-      forecastFor: forecastDay,
-      overallDeviationScore: overallScore,
-      confidence: confidence,
-      status: insufficient ? 'insufficient' : status,
-      source: scoredMetrics.isEmpty ? 'cold_start' : _sourceFor(scoredMetrics),
-      reason: scoredMetrics.isEmpty
-          ? 'insufficient_baseline'
-          : insufficient
-          ? 'low_forecast_coverage'
-          : 'ok',
-      insufficientData: insufficient,
-      dataQuality: quality,
-      metrics: Map.unmodifiable(metricResults),
-      summary: BaselineForecastSummary(
-        overallDeviationScore: overallScore,
-        status: insufficient ? 'insufficient' : status,
-        mainReasons: reasons.isEmpty ? ['within_expected_range'] : reasons,
-      ),
-      features: {
-        'forecast_for': forecastDay.toIso8601String(),
-        'history_days': historyWindow.inDays,
-        'forecastable_metrics': scoredMetrics.length,
-        'comparable_metrics': comparableMetrics.length,
-        'daily_feature_vector': dailyFeatureVector,
-        'metrics': metricResults.map(
-          (key, value) => MapEntry(key, value.toJson()),
-        ),
-        'summary': BaselineForecastSummary(
+        return BaselineForecastInferenceResult(
+          modelId: modelId,
+          modelVersion: modelVersion,
+          inferenceTimestamp: utcNow,
+          windowStart: windowStart,
+          windowEnd: windowEnd,
+          forecastFor: forecastDay,
           overallDeviationScore: overallScore,
+          confidence: confidence,
           status: insufficient ? 'insufficient' : status,
-          mainReasons: reasons.isEmpty ? ['within_expected_range'] : reasons,
-        ).toJson(),
+          source: scoredMetrics.isEmpty
+              ? 'cold_start'
+              : _sourceFor(scoredMetrics),
+          reason: scoredMetrics.isEmpty
+              ? 'insufficient_baseline'
+              : insufficient
+              ? 'low_forecast_coverage'
+              : 'ok',
+          insufficientData: insufficient,
+          dataQuality: quality,
+          metrics: Map.unmodifiable(metricResults),
+          summary: BaselineForecastSummary(
+            overallDeviationScore: overallScore,
+            status: insufficient ? 'insufficient' : status,
+            mainReasons: reasons.isEmpty ? ['within_expected_range'] : reasons,
+          ),
+          features: {
+            'forecast_for': forecastDay.toIso8601String(),
+            'history_days': historyWindow.inDays,
+            'forecastable_metrics': scoredMetrics.length,
+            'comparable_metrics': comparableMetrics.length,
+            'daily_feature_vector': dailyFeatureVector,
+            'metrics': metricResults.map(
+              (key, value) => MapEntry(key, value.toJson()),
+            ),
+            'summary': BaselineForecastSummary(
+              overallDeviationScore: overallScore,
+              status: insufficient ? 'insufficient' : status,
+              mainReasons: reasons.isEmpty
+                  ? ['within_expected_range']
+                  : reasons,
+            ).toJson(),
+          },
+        );
       },
+      payload: <String, Object?>{'sample_count': samples.length},
     );
   }
 

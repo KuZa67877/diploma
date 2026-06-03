@@ -1,9 +1,9 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../error/failures.dart';
 import '../logging/app_logger.dart';
 import 'onboarding_profile_snapshot.dart';
-import 'supabase_subject_resolver.dart';
 
 abstract class AnonymousUserSnapshotDataSource {
   Future<OnboardingProfileSnapshot?> getSnapshot();
@@ -11,87 +11,62 @@ abstract class AnonymousUserSnapshotDataSource {
 
 class AnonymousUserSnapshotDataSourceImpl
     implements AnonymousUserSnapshotDataSource {
-  final SupabaseClient Function() _clientProvider;
-  final SupabaseSubjectResolver _subjectResolver;
+  final FirebaseAuth Function() _authProvider;
+  final FirebaseFirestore Function() _firestoreProvider;
   final _logger = AppLogger.instance;
 
   AnonymousUserSnapshotDataSourceImpl({
-    required SupabaseClient Function() clientProvider,
-    required SupabaseSubjectResolver subjectResolver,
-  }) : _clientProvider = clientProvider,
-       _subjectResolver = subjectResolver;
+    required FirebaseAuth Function() authProvider,
+    required FirebaseFirestore Function() firestoreProvider,
+  }) : _authProvider = authProvider,
+       _firestoreProvider = firestoreProvider;
 
   @override
   Future<OnboardingProfileSnapshot?> getSnapshot() async {
-    final client = _clientProvider();
-    final user = client.auth.currentUser;
+    final user = _authProvider().currentUser;
     if (user == null) {
       throw const AuthFailure('No active session. Please sign in again.');
     }
 
     try {
-      final subjectId = await _subjectResolver.resolveSubjectId();
-      final profileRows = await client
-          .from('onboarding_profiles')
-          .select(
-            'recorded_at, first_name, last_name, age, sex, height_cm, weight_kg, '
-            'blood_pressure_systolic, blood_pressure_diastolic, glucose, '
-            'temperature_c, symptoms, updated_at',
-          )
-          .eq('subject_id', subjectId)
-          .limit(1);
-
-      final profile = profileRows.isNotEmpty ? profileRows.first : null;
-
-      final wellbeingRows = await client
-          .from('wellbeing_entries')
-          .select('entry_date')
-          .eq('subject_id', subjectId);
+      final root = _userDoc(user.uid);
+      final profileDoc = await root
+          .collection('profile')
+          .doc('onboarding')
+          .get();
+      final wellbeingQuery = await root.collection('wellbeing').get();
+      final healthSamplesQuery = await root.collection('health_samples').get();
+      final connectionsQuery = await root
+          .collection('health_connections')
+          .where('is_connected', isEqualTo: true)
+          .get();
 
       final wellbeingDates = <DateTime>[];
-      for (final item in wellbeingRows) {
-        final date = _dateOrNull(item['entry_date']);
+      for (final doc in wellbeingQuery.docs) {
+        final date = _dateOrNull(doc.data()['entry_date']);
         if (date != null) {
           wellbeingDates.add(DateTime(date.year, date.month, date.day));
         }
       }
 
-      final healthCountResponse = await client
-          .from('health_metric_samples')
-          .select('sample_id')
-          .eq('subject_id', subjectId)
-          .limit(1)
-          .count(CountOption.exact);
-      final healthSamplesCount = healthCountResponse.count;
+      final connectedSourceIds = connectionsQuery.docs
+          .map((doc) => (doc.data()['source_id'] ?? '').toString().trim())
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
 
-      final connectedRows = await client
-          .from('health_source_connections')
-          .select('source_id')
-          .eq('subject_id', subjectId)
-          .eq('is_connected', true);
-      final connectedSourceIds = <String>[];
-      for (final item in connectedRows) {
-        final id = item['source_id']?.toString().trim() ?? '';
-        if (id.isNotEmpty) {
-          connectedSourceIds.add(id);
-        }
-      }
-
+      final profile = profileDoc.data();
       if (profile == null &&
           wellbeingDates.isEmpty &&
-          healthSamplesCount == 0 &&
+          healthSamplesQuery.docs.isEmpty &&
           connectedSourceIds.isEmpty) {
         return null;
       }
 
-      final map = profile != null
-          ? Map<String, dynamic>.from(profile)
-          : const <String, dynamic>{};
-
-      final tableSnapshot = OnboardingProfileSnapshot(
+      final map = profile ?? const <String, dynamic>{};
+      return OnboardingProfileSnapshot(
         firstName: _stringOrNull(map['first_name']),
         lastName: _stringOrNull(map['last_name']),
-        fullName: null,
+        fullName: _stringOrNull(map['full_name']) ?? user.displayName,
         email: user.email,
         age: _intOrNull(map['age']),
         sex: _stringOrNull(map['sex']),
@@ -105,49 +80,14 @@ class AnonymousUserSnapshotDataSourceImpl
         completedAt: _dateOrNull(map['updated_at']),
         symptoms: _stringList(map['symptoms']),
         wellbeingEntriesCount: wellbeingDates.length,
-        healthSamplesCount: healthSamplesCount,
+        healthSamplesCount: healthSamplesQuery.docs.length,
         connectedHealthSourceIds: connectedSourceIds,
         wellbeingEntryDates: wellbeingDates,
       );
-
-      final metadataSnapshot = OnboardingProfileSnapshot.fromUserMetadata(
-        user.userMetadata,
-        email: user.email,
-      );
-      final merged = _mergeWithMetadataFallback(
-        tableSnapshot: tableSnapshot,
-        metadataSnapshot: metadataSnapshot,
-      );
-      _logger.debug(
-        'snapshot.remote',
-        'Resolved onboarding snapshot',
-        payload: {
-          'subjectId': subjectId,
-          'fromTable': {
-            'age': tableSnapshot.age,
-            'sex': tableSnapshot.sex,
-            'heightCm': tableSnapshot.heightCm,
-            'weightKg': tableSnapshot.weightKg,
-          },
-          'fromMetadata': {
-            'age': metadataSnapshot.age,
-            'sex': metadataSnapshot.sex,
-            'heightCm': metadataSnapshot.heightCm,
-            'weightKg': metadataSnapshot.weightKg,
-          },
-          'resolved': {
-            'age': merged.age,
-            'sex': merged.sex,
-            'heightCm': merged.heightCm,
-            'weightKg': merged.weightKg,
-          },
-        },
-      );
-      return merged;
     } catch (error, stackTrace) {
       _logger.warning(
         'snapshot.remote',
-        'Failed to load anonymous snapshot from Supabase tables',
+        'Failed to load user snapshot from Firestore',
         payload: {
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
@@ -157,33 +97,8 @@ class AnonymousUserSnapshotDataSourceImpl
     }
   }
 
-  OnboardingProfileSnapshot _mergeWithMetadataFallback({
-    required OnboardingProfileSnapshot tableSnapshot,
-    required OnboardingProfileSnapshot metadataSnapshot,
-  }) {
-    return OnboardingProfileSnapshot(
-      firstName: tableSnapshot.firstName ?? metadataSnapshot.firstName,
-      lastName: tableSnapshot.lastName ?? metadataSnapshot.lastName,
-      fullName: tableSnapshot.fullName ?? metadataSnapshot.fullName,
-      email: tableSnapshot.email ?? metadataSnapshot.email,
-      age: tableSnapshot.age ?? metadataSnapshot.age,
-      sex: tableSnapshot.sex ?? metadataSnapshot.sex,
-      heightCm: tableSnapshot.heightCm ?? metadataSnapshot.heightCm,
-      weightKg: tableSnapshot.weightKg ?? metadataSnapshot.weightKg,
-      systolic: tableSnapshot.systolic ?? metadataSnapshot.systolic,
-      diastolic: tableSnapshot.diastolic ?? metadataSnapshot.diastolic,
-      glucose: tableSnapshot.glucose ?? metadataSnapshot.glucose,
-      temperatureC: tableSnapshot.temperatureC ?? metadataSnapshot.temperatureC,
-      recordedAt: tableSnapshot.recordedAt ?? metadataSnapshot.recordedAt,
-      completedAt: tableSnapshot.completedAt ?? metadataSnapshot.completedAt,
-      symptoms: tableSnapshot.symptoms.isNotEmpty
-          ? tableSnapshot.symptoms
-          : metadataSnapshot.symptoms,
-      wellbeingEntriesCount: tableSnapshot.wellbeingEntriesCount,
-      healthSamplesCount: tableSnapshot.healthSamplesCount,
-      connectedHealthSourceIds: tableSnapshot.connectedHealthSourceIds,
-      wellbeingEntryDates: tableSnapshot.wellbeingEntryDates,
-    );
+  DocumentReference<Map<String, dynamic>> _userDoc(String uid) {
+    return _firestoreProvider().collection('users').doc(uid);
   }
 
   static String? _stringOrNull(Object? value) {
@@ -220,6 +135,9 @@ class AnonymousUserSnapshotDataSourceImpl
   static DateTime? _dateOrNull(Object? value) {
     if (value == null) {
       return null;
+    }
+    if (value is Timestamp) {
+      return value.toDate();
     }
     return DateTime.tryParse(value.toString());
   }

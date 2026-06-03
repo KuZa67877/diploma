@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "28348437666",
+    "project_id": "mediai-a4ebf",
+    "storage_bucket": "mediai-a4ebf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28348437666:android:a9b6393d331e7024ed73fb",
+        "android_client_info": {
+          "package_name": "com.example.medi_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDL2C_pa2dt0d1dK-8JmwTVLBCMOVjprGw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

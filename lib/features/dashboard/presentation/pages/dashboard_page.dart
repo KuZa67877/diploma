@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/perf/perf_probe.dart';
+import '../../../../core/perf/perf_trace_service.dart';
 import '../../../../injection_container.dart';
 import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/gradient_background.dart';
@@ -24,11 +26,44 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  bool _reportedStartupToHome = false;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<DashboardCubit>()..load(),
-      child: BlocBuilder<DashboardCubit, DashboardState>(
+      child: BlocConsumer<DashboardCubit, DashboardState>(
+        listenWhen: (previous, current) =>
+            previous != current &&
+            current.whenOrNull(loaded: (_) => true) == true,
+        listener: (context, state) {
+          if (_reportedStartupToHome) {
+            return;
+          }
+          final perfTraceService = getIt<PerfTraceService>();
+          if (perfTraceService.hasMeasurementNamed(
+            'app.startup.to_home_screen',
+          )) {
+            _reportedStartupToHome = true;
+            return;
+          }
+          if (!_hasBootstrapHomeSessionReadyMark()) {
+            return;
+          }
+          _reportedStartupToHome = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) {
+              return;
+            }
+            perfTraceService.recordElapsedSinceSessionStart(
+              'app.startup.to_home_screen',
+              payload: <String, Object?>{
+                'route': 'home',
+                'screen': 'dashboard',
+              },
+            );
+          });
+        },
         builder: (context, state) {
           final viewData = state.whenOrNull(loaded: (data) => data);
           final errorMessage = state.whenOrNull(error: (message) => message);
@@ -68,6 +103,16 @@ class _DashboardPageState extends State<DashboardPage> {
           );
         },
       ),
+    );
+  }
+
+  bool _hasBootstrapHomeSessionReadyMark() {
+    final snapshot = PerfProbe.snapshot();
+    final marks = snapshot['marks'] as List<Object?>? ?? const <Object?>[];
+    return marks.any(
+      (item) =>
+          item is Map<String, Object?> &&
+          item['name'] == 'app.bootstrap.home_session_ready',
     );
   }
 }

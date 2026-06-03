@@ -1,6 +1,6 @@
 # MediAI
 
-Мобильное приложение на Flutter для персонального мониторинга самочувствия и исследования поведенческих/физиологических паттернов на основе локальных ML-моделей.
+Flutter-приложение для персонального мониторинга самочувствия.
 
 ## Интерфейс приложения
 
@@ -43,13 +43,24 @@
 
 Прямая ссылка: https://drive.google.com/file/d/1ofhHkBttY9t0AhrqCAMDQsqtIojaPOSO/view?usp=sharing
 
+## Что есть в проекте
+
+- Firebase Auth + Firestore для удалённой авторизации и синхронизации.
+- Локальный fallback-режим, если Firebase отключён флагом или не инициализировался.
+- AI-чат на Groq с поддержкой text/vision моделей.
+- Опциональный AI proxy в [`workers/groq-proxy`](./workers/groq-proxy).
+- Локальные ONNXмодели для аналитики.
+- Performance tracing в приложении и автоматизация профилирования на Android.
+
 ## Feature map (`lib/features`)
 
+- `ai_assistant`
 - `analytics`
 - `auth`
 - `dashboard`
 - `data_input`
 - `diagnostics`
+- `export`
 - `health_data`
 - `onboarding`
 - `permissions`
@@ -61,37 +72,48 @@
 
 ## Технический стек
 
-- Flutter (Dart SDK `^3.8.1`)
+- Flutter, Dart `^3.8.1`
 - `flutter_bloc`, `get_it`, `go_router`
-- `supabase_flutter`
-- `onnxruntime` (on-device inference)
-- Python ML pipelines (`scripts/ml` + `assets/models/stress_model_impl`)
+- `firebase_core`, `firebase_auth`, `cloud_firestore`
+- `firebase_performance` 
+- `health`, `permission_handler`, `image_picker`
+- `onnxruntime` для работы локальных моделей
 
-## Требования к окружению
 
-- Flutter SDK c Dart `3.8.1` (или совместимая версия из ветки `3.8.x`)
-- Android Studio/Xcode (в зависимости от целевой платформы)
-- Python `3.9+`
-- Доступ к shell из корня репозитория
+## Требования
+
+- Flutter SDK c Dart `3.8.1` или совместимой версией из ветки `3.8.x`
+- Android Studio / Xcode для целевой платформы
+- Python `3.9+`, если нужно пересобирать ML-артефакты
+- shell-доступ из корня репозитория
 
 ## Быстрый запуск
 
-Все команды ниже выполняются из корня репозитория.
+Все команды выполняются из корня репозитория.
 
-### 1) APK-режим
-
-Готовый APK уже лежит в репозитории:
-
-```bash
-ls -lh ./app-dev-release.apk
-```
-
-Установите `app-dev-release.apk` на Android-устройство любым удобным способом (`adb install`, Android File Transfer и т.д.).
-
-### 2) Flutter debug-режим
+### 1) Установить зависимости
 
 ```bash
 flutter pub get
+```
+
+### 2) Подготовить `.env`
+
+```bash
+cp .env.example .env
+```
+
+Минимум для AI-чата:
+
+```env
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+```
+
+### 3) Запустить приложение
+
+Обычный запуск:
+
+```bash
 flutter run
 ```
 
@@ -99,172 +121,61 @@ flutter run
 
 ```bash
 flutter run -d android
-flutter run -d ios
 ```
 
-## Конфигурация `.env`
-
-Пример шаблона: `.env.example`.
+Локальный режим без Firebase sync/auth:
 
 ```bash
-cp .env.example .env
+flutter run --dart-define=ENABLE_FIREBASE_SYNC=false
 ```
 
-Поля:
+## Конфигурация окружения
 
-- Обязательные для удалённого Supabase-режима:
-  - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
-- Опциональные:
-  - `SUPABASE_REDIRECT_URL` (по умолчанию `io.supabase.medi_ai://login-callback`)
-  - `ENABLE_SOCIAL_AUTH` (`false` по умолчанию)
-  - `ENABLE_AUTH_BYPASS` (`false` по умолчанию)
+Приложение читает настройки из `.env` и `--dart-define`. Для булевых флагов `dart-define` имеет приоритет.
 
-Поведение при ненастроенном Supabase:
+Основные переменные:
 
-- если `SUPABASE_URL`/`SUPABASE_ANON_KEY` остаются плейсхолдерами, приложение не инициализирует Supabase клиент;
-- авторизация работает в локальном/mock режиме;
-- OAuth-вход через Google/Apple возвращает ошибку «Supabase не настроен».
+- `APP_FLAVOR` - `dev` или `prod`
+- `ENABLE_FIREBASE_SYNC` - включает Firebase Auth/Firestore sync, по умолчанию `true`
+- `ENABLE_SOCIAL_AUTH` - показывает вход через Google/Apple, по умолчанию `false`
+- `ENABLE_AUTH_BYPASS` - dev-режим мгновенной авторизации, по умолчанию `false`
+- `ENABLE_FIREBASE_PERFORMANCE` - отправка custom traces в Firebase Performance, по умолчанию `true`
+- `GROQ_API_KEY` - ключ для прямых вызовов Groq
+- `GROQ_BASE_URL` - по умолчанию `https://api.groq.com/openai/v1`
+- `GROQ_TEXT_MODEL` - текстовая модель, по умолчанию `llama-3.1-8b-instant`
+- `GROQ_VISION_MODEL` - vision-модель, по умолчанию `meta-llama/llama-4-scout-17b-16e-instruct`
+- `AI_PROXY_URL` - опциональный endpoint вида `https://<worker>.workers.dev/ai/chat`
 
-## Python зависимости для ML
+Примечания:
 
-Канонический источник зависимостей: [`requirements.txt`](./requirements.txt).
+- При `ENABLE_FIREBASE_SYNC=false` приложение работает в local/mock режиме без удалённой auth/sync.
+- Если `AI_PROXY_URL` пустой, клиент ходит в Groq напрямую.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-```
+## Firebase
 
-Файл `assets/models/stress_model_impl/requirements.txt` оставлен только как прокси и ссылается на root requirements.
+Firebase инициализируется в [`lib/core/firebase/firebase_initializer.dart`](./lib/core/firebase/firebase_initializer.dart). В проекте уже лежат platform-specific конфиги:
 
-## ML pipeline
+- `lib/firebase_options.dart`
+- `lib/firebase_options_dev.dart`
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+- `ios/Runner/GoogleService-Info-Dev.plist`
+- `macos/Runner/GoogleService-Info.plist`
 
-### Harvard activity pipeline
+Если Firebase не поднялся, приложение автоматически деградирует в local/mock режим вместо жёсткого падения.
 
-Скрипт: `scripts/ml/build_harvard_aw_artifacts.py`
 
-Вход:
+## Полезные директории
 
-- CSV датасет (`--dataset-path`), например `data_for_weka_aw.csv`
+- `lib/core` - app bootstrap, config, routing, logging, perf
+- `lib/features` - feature-first структура
+- `assets/data/design.pen` - исходный макет
+- `workers/groq-proxy` - Cloudflare Worker для AI proxy
+- `functions` - серверные Firebase-функции
+- `integration_test` - perf/e2e сценарии
 
-Выход:
-
-- `assets/models/harvard_aw/model_harvardAWData_xgboost.onnx`
-- `assets/models/harvard_aw/preprocessor_v1.json`
-- `assets/models/harvard_aw/preprocessor_v2.json`
-- `assets/models/harvard_aw/model_metadata.json`
-- `build/ml/harvard_aw/model_xgboost.joblib`
-- `build/ml/harvard_aw/split_manifest.json`
-- `build/ml/harvard_aw/training_report.json`
-- `build/ml/harvard_aw/parity_fixture_v2.json`
-
-Команда:
-
-```bash
-python3 scripts/ml/build_harvard_aw_artifacts.py \
-  --dataset-path ./datasets/harvard_aw/data_for_weka_aw.csv \
-  --dataset-source kaggle_apple_watch_and_fitbit_data \
-  --dataset-uri kaggle://aleespinosa/apple-watch-and-fitbit-data/data_for_weka_aw.csv \
-  --dataset-version 1 \
-  --output-dir assets/models/harvard_aw \
-  --report-dir build/ml/harvard_aw
-```
-
-### Sleep quality pipeline
-
-Скрипт: `scripts/ml/build_sleep_quality_artifacts.py`
-
-Источники данных:
-
-- primary: In-situ HRV + diary (Figshare `28509740`)
-- fallback: PhysioNet sleep-accel
-
-Выход:
-
-- `assets/models/sleep_quality/model_sleep_quality.onnx`
-- `assets/models/sleep_quality/preprocessor_v2.json`
-- `assets/models/sleep_quality/feature_contract_health_v2.json`
-- `assets/models/sleep_quality/model_metadata.json`
-- `build/ml/sleep_quality/training_report.json`
-- `build/ml/sleep_quality/split_manifest.json`
-- `build/ml/sleep_quality/parity_fixture_v2.json`
-- `build/ml/sleep_quality/models/model_*.joblib`
-
-Команды:
-
-```bash
-# Автовыбор источника (in_situ -> fallback sleep_accel)
-python3 scripts/ml/build_sleep_quality_artifacts.py --source auto
-
-# Строгий офлайн режим (без скачивания датасета)
-python3 scripts/ml/build_sleep_quality_artifacts.py --source auto --no-download
-```
-
-### Stress pipeline
-
-Скрипты:
-
-- `assets/models/stress_model_impl/build_app_stress_dataset.py`
-- `assets/models/stress_model_impl/build_stress_artifacts.py`
-
-1. Подготовка обучающей выборки из app данных:
-
-```bash
-python3 assets/models/stress_model_impl/build_app_stress_dataset.py \
-  --model_outputs ./data/health_model_outputs.csv \
-  --wellbeing_entries ./data/wellbeing_entries.csv \
-  --out_csv ./data/app_stress_training.csv \
-  --report_json ./data/app_stress_training_report.json
-```
-
-2. Сборка stress артефактов:
-
-```bash
-python3 assets/models/stress_model_impl/build_stress_artifacts.py \
-  --input_csv ./data/app_stress_training.csv \
-  --output_dir assets/models/stress \
-  --model_id stress-score-v1 \
-  --dataset-source stress_app_health_windows \
-  --dataset-uri local://user-provided-training-csv \
-  --dataset-version v1
-```
-
-Выход:
-
-- `assets/models/stress/scorecard_v1.json`
-- `assets/models/stress/feature_contract_stress_v2.json`
-- `assets/models/stress/model_metadata.json`
-- `assets/models/stress/parity_fixture.json`
-- `assets/models/stress/split_manifest.json`
-- `assets/models/stress/training_report.json`
-
-## Проверка команд pipeline
-
-Быстрая проверка CLI (без обучения):
-
-```bash
-python3 scripts/ml/build_harvard_aw_artifacts.py --help
-python3 scripts/ml/build_sleep_quality_artifacts.py --help
-python3 assets/models/stress_model_impl/build_stress_artifacts.py --help
-```
-
-## Runtime интеграция артефактов
-
-- Harvard runtime loader: `lib/features/dashboard/data/services/harvard_activity_recommendation_model.dart`
-- Sleep runtime loader: `lib/features/dashboard/data/services/sleep_quality_inference_model.dart`
-- Stress runtime loader: `lib/features/dashboard/data/services/stress_inference_model.dart`
-
-Контракт по путям артефактов задаётся в `pubspec.yaml` (секция `flutter/assets`).
-
-## Model card
-
-- Harvard model card: `docs/model_card_harvard_aw.md`
-
-## Ограничения и дисклеймер
+## Ограничения
 
 - Приложение и ML-модели предназначены для исследовательских и образовательных целей.
 - Это не медицинская диагностика и не замена консультации врача.
-- Результаты inference могут быть неточными при пропусках данных, domain shift и слабом персональном baseline.
-- Перед любым clinical/high-stakes применением требуется отдельная валидация на целевой популяции.
+

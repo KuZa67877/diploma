@@ -1,7 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/supabase/supabase_subject_resolver.dart';
 import '../data/datasources/wellbeing_local_data_source.dart';
 import '../data/datasources/wellbeing_remote_data_source.dart';
 import '../data/repositories/wellbeing_repository_impl.dart';
@@ -18,12 +18,13 @@ void registerWellbeing(GetIt getIt) {
   getIt.registerLazySingleton<WellbeingLocalDataSource>(
     () => WellbeingLocalDataSourceImpl(
       sharedPreferences: getIt<SharedPreferences>(),
+      currentUserIdProvider: getIt<String? Function()>(),
     ),
   );
   getIt.registerLazySingleton<WellbeingRemoteDataSource>(
     () => WellbeingRemoteDataSourceImpl(
-      clientProvider: getIt<SupabaseClient Function()>(),
-      subjectResolver: getIt<SupabaseSubjectResolver>(),
+      authProvider: getIt<FirebaseAuth Function()>(),
+      firestoreProvider: getIt<FirebaseFirestore Function()>(),
     ),
   );
 

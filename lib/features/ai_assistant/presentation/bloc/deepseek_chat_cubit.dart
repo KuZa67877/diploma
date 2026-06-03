@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/config/app_env.dart';
 import '../../domain/entities/ai_assistant_settings.dart';
 import '../../domain/entities/ai_built_prompt.dart';
 import '../../domain/entities/ai_cached_response.dart';
@@ -440,7 +441,7 @@ class DeepSeekChatCubit extends Cubit<DeepSeekChatState> {
       );
       return;
     }
-    if (!state.settings.hasApiKey) {
+    if (_requiresLocalApiKey && !state.settings.hasApiKey) {
       emit(
         state.copyWith(
           status: DeepSeekChatStatus.error,
@@ -500,7 +501,7 @@ class DeepSeekChatCubit extends Cubit<DeepSeekChatState> {
       return false;
     }
     final builtPrompt = state.builtPrompt;
-    if (!state.settings.hasApiKey) {
+    if (_requiresLocalApiKey && !state.settings.hasApiKey) {
       emit(
         state.copyWith(
           status: DeepSeekChatStatus.error,
@@ -701,6 +702,8 @@ class DeepSeekChatCubit extends Cubit<DeepSeekChatState> {
     await _repository.saveSettings(settings);
     emit(state.copyWith(settings: settings));
   }
+
+  bool get _requiresLocalApiKey => AppEnv.aiProxyUrl.isEmpty;
 
   List<AiChatMessage> _trimmedHistory() {
     final builtPrompt = state.builtPrompt;

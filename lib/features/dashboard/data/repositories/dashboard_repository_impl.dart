@@ -1,8 +1,9 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/app_env.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/firebase/firebase_initializer.dart';
 import '../../../../core/logging/app_logger.dart';
+import '../../../../core/perf/perf_probe.dart';
 import '../../../../core/supabase/anonymous_user_snapshot_data_source.dart';
 import '../../../../core/supabase/onboarding_profile_snapshot.dart';
 import '../../../health_data/data/datasources/health_data_remote_data_source.dart';
@@ -59,140 +60,144 @@ class DashboardRepositoryImpl implements DashboardRepository {
 
   @override
   Future<Either<Failure, DashboardSummary>> getSummary() async {
-    DashboardSummary? localSummary;
-    try {
-      localSummary = await localDataSource.getSummary();
-      if (!AppEnv.isSupabaseConfigured) {
-        return Right(localSummary);
-      }
+    return PerfProbe.measureAsync('dashboard.repository.get_summary', () async {
+      DashboardSummary? localSummary;
+      try {
+        localSummary = await localDataSource.getSummary();
+        if (!isFirebaseReady) {
+          return Right(localSummary);
+        }
 
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) {
-        return Right(localSummary);
-      }
+        final user = FirebaseAuth.instance.currentUser;
+        if (user == null) {
+          return Right(localSummary);
+        }
 
-      final profile =
-          await snapshotDataSource.getSnapshot() ??
-          OnboardingProfileSnapshot.fromUserMetadata(
-            user.userMetadata,
-            email: user.email,
-          );
-      final userName = profile.displayName ?? localSummary.userName;
-      final baseScore = healthScoreBaseComponentService.estimateScore(
-        systolic: profile.systolic,
-        diastolic: profile.diastolic,
-        glucose: profile.glucose,
-        temperatureC: profile.temperatureC,
-        heightCm: profile.heightCm,
-        weightKg: profile.weightKg,
-      );
-      final baseConfidence = healthScoreBaseComponentService.estimateConfidence(
-        systolic: profile.systolic,
-        diastolic: profile.diastolic,
-        glucose: profile.glucose,
-        temperatureC: profile.temperatureC,
-        heightCm: profile.heightCm,
-        weightKg: profile.weightKg,
-      );
-      final modelContext = await _resolveModelContext(
-        profile: profile,
-        fallbackHealthScore: baseScore?.round(),
-      );
-      final normalizedSleepScore = _normalizeSleepScore(
-        modelContext.sleep.score,
-      );
-      final normalizedStressScore = _normalizeStressScore(
-        modelContext.stress.stressScore,
-      );
-      final normalizedAnomalyScore = _normalizeAnomalyScore(
-        modelContext.physiologyAnomaly.anomalyScore,
-      );
-      final normalizedBaselineDeviationScore = _normalizeBaselineDeviationScore(
-        modelContext.baselineForecast.overallDeviationScore,
-      );
-      final wellbeingEntry = await _loadLatestWellbeingEntry();
-      final healthScoreInput = HealthScoreInput(
-        baseScore: baseScore,
-        sleepScore: normalizedSleepScore,
-        stressScore: normalizedStressScore,
-        anomalyScore: normalizedAnomalyScore,
-        baselineDeviationScore: normalizedBaselineDeviationScore,
-        baseConfidence: baseScore == null ? null : baseConfidence,
-        sleepConfidence: modelContext.sleep.confidence,
-        stressConfidence: modelContext.stress.confidence,
-        anomalyConfidence: modelContext.physiologyAnomaly.confidence,
-        baselineDeviationConfidence: modelContext.baselineForecast.confidence,
-        computedAt: _resolveHealthScoreComputedAt(
-          modelContext: modelContext,
-          fallback: DateTime.now().toUtc(),
-        ),
-        wellbeingEntry: wellbeingEntry,
-        scoreNow: DateTime.now(),
-      );
-      final healthScoreResult = calculateHealthScore(healthScoreInput);
-      final metrics = _buildTodayMetrics(
-        samples: modelContext.wearableSamples,
-        sleep: modelContext.sleep,
-        stress: modelContext.stress,
-        recovery: modelContext.physiologyAnomaly,
-      );
-      final modelResults = _buildModelResults(
-        activity: modelContext.activity,
-        sleep: modelContext.sleep,
-        stress: modelContext.stress,
-        baseline: modelContext.baselineForecast,
-        recovery: modelContext.physiologyAnomaly,
-        healthScoreResult: healthScoreResult,
-      );
-      await _persistHealthScoreOutput(
-        input: healthScoreInput,
-        result: healthScoreResult,
-      );
-      final status = _legacyStatusFromBand(healthScoreResult.band);
-      final healthScore = healthScoreResult.score ?? 0;
-      final hasHealthScoreQualityAlerts = healthScoreResult.alerts.any(
-        (alert) =>
-            alert.code == 'low_data_completeness' ||
-            alert.code == 'low_confidence',
-      );
-
-      return Right(
-        DashboardSummaryModel(
-          greetingKey: localSummary.greetingKey,
-          userName: userName,
-          healthScore: healthScore,
-          status: status,
-          recommendationKeys: modelContext.recommendations.keys,
-          hasInsufficientModelData:
-              modelContext.recommendations.insufficient ||
-              !modelContext.hasAnyWearableData ||
-              modelContext.sleep.insufficientData ||
-              modelContext.stress.insufficientData ||
-              modelContext.physiologyAnomaly.insufficientData ||
-              modelContext.baselineForecast.insufficientData ||
-              hasHealthScoreQualityAlerts,
-          insight: localSummary.insight,
-          metrics: metrics,
-          objectiveHealthScore: healthScoreResult.objectiveScore,
-          dataSnapshot: DashboardDataSnapshot(
-            connectedSources: modelContext.connectedSourceCount,
-            wearableSampleCount: modelContext.wearableSamples.length,
-            latestWearableSampleAt: modelContext.latestWearableSampleAt,
+        final profile =
+            await snapshotDataSource.getSnapshot() ??
+            OnboardingProfileSnapshot.fromAuthUser(
+              email: user.email,
+              displayName: user.displayName,
+            );
+        final userName = profile.displayName ?? localSummary.userName;
+        final baseScore = healthScoreBaseComponentService.estimateScore(
+          systolic: profile.systolic,
+          diastolic: profile.diastolic,
+          glucose: profile.glucose,
+          temperatureC: profile.temperatureC,
+          heightCm: profile.heightCm,
+          weightKg: profile.weightKg,
+        );
+        final baseConfidence = healthScoreBaseComponentService
+            .estimateConfidence(
+              systolic: profile.systolic,
+              diastolic: profile.diastolic,
+              glucose: profile.glucose,
+              temperatureC: profile.temperatureC,
+              heightCm: profile.heightCm,
+              weightKg: profile.weightKg,
+            );
+        final modelContext = await _resolveModelContext(
+          profile: profile,
+          fallbackHealthScore: baseScore?.round(),
+        );
+        final normalizedSleepScore = _normalizeSleepScore(
+          modelContext.sleep.score,
+        );
+        final normalizedStressScore = _normalizeStressScore(
+          modelContext.stress.stressScore,
+        );
+        final normalizedAnomalyScore = _normalizeAnomalyScore(
+          modelContext.physiologyAnomaly.anomalyScore,
+        );
+        final normalizedBaselineDeviationScore =
+            _normalizeBaselineDeviationScore(
+              modelContext.baselineForecast.overallDeviationScore,
+            );
+        final wellbeingEntry = await _loadLatestWellbeingEntry();
+        final healthScoreInput = HealthScoreInput(
+          baseScore: baseScore,
+          sleepScore: normalizedSleepScore,
+          stressScore: normalizedStressScore,
+          anomalyScore: normalizedAnomalyScore,
+          baselineDeviationScore: normalizedBaselineDeviationScore,
+          baseConfidence: baseScore == null ? null : baseConfidence,
+          sleepConfidence: modelContext.sleep.confidence,
+          stressConfidence: modelContext.stress.confidence,
+          anomalyConfidence: modelContext.physiologyAnomaly.confidence,
+          baselineDeviationConfidence: modelContext.baselineForecast.confidence,
+          computedAt: _resolveHealthScoreComputedAt(
+            modelContext: modelContext,
+            fallback: DateTime.now().toUtc(),
           ),
-          modelResults: modelResults,
-        ),
-      );
-    } catch (error, stackTrace) {
-      _logger.error(
-        'dashboard.repository',
-        'Failed to build dashboard summary',
-        payload: {'error': '$error', 'stackTrace': '$stackTrace'},
-      );
-      if (localSummary != null) {
-        return Right(localSummary);
+          wellbeingEntry: wellbeingEntry,
+          scoreNow: DateTime.now(),
+        );
+        final healthScoreResult = calculateHealthScore(healthScoreInput);
+        final metrics = _buildTodayMetrics(
+          samples: modelContext.wearableSamples,
+          sleep: modelContext.sleep,
+          stress: modelContext.stress,
+          recovery: modelContext.physiologyAnomaly,
+        );
+        final modelResults = _buildModelResults(
+          activity: modelContext.activity,
+          sleep: modelContext.sleep,
+          stress: modelContext.stress,
+          baseline: modelContext.baselineForecast,
+          recovery: modelContext.physiologyAnomaly,
+          healthScoreResult: healthScoreResult,
+        );
+        await _persistHealthScoreOutput(
+          input: healthScoreInput,
+          result: healthScoreResult,
+        );
+        final status = _legacyStatusFromBand(healthScoreResult.band);
+        final healthScore = healthScoreResult.score ?? 0;
+        final hasHealthScoreQualityAlerts = healthScoreResult.alerts.any(
+          (alert) =>
+              alert.code == 'low_data_completeness' ||
+              alert.code == 'low_confidence',
+        );
+
+        return Right(
+          DashboardSummaryModel(
+            greetingKey: localSummary.greetingKey,
+            userName: userName,
+            healthScore: healthScore,
+            status: status,
+            recommendationKeys: modelContext.recommendations.keys,
+            hasInsufficientModelData:
+                modelContext.recommendations.insufficient ||
+                !modelContext.hasAnyWearableData ||
+                modelContext.sleep.insufficientData ||
+                modelContext.stress.insufficientData ||
+                modelContext.physiologyAnomaly.insufficientData ||
+                modelContext.baselineForecast.insufficientData ||
+                hasHealthScoreQualityAlerts,
+            insight: localSummary.insight,
+            metrics: metrics,
+            objectiveHealthScore: healthScoreResult.objectiveScore,
+            dataSnapshot: DashboardDataSnapshot(
+              connectedSources: modelContext.connectedSourceCount,
+              wearableSampleCount: modelContext.wearableSamples.length,
+              latestWearableSampleAt: modelContext.latestWearableSampleAt,
+            ),
+            modelResults: modelResults,
+          ),
+        );
+      } catch (error, stackTrace) {
+        _logger.error(
+          'dashboard.repository',
+          'Failed to build dashboard summary',
+          payload: {'error': '$error', 'stackTrace': '$stackTrace'},
+        );
+        if (localSummary != null) {
+          return Right(localSummary);
+        }
+        return const Left(CacheFailure());
       }
-      return const Left(CacheFailure());
-    }
+    });
   }
 
   Future<_ResolvedModelContext> _resolveModelContext({
@@ -274,7 +279,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required BaselineForecastInferenceResult baselineForecast,
     required DateTime now,
   }) async {
-    if (!AppEnv.isSupabaseConfigured) {
+    if (!isFirebaseReady) {
       return;
     }
 
@@ -331,7 +336,7 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required HealthScoreInput input,
     required HealthScoreResult result,
   }) async {
-    if (!AppEnv.isSupabaseConfigured) {
+    if (!isFirebaseReady) {
       return;
     }
 

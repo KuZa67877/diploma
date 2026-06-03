@@ -1,11 +1,12 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/app_env.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+
 import '../../../../core/error/failures.dart';
+import '../../../../core/firebase/firebase_initializer.dart';
 import '../../../../core/logging/app_logger.dart';
 import '../models/auth_credentials_model.dart';
 import '../models/auth_result_model.dart';
 
-/// Контракт удаленного источника авторизации.
 abstract class AuthRemoteDataSource {
   Future<AuthResultModel> submit(AuthCredentialsModel credentials);
   Future<AuthResultModel> signInWithGoogle();
@@ -13,17 +14,19 @@ abstract class AuthRemoteDataSource {
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
-  final SupabaseClient Function() _clientProvider;
+  final FirebaseAuth Function() _authProvider;
   final _logger = AppLogger.instance;
 
-  AuthRemoteDataSourceImpl({required SupabaseClient Function() clientProvider})
-    : _clientProvider = clientProvider;
+  AuthRemoteDataSourceImpl({required FirebaseAuth Function() authProvider})
+    : _authProvider = authProvider;
 
   @override
   Future<AuthResultModel> submit(AuthCredentialsModel credentials) async {
     _ensureConfigured();
-    final client = _clientProvider();
-    final action = credentials.isLogin ? 'signInWithPassword' : 'signUp';
+    final auth = _authProvider();
+    final action = credentials.isLogin
+        ? 'signInWithEmailAndPassword'
+        : 'createUserWithEmailAndPassword';
     final stopwatch = Stopwatch()..start();
     _logger.info(
       'auth.request',
@@ -31,148 +34,122 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       payload: {'email': credentials.email},
     );
 
-    if (credentials.isLogin) {
-      try {
-        final response = await client.auth.signInWithPassword(
-          email: credentials.email,
-          password: credentials.password,
+    try {
+      final userCredential = credentials.isLogin
+          ? await auth.signInWithEmailAndPassword(
+              email: credentials.email,
+              password: credentials.password,
+            )
+          : await auth.createUserWithEmailAndPassword(
+              email: credentials.email,
+              password: credentials.password,
+            );
+      if (userCredential.user == null) {
+        throw const AuthFailure(
+          'Не удалось создать сессию. Попробуйте войти снова.',
         );
-        if (response.session == null) {
-          throw const AuthFailure(
-            'Не удалось создать сессию. Попробуйте войти снова.',
-          );
-        }
-        _logger.info(
-          'auth.response',
-          '$action success',
-          payload: {
-            'elapsedMs': stopwatch.elapsedMilliseconds,
-            'userId': response.user?.id,
-            'hasSession': response.session != null,
-          },
-        );
-      } catch (error, stackTrace) {
-        _logger.error(
-          'auth.response',
-          '$action failed',
-          payload: {
-            'elapsedMs': stopwatch.elapsedMilliseconds,
-            'email': credentials.email,
-            'error': error.toString(),
-            'stackTrace': stackTrace.toString(),
-          },
-        );
-        rethrow;
       }
-    } else {
-      try {
-        final response = await client.auth.signUp(
-          email: credentials.email,
-          password: credentials.password,
-        );
-        if (response.session == null) {
-          throw const AuthFailure(
-            'Аккаунт создан. Подтвердите email и войдите в приложение.',
-          );
-        }
-        _logger.info(
-          'auth.response',
-          '$action success',
-          payload: {
-            'elapsedMs': stopwatch.elapsedMilliseconds,
-            'userId': response.user?.id,
-            'hasSession': response.session != null,
-          },
-        );
-      } catch (error, stackTrace) {
-        _logger.error(
-          'auth.response',
-          '$action failed',
-          payload: {
-            'elapsedMs': stopwatch.elapsedMilliseconds,
-            'email': credentials.email,
-            'error': error.toString(),
-            'stackTrace': stackTrace.toString(),
-          },
-        );
-        rethrow;
-      }
+      _logger.info(
+        'auth.response',
+        '$action success',
+        payload: {
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+          'userId': userCredential.user?.uid,
+          'hasSession': userCredential.user != null,
+        },
+      );
+      return const AuthResultModel(isAuthenticated: true);
+    } on FirebaseAuthException catch (error, stackTrace) {
+      _logger.error(
+        'auth.response',
+        '$action failed',
+        payload: {
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+          'email': credentials.email,
+          'error': error.code,
+          'message': error.message,
+          'stackTrace': stackTrace.toString(),
+        },
+      );
+      throw AuthFailure(_mapAuthError(error));
+    } catch (error, stackTrace) {
+      _logger.error(
+        'auth.response',
+        '$action failed',
+        payload: {
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+          'email': credentials.email,
+          'error': error.toString(),
+          'stackTrace': stackTrace.toString(),
+        },
+      );
+      rethrow;
     }
-
-    return const AuthResultModel(isAuthenticated: true);
   }
 
   @override
   Future<AuthResultModel> signInWithGoogle() async {
-    _ensureConfigured();
-    final client = _clientProvider();
-    final stopwatch = Stopwatch()..start();
-    _logger.info(
-      'auth.request',
-      'signInWithOAuth started',
-      payload: {'provider': 'google'},
+    return _signInWithProvider(
+      providerName: 'google',
+      providerBuilder: () => GoogleAuthProvider(),
     );
-
-    try {
-      await client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: AppEnv.supabaseRedirectUrl,
-      );
-      _logger.info(
-        'auth.response',
-        'signInWithOAuth completed',
-        payload: {
-          'provider': 'google',
-          'elapsedMs': stopwatch.elapsedMilliseconds,
-        },
-      );
-    } catch (error, stackTrace) {
-      _logger.error(
-        'auth.response',
-        'signInWithOAuth failed',
-        payload: {
-          'provider': 'google',
-          'elapsedMs': stopwatch.elapsedMilliseconds,
-          'error': error.toString(),
-          'stackTrace': stackTrace.toString(),
-        },
-      );
-      rethrow;
-    }
-
-    return const AuthResultModel(isAuthenticated: true);
   }
 
   @override
   Future<AuthResultModel> signInWithApple() async {
+    return _signInWithProvider(
+      providerName: 'apple',
+      providerBuilder: () => AppleAuthProvider(),
+    );
+  }
+
+  Future<AuthResultModel> _signInWithProvider({
+    required String providerName,
+    required AuthProvider Function() providerBuilder,
+  }) async {
     _ensureConfigured();
-    final client = _clientProvider();
+    final auth = _authProvider();
     final stopwatch = Stopwatch()..start();
     _logger.info(
       'auth.request',
-      'signInWithOAuth started',
-      payload: {'provider': 'apple'},
+      'signInWithProvider started',
+      payload: {'provider': providerName},
     );
 
     try {
-      await client.auth.signInWithOAuth(
-        OAuthProvider.apple,
-        redirectTo: AppEnv.supabaseRedirectUrl,
-      );
+      if (kIsWeb) {
+        await auth.signInWithPopup(providerBuilder());
+      } else {
+        await auth.signInWithProvider(providerBuilder());
+      }
       _logger.info(
         'auth.response',
-        'signInWithOAuth completed',
+        'signInWithProvider completed',
         payload: {
-          'provider': 'apple',
+          'provider': providerName,
           'elapsedMs': stopwatch.elapsedMilliseconds,
         },
       );
+      return const AuthResultModel(isAuthenticated: true);
+    } on FirebaseAuthException catch (error, stackTrace) {
+      _logger.error(
+        'auth.response',
+        'signInWithProvider failed',
+        payload: {
+          'provider': providerName,
+          'elapsedMs': stopwatch.elapsedMilliseconds,
+          'error': error.code,
+          'message': error.message,
+          'stackTrace': stackTrace.toString(),
+        },
+      );
+      throw AuthFailure(_mapAuthError(error));
     } catch (error, stackTrace) {
       _logger.error(
         'auth.response',
-        'signInWithOAuth failed',
+        'signInWithProvider failed',
         payload: {
-          'provider': 'apple',
+          'provider': providerName,
           'elapsedMs': stopwatch.elapsedMilliseconds,
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
@@ -180,17 +157,36 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
       rethrow;
     }
-
-    return const AuthResultModel(isAuthenticated: true);
   }
 
   void _ensureConfigured() {
-    if (!AppEnv.isSupabaseConfigured) {
+    if (!isFirebaseReady) {
       _logger.error(
         'auth.request',
-        'Supabase is not configured for remote auth request',
+        'Firebase is not configured for remote auth request',
       );
-      throw const AuthFailure('Supabase не настроен');
+      throw const AuthFailure('Firebase не настроен');
+    }
+  }
+
+  String _mapAuthError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'invalid-email':
+        return 'Некорректный email';
+      case 'email-already-in-use':
+        return 'Аккаунт с таким email уже существует';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Неверный email или пароль';
+      case 'weak-password':
+        return 'Пароль должен быть не короче 6 символов';
+      case 'network-request-failed':
+        return 'Сетевая ошибка. Проверьте подключение и попробуйте снова.';
+      case 'too-many-requests':
+        return 'Слишком много попыток входа. Попробуйте позже.';
+      default:
+        return error.message ?? 'Ошибка авторизации';
     }
   }
 }

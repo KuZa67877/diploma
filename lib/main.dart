@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'injection_container.dart';
 import 'core/bloc/app_bloc_observer.dart';
 import 'core/theme/app_theme.dart';
@@ -14,9 +14,11 @@ import 'core/localization/app_localizations.dart';
 import 'core/localization/language_cubit.dart';
 import 'core/routing/app_router.dart';
 import 'core/auth/auth_status_cubit.dart';
-import 'core/supabase/supabase_initializer.dart';
 import 'core/config/app_env.dart';
+import 'core/firebase/firebase_initializer.dart';
 import 'core/logging/app_logger.dart';
+import 'core/perf/perf_probe.dart';
+import 'core/perf/perf_trace_service.dart';
 import 'core/widgets/dev_logs_overlay_button.dart';
 import 'features/health_data/data/services/health_data_sync_service.dart';
 
@@ -24,6 +26,8 @@ late final GoRouter _router;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PerfProbe.reset();
+  PerfProbe.mark('app.bootstrap.started');
   final logger = AppLogger.instance;
   Bloc.observer = AppBlocObserver();
   logger.info('app.lifecycle', 'Application bootstrap started');
@@ -58,38 +62,56 @@ void main() async {
 
   // Initialize dependencies
   await dotenv.load(fileName: '.env');
+  PerfProbe.mark('app.bootstrap.dotenv_loaded');
   logger.info('app.config', '.env loaded');
-  await initSupabase();
+  await initFirebase();
+  PerfProbe.mark('app.bootstrap.firebase_initialized');
   await initDependencies();
+  PerfProbe.mark('app.bootstrap.dependencies_initialized');
+  await getIt<PerfTraceService>().initialize();
+  PerfProbe.mark('app.bootstrap.perf_trace_service_initialized');
   logger.info('app.lifecycle', 'Dependencies initialized');
 
   final authStatusCubit = getIt<AuthStatusCubit>();
   if (AppEnv.enableAuthBypass) {
     logger.warning('auth.mode', 'Auth bypass mode is enabled');
     authStatusCubit.setAuthenticated();
+    PerfProbe.mark(
+      'app.bootstrap.home_session_ready',
+      payload: {'reason': 'auth_bypass'},
+    );
   } else {
     final hasActiveSession =
-        AppEnv.isSupabaseConfigured &&
-        Supabase.instance.client.auth.currentSession != null;
+        isFirebaseReady && FirebaseAuth.instance.currentUser != null;
     logger.info(
       'auth.session',
       hasActiveSession
-          ? 'Found persisted Supabase session on startup'
+          ? 'Found persisted Firebase session on startup'
           : 'No persisted session on startup',
     );
     if (hasActiveSession) {
       authStatusCubit.setAuthenticated();
+      PerfProbe.mark(
+        'app.bootstrap.home_session_ready',
+        payload: {'reason': 'persisted_session'},
+      );
     } else {
       authStatusCubit.setUnauthenticated();
     }
   }
 
   _router = AppRouter(authStatusCubit: authStatusCubit).router;
+  PerfProbe.mark('app.bootstrap.router_configured');
   logger.info('app.lifecycle', 'Router configured');
   getIt<HealthDataSyncService>().start();
+  PerfProbe.mark('app.bootstrap.health_sync_started');
   logger.info('health.sync', 'Health sync service started');
 
   runApp(MainApp(router: _router));
+  PerfProbe.mark('app.bootstrap.run_app_called');
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    PerfProbe.mark('app.bootstrap.first_frame_rendered');
+  });
 }
 
 class MainApp extends StatelessWidget {

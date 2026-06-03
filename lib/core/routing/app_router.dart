@@ -1,8 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../auth/auth_status_cubit.dart';
-import '../config/app_env.dart';
+import '../firebase/firebase_initializer.dart';
 import '../logging/app_logger.dart';
 import '../../injection_container.dart';
 import '../../features/analytics/presentation/pages/analytics_page.dart';
@@ -17,6 +17,7 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/settings/presentation/pages/baseline_forecast_debug_page.dart';
 import '../../features/settings/presentation/pages/debug_logs_page.dart';
 import '../../features/settings/presentation/pages/health_mock_data_page.dart';
+import '../../features/settings/presentation/pages/performance_report_page.dart';
 import '../../features/settings/presentation/pages/physiology_anomaly_debug_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/settings/presentation/pages/sleep_model_debug_page.dart';
@@ -53,6 +54,7 @@ class AppRouter {
   static const String physiologyAnomalyDebugPath = '/physiology-anomaly-debug';
   static const String baselineForecastDebugPath = '/baseline-forecast-debug';
   static const String healthMockSeederPath = '/health-mock-seeder';
+  static const String performanceReportPath = '/performance-report';
   static const String wellbeingCheckInPath = '/wellbeing-check-in';
 
   static const String splashRoute = 'splash';
@@ -74,6 +76,7 @@ class AppRouter {
   static const String physiologyAnomalyDebugRoute = 'physiology-anomaly-debug';
   static const String baselineForecastDebugRoute = 'baseline-forecast-debug';
   static const String healthMockSeederRoute = 'health-mock-seeder';
+  static const String performanceReportRoute = 'performance-report';
   static const String wellbeingCheckInRoute = 'wellbeing-check-in';
 
   late final GoRouter router = GoRouter(
@@ -246,6 +249,9 @@ class AppRouter {
           onOpenHealthMockSeeder: AppLogger.instance.isEnabled
               ? () => context.pushNamed(healthMockSeederRoute)
               : null,
+          onOpenPerformanceReport: AppLogger.instance.isEnabled
+              ? () => context.pushNamed(performanceReportRoute)
+              : null,
         ),
       ),
       GoRoute(
@@ -267,14 +273,14 @@ class AppRouter {
           onBack: () => context.pop(),
           onOpenSettings: () => context.pushNamed(settingsRoute),
           onLogout: () async {
-            if (AppEnv.isSupabaseConfigured) {
+            if (isFirebaseReady) {
               try {
-                await Supabase.instance.client.auth.signOut();
-                _logger.info('auth.session', 'Supabase session signed out');
+                await FirebaseAuth.instance.signOut();
+                _logger.info('auth.session', 'Firebase session signed out');
               } catch (error, stackTrace) {
                 _logger.error(
                   'auth.session',
-                  'Supabase signOut failed',
+                  'Firebase signOut failed',
                   payload: {
                     'error': error.toString(),
                     'stackTrace': stackTrace.toString(),
@@ -290,6 +296,13 @@ class AppRouter {
           },
         ),
       ),
+      if (AppLogger.instance.isEnabled)
+        GoRoute(
+          path: performanceReportPath,
+          name: performanceReportRoute,
+          builder: (context, state) =>
+              PerformanceReportPage(onBack: () => context.pop()),
+        ),
       if (AppLogger.instance.isEnabled)
         GoRoute(
           path: debugLogsPath,
@@ -367,6 +380,7 @@ class AppRouter {
     wellbeingCheckInPath,
     profilePath,
     if (AppLogger.instance.isEnabled) debugLogsPath,
+    if (AppLogger.instance.isEnabled) performanceReportPath,
     if (AppLogger.instance.isEnabled) sleepModelDebugPath,
     if (AppLogger.instance.isEnabled) stressModelDebugPath,
     if (AppLogger.instance.isEnabled) physiologyAnomalyDebugPath,

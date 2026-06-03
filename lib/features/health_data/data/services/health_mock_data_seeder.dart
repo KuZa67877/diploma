@@ -25,7 +25,30 @@ class HealthMockDataSeeder {
 
   bool get isSupported => Platform.isIOS || Platform.isAndroid;
 
-  List<HealthDataType> get _types => const [
+  List<HealthDataType> get _types =>
+      Platform.isAndroid ? _androidTypes : _iosTypes;
+
+  HealthDataType get _distanceType => Platform.isAndroid
+      ? HealthDataType.DISTANCE_DELTA
+      : HealthDataType.DISTANCE_WALKING_RUNNING;
+
+  HealthDataType get _hrvType => Platform.isAndroid
+      ? HealthDataType.HEART_RATE_VARIABILITY_RMSSD
+      : HealthDataType.HEART_RATE_VARIABILITY_SDNN;
+
+  static const _androidTypes = [
+    HealthDataType.STEPS,
+    HealthDataType.HEART_RATE,
+    HealthDataType.RESTING_HEART_RATE,
+    HealthDataType.HEART_RATE_VARIABILITY_RMSSD,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.DISTANCE_DELTA,
+    HealthDataType.BLOOD_OXYGEN,
+    HealthDataType.SLEEP_ASLEEP,
+    HealthDataType.SLEEP_AWAKE,
+  ];
+
+  static const _iosTypes = [
     HealthDataType.STEPS,
     HealthDataType.HEART_RATE,
     HealthDataType.RESTING_HEART_RATE,
@@ -166,7 +189,7 @@ class HealthMockDataSeeder {
       ),
       _safeWriteData(
         value: profile.distanceMeters,
-        type: HealthDataType.DISTANCE_WALKING_RUNNING,
+        type: _distanceType,
         startTime: profile.eveningAnchor,
         endTime: profile.eveningAnchor.add(const Duration(minutes: 1)),
         warnings: warnings,
@@ -180,7 +203,7 @@ class HealthMockDataSeeder {
       ),
       _safeWriteData(
         value: profile.hrvSdnn,
-        type: HealthDataType.HEART_RATE_VARIABILITY_SDNN,
+        type: _hrvType,
         startTime: profile.morningAnchor.add(const Duration(minutes: 8)),
         endTime: profile.morningAnchor.add(const Duration(minutes: 9)),
         warnings: warnings,

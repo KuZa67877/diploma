@@ -1,20 +1,24 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../models/analytics_ui_models.dart';
+import 'analytics_metric_support.dart';
+import 'analytics_time_filters.dart';
 
 class AnalyticsContent extends StatelessWidget {
   final AnalyticsViewData viewData;
   final ValueChanged<String> onFilterSelected;
   final VoidCallback onOpenExport;
+  final ValueChanged<String> onOpenMetricDetail;
 
   const AnalyticsContent({
     super.key,
     required this.viewData,
     required this.onFilterSelected,
     required this.onOpenExport,
+    required this.onOpenMetricDetail,
   });
 
   @override
@@ -27,8 +31,8 @@ class AnalyticsContent extends StatelessWidget {
     final subtitleColor = isDark
         ? AppColors.darkMutedForeground
         : AppColors.mutedForeground;
-    final cardColor = isDark ? AppColors.darkCard : Colors.white;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final featuredMetrics = viewData.featuredMetrics;
+    final additionalMetrics = viewData.additionalMetrics;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 92),
@@ -58,9 +62,11 @@ class AnalyticsContent extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: cardColor,
+                      color: isDark ? AppColors.darkCard : Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: borderColor),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.border,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -92,7 +98,7 @@ class AnalyticsContent extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: subtitleColor),
           ),
           const SizedBox(height: 14),
-          _FilterRow(
+          AnalyticsTimeFilters(
             filters: viewData.filters,
             selectedFilterId: viewData.selectedFilterId,
             onSelected: onFilterSelected,
@@ -114,29 +120,7 @@ class AnalyticsContent extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _sleepStatusColor(
-                          viewData.sleepAiStatus,
-                        ).withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _sleepStatusLabel(
-                          localizations,
-                          viewData.sleepAiStatus,
-                        ),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: _sleepStatusColor(viewData.sleepAiStatus),
-                        ),
-                      ),
-                    ),
+                    _StatusPill(status: viewData.sleepAiStatus),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -156,79 +140,76 @@ class AnalyticsContent extends StatelessWidget {
                   '${(viewData.sleepAiConfidence * 100).clamp(0.0, 100.0).toStringAsFixed(0)}%',
                   style: TextStyle(fontSize: 12, color: subtitleColor),
                 ),
-                if (viewData.sleepAiStatus != 'ok') ...[
-                  const SizedBox(height: 2),
+              ],
+            ),
+          ),
+          if (featuredMetrics.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            ...featuredMetrics.take(2).map(
+              (metric) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _MetricOverviewCard(
+                  metric: metric,
+                  onTap: () => onOpenMetricDetail(metric.id),
+                ),
+              ),
+            ),
+          ],
+          if (additionalMetrics.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            _CardContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          localizations.get('moreTrackedMetrics'),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: titleColor,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${additionalMetrics.length} ${localizations.get('tracked')}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   Text(
-                    '${localizations.get('sleepAiReason')}: ${viewData.sleepAiReason}',
-                    style: TextStyle(fontSize: 12, color: subtitleColor),
+                    localizations.get('openMetricToSeeLargerChart'),
+                    style: TextStyle(fontSize: 11, color: subtitleColor),
+                  ),
+                  const SizedBox(height: 8),
+                  ...additionalMetrics.take(6).map(
+                    (metric) => _MetricListRow(
+                      metric: metric,
+                      onTap: () => onOpenMetricDetail(metric.id),
+                    ),
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          _CardContainer(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localizations.get('dailySteps'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: titleColor,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  viewData.averageSteps > 0
-                      ? '${localizations.get('average')}: '
-                            '${viewData.averageSteps} '
-                            '${localizations.get('steps').toLowerCase()}'
-                      : localizations.get('noStepsDataYet'),
-                  style: TextStyle(fontSize: 12, color: subtitleColor),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 84,
-                  child: _StepsBarChart(activity: viewData.activity),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          _CardContainer(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localizations.get('heartRateTrend'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: titleColor,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  viewData.averageHeartRate > 0
-                      ? '${localizations.get('average')}: '
-                            '${viewData.averageHeartRate} bpm'
-                      : localizations.get('noHeartRateDataYet'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.success,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 110,
-                  child: _TrendLineChart(points: viewData.heartRate),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -241,81 +222,31 @@ class AnalyticsContent extends StatelessWidget {
               style: TextStyle(fontSize: 12, color: titleColor),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _CardContainer(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: PieChart(
-                    PieChartData(
-                      sectionsSpace: 0,
-                      centerSpaceRadius: 28,
-                      startDegreeOffset: 180,
-                      sections: [
-                        PieChartSectionData(
-                          value:
-                              (viewData.recordsCount <= 0
-                                      ? 1
-                                      : viewData.recordsCount)
-                                  .toDouble(),
-                          radius: 10,
-                          color: AppColors.primary,
-                          title: '',
-                        ),
-                        PieChartSectionData(
-                          value:
-                              (viewData.sourceCount <= 0
-                                      ? 1
-                                      : viewData.sourceCount)
-                                  .toDouble(),
-                          radius: 10,
-                          color: AppColors.warning,
-                          title: '',
-                        ),
-                        PieChartSectionData(
-                          value:
-                              (viewData.metricTypeCount <= 0
-                                      ? 1
-                                      : viewData.metricTypeCount)
-                                  .toDouble(),
-                          radius: 10,
-                          color: AppColors.primaryLight,
-                          title: '',
-                        ),
-                      ],
-                    ),
+                Text(
+                  localizations.get('dataQualityBreakdown'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: titleColor,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localizations.get('dataQualityBreakdown'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: titleColor,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '${localizations.get('recordsLoaded')}: ${viewData.recordsCount}',
-                        style: TextStyle(fontSize: 12, color: titleColor),
-                      ),
-                      Text(
-                        '${localizations.get('connectedSources')}: ${viewData.sourceCount}',
-                        style: TextStyle(fontSize: 12, color: subtitleColor),
-                      ),
-                      Text(
-                        '${localizations.get('metricTypes')}: ${viewData.metricTypeCount}',
-                        style: TextStyle(fontSize: 12, color: subtitleColor),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 10),
+                _InfoRow(
+                  label: localizations.get('recordsLoaded'),
+                  value: viewData.recordsCount.toString(),
+                ),
+                _InfoRow(
+                  label: localizations.get('connectedSources'),
+                  value: viewData.sourceCount.toString(),
+                ),
+                _InfoRow(
+                  label: localizations.get('metricTypes'),
+                  value: viewData.metricTypeCount.toString(),
                 ),
               ],
             ),
@@ -338,22 +269,6 @@ class AnalyticsContent extends StatelessWidget {
         'aiInsightSleepQualityImproving',
       ),
       _ => localizations.get('aiInsightAnalyzing'),
-    };
-  }
-
-  String _sleepStatusLabel(AppLocalizations localizations, String status) {
-    return switch (status) {
-      'ok' => localizations.get('sleepAiStatusOk'),
-      'insufficient' => localizations.get('sleepAiStatusInsufficient'),
-      _ => localizations.get('sleepAiStatusUnavailable'),
-    };
-  }
-
-  Color _sleepStatusColor(String status) {
-    return switch (status) {
-      'ok' => AppColors.success,
-      'insufficient' => AppColors.warning,
-      _ => AppColors.mutedForeground,
     };
   }
 }
@@ -380,148 +295,240 @@ class _CardContainer extends StatelessWidget {
   }
 }
 
-class _FilterRow extends StatelessWidget {
-  final List<AnalyticsFilterUiModel> filters;
-  final String selectedFilterId;
-  final ValueChanged<String> onSelected;
+class _MetricOverviewCard extends StatelessWidget {
+  final AnalyticsMetricUiModel metric;
+  final VoidCallback onTap;
 
-  const _FilterRow({
-    required this.filters,
-    required this.selectedFilterId,
-    required this.onSelected,
+  const _MetricOverviewCard({
+    required this.metric,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final titleColor = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.darkForeground
+        : AppColors.lightForeground;
+    final subtitleColor = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.darkMutedForeground
+        : AppColors.mutedForeground;
+    final localizations = AppLocalizations.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: _CardContainer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AnalyticsMetricVisuals.colorFor(
+                              metric.id,
+                            ).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            AnalyticsMetricVisuals.iconFor(metric.id),
+                            size: 16,
+                            color: AnalyticsMetricVisuals.colorFor(metric.id),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            localizations.get(metric.titleKey),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: titleColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    LucideIcons.chevronRight,
+                    size: 16,
+                    color: subtitleColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                formatMetricValueWithUnit(metric.latestValue, metric.unit),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: titleColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${localizations.get('average')}: ${formatMetricValue(metric.averageValue, metric.unit)} ${metric.unit}',
+                style: TextStyle(fontSize: 12, color: subtitleColor),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 96,
+                child: AnalyticsSparklineChart(
+                  metric: metric,
+                  isDark: Theme.of(context).brightness == Brightness.dark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              AnalyticsAxisLabels(
+                points: metric.points,
+                color: subtitleColor,
+                maxLabels: 4,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetricListRow extends StatelessWidget {
+  final AnalyticsMetricUiModel metric;
+  final VoidCallback onTap;
+
+  const _MetricListRow({
+    required this.metric,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    final visibleFilters = filters.take(3).toList(growable: false);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkMuted : AppColors.muted,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: visibleFilters.map((filter) {
-          final active = filter.id == selectedFilterId;
-          return GestureDetector(
-            onTap: () => onSelected(filter.id),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
-                color: active
-                    ? (isDark ? AppColors.darkCard : Colors.white)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
+                color: AnalyticsMetricVisuals.colorFor(metric.id),
+                shape: BoxShape.circle,
               ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
               child: Text(
-                localizations.get(filter.labelKey).toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                  color: active
-                      ? (isDark
-                            ? AppColors.darkForeground
-                            : AppColors.lightForeground)
-                      : (isDark
-                            ? AppColors.darkMutedForeground
-                            : AppColors.mutedForeground),
+                localizations.get(metric.titleKey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.lightForeground,
                 ),
               ),
             ),
-          );
-        }).toList(),
+            Text(
+              formatMetricValueWithUnit(metric.latestValue, metric.unit),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.lightForeground,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 14,
+              color: AppColors.mutedForeground,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TrendLineChart extends StatelessWidget {
-  final List<AnalyticsChartPoint> points;
+class _StatusPill extends StatelessWidget {
+  final String status;
 
-  const _TrendLineChart({required this.points});
+  const _StatusPill({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    if (points.isEmpty) return const SizedBox.shrink();
-    final spots = points.map((p) => FlSpot(p.x, p.y)).toList(growable: false)
-      ..sort((a, b) => a.x.compareTo(b.x));
+    final localizations = AppLocalizations.of(context);
+    final color = switch (status) {
+      'ok' => AppColors.success,
+      'insufficient' => AppColors.warning,
+      _ => AppColors.mutedForeground,
+    };
+    final label = switch (status) {
+      'ok' => localizations.get('sleepAiStatusOk'),
+      'insufficient' => localizations.get('sleepAiStatusInsufficient'),
+      _ => localizations.get('sleepAiStatusUnavailable'),
+    };
 
-    final minY = spots.map((e) => e.y).reduce((a, b) => a < b ? a : b) - 5;
-    final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 5;
-
-    return LineChart(
-      LineChartData(
-        minY: minY,
-        maxY: maxY,
-        gridData: const FlGridData(show: false),
-        titlesData: const FlTitlesData(
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
         ),
-        borderData: FlBorderData(show: false),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            color: AppColors.primary,
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(
-                radius: 3.8,
-                color: AppColors.primary,
-                strokeWidth: 0,
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.mutedForeground,
               ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.lightForeground,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _StepsBarChart extends StatelessWidget {
-  final List<AnalyticsBarData> activity;
-
-  const _StepsBarChart({required this.activity});
-
-  @override
-  Widget build(BuildContext context) {
-    if (activity.isEmpty) return const SizedBox.shrink();
-    final maxSteps = activity
-        .map((e) => e.steps)
-        .reduce((a, b) => a > b ? a : b)
-        .toDouble();
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: activity.take(6).toList(growable: false).asMap().entries.map((
-        entry,
-      ) {
-        final idx = entry.key;
-        final item = entry.value;
-        final ratio = (item.steps / maxSteps).clamp(0.2, 1.0);
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: idx == 5 ? 0 : 6),
-            height: 74 * ratio,
-            decoration: BoxDecoration(
-              color: idx == 3 || idx == 5
-                  ? AppColors.primary
-                  : AppColors.primaryLight.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }

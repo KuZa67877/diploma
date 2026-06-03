@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:onnxruntime/onnxruntime.dart';
 
 import '../../../../core/logging/app_logger.dart';
+import '../../../../core/perf/perf_probe.dart';
 import '../../../health_data/domain/entities/health_metric_sample.dart';
 import '../../../health_data/domain/entities/health_metric_type.dart';
 
@@ -143,132 +144,140 @@ class SleepQualityInferenceModel {
     required List<HealthMetricSample> samples,
     DateTime? now,
   }) async {
-    await _ensureInitialized();
-    if (_initFailed || _session == null || _featureNames.isEmpty) {
-      final detail = _initFailureDetail?.trim();
-      return SleepQualityInferenceResult.insufficient(
-        reason: detail == null || detail.isEmpty
-            ? 'model_not_ready'
-            : 'model_not_ready: $detail',
-        modelVersion: _modelVersion,
-        selectedModel: _selectedModel,
-      );
-    }
+    return PerfProbe.measureAsync(
+      'model.sleep_quality.infer',
+      () async {
+        await _ensureInitialized();
+        if (_initFailed || _session == null || _featureNames.isEmpty) {
+          final detail = _initFailureDetail?.trim();
+          return SleepQualityInferenceResult.insufficient(
+            reason: detail == null || detail.isEmpty
+                ? 'model_not_ready'
+                : 'model_not_ready: $detail',
+            modelVersion: _modelVersion,
+            selectedModel: _selectedModel,
+          );
+        }
 
-    final utcNow = (now ?? DateTime.now()).toUtc();
-    final relevantSamples = samples
-        .where((item) => item.sourceId.trim().toLowerCase() != 'local_manual')
-        .where((item) => _trackedTypes.contains(item.type))
-        .where((item) => !item.timestamp.toUtc().isAfter(utcNow))
-        .toList(growable: false);
-    final recentNights = _buildNightlyFeatures(
-      _resolveRecentSamples(samples: relevantSamples, nowUtc: utcNow),
-    );
-    final latestNightDiagnostics = recentNights.isEmpty
-        ? null
-        : _buildNightDiagnostics(recentNights.last);
-
-    final requirementsOk = _validateDataRequirements(
-      samples: relevantSamples,
-      nowUtc: utcNow,
-    );
-    if (!requirementsOk.ok) {
-      _logger.warning(
-        'model.sleep_quality',
-        'Insufficient data for inference',
-        payload: {
-          'reason': requirementsOk.reason,
-          'nights': requirementsOk.nights,
-          'minimumHistoryDays': _minimumHistoryDays,
-          'minimumNightsForInference': _minimumNightsForInference,
-          'requiredMetricTypes': _requiredMetricTypes
-              .map((t) => t.name)
-              .toList(),
-        },
-      );
-      return SleepQualityInferenceResult.insufficient(
-        reason: requirementsOk.reason,
-        modelVersion: _modelVersion,
-        selectedModel: _selectedModel,
-        nightsUsed: requirementsOk.nights,
-        latestNight: latestNightDiagnostics,
-      );
-    }
-
-    final nights = _buildNightlyFeatures(relevantSamples);
-    if (nights.isEmpty) {
-      _logger.warning(
-        'model.sleep_quality',
-        'No valid nights after feature extraction',
-      );
-      return SleepQualityInferenceResult.insufficient(
-        reason: 'no_nights',
-        modelVersion: _modelVersion,
-        selectedModel: _selectedModel,
-        latestNight: latestNightDiagnostics,
-      );
-    }
-
-    final latestNight = nights.last;
-    final rawVector = _featureNames
-        .map((name) => latestNight.features[name] ?? double.nan)
-        .toList(growable: false);
-    final scaledInput = _imputeAndScale(rawVector);
-
-    try {
-      final value = await _runOnnx(scaledInput);
-      if (value == null || value.isNaN || value.isInfinite) {
-        return SleepQualityInferenceResult.insufficient(
-          reason: 'onnx_output_unrecognized',
-          modelVersion: _modelVersion,
-          selectedModel: _selectedModel,
-          nightsUsed: nights.length,
-          latestNight: _buildNightDiagnostics(latestNight),
+        final utcNow = (now ?? DateTime.now()).toUtc();
+        final relevantSamples = samples
+            .where(
+              (item) => item.sourceId.trim().toLowerCase() != 'local_manual',
+            )
+            .where((item) => _trackedTypes.contains(item.type))
+            .where((item) => !item.timestamp.toUtc().isAfter(utcNow))
+            .toList(growable: false);
+        final recentNights = _buildNightlyFeatures(
+          _resolveRecentSamples(samples: relevantSamples, nowUtc: utcNow),
         );
-      }
+        final latestNightDiagnostics = recentNights.isEmpty
+            ? null
+            : _buildNightDiagnostics(recentNights.last);
 
-      final score = _restoreModelOutput(value).clamp(0.0, 100.0);
-      final confidence = _estimateConfidence(
-        samples: relevantSamples,
-        nights: nights,
-        nowUtc: utcNow,
-      );
-      _logger.info(
-        'model.sleep_quality',
-        'Inference success',
-        payload: {
-          'score': score,
-          'confidence': confidence,
-          'nightsUsed': nights.length,
-          'modelVersion': _modelVersion,
-          'selectedModel': _selectedModel,
-        },
-      );
+        final requirementsOk = _validateDataRequirements(
+          samples: relevantSamples,
+          nowUtc: utcNow,
+        );
+        if (!requirementsOk.ok) {
+          _logger.warning(
+            'model.sleep_quality',
+            'Insufficient data for inference',
+            payload: {
+              'reason': requirementsOk.reason,
+              'nights': requirementsOk.nights,
+              'minimumHistoryDays': _minimumHistoryDays,
+              'minimumNightsForInference': _minimumNightsForInference,
+              'requiredMetricTypes': _requiredMetricTypes
+                  .map((t) => t.name)
+                  .toList(),
+            },
+          );
+          return SleepQualityInferenceResult.insufficient(
+            reason: requirementsOk.reason,
+            modelVersion: _modelVersion,
+            selectedModel: _selectedModel,
+            nightsUsed: requirementsOk.nights,
+            latestNight: latestNightDiagnostics,
+          );
+        }
 
-      return SleepQualityInferenceResult(
-        score: score,
-        confidence: confidence,
-        insufficientData: false,
-        modelVersion: _modelVersion,
-        selectedModel: _selectedModel,
-        nightsUsed: nights.length,
-        reason: 'ok',
-        latestNight: _buildNightDiagnostics(latestNight),
-      );
-    } catch (error, stackTrace) {
-      _logger.error(
-        'model.sleep_quality',
-        'Inference failed',
-        payload: {'error': '$error', 'stackTrace': '$stackTrace'},
-      );
-      return SleepQualityInferenceResult.insufficient(
-        reason: 'inference_exception',
-        modelVersion: _modelVersion,
-        selectedModel: _selectedModel,
-        nightsUsed: nights.length,
-        latestNight: _buildNightDiagnostics(latestNight),
-      );
-    }
+        final nights = _buildNightlyFeatures(relevantSamples);
+        if (nights.isEmpty) {
+          _logger.warning(
+            'model.sleep_quality',
+            'No valid nights after feature extraction',
+          );
+          return SleepQualityInferenceResult.insufficient(
+            reason: 'no_nights',
+            modelVersion: _modelVersion,
+            selectedModel: _selectedModel,
+            latestNight: latestNightDiagnostics,
+          );
+        }
+
+        final latestNight = nights.last;
+        final rawVector = _featureNames
+            .map((name) => latestNight.features[name] ?? double.nan)
+            .toList(growable: false);
+        final scaledInput = _imputeAndScale(rawVector);
+
+        try {
+          final value = await _runOnnx(scaledInput);
+          if (value == null || value.isNaN || value.isInfinite) {
+            return SleepQualityInferenceResult.insufficient(
+              reason: 'onnx_output_unrecognized',
+              modelVersion: _modelVersion,
+              selectedModel: _selectedModel,
+              nightsUsed: nights.length,
+              latestNight: _buildNightDiagnostics(latestNight),
+            );
+          }
+
+          final score = _restoreModelOutput(value).clamp(0.0, 100.0);
+          final confidence = _estimateConfidence(
+            samples: relevantSamples,
+            nights: nights,
+            nowUtc: utcNow,
+          );
+          _logger.info(
+            'model.sleep_quality',
+            'Inference success',
+            payload: {
+              'score': score,
+              'confidence': confidence,
+              'nightsUsed': nights.length,
+              'modelVersion': _modelVersion,
+              'selectedModel': _selectedModel,
+            },
+          );
+
+          return SleepQualityInferenceResult(
+            score: score,
+            confidence: confidence,
+            insufficientData: false,
+            modelVersion: _modelVersion,
+            selectedModel: _selectedModel,
+            nightsUsed: nights.length,
+            reason: 'ok',
+            latestNight: _buildNightDiagnostics(latestNight),
+          );
+        } catch (error, stackTrace) {
+          _logger.error(
+            'model.sleep_quality',
+            'Inference failed',
+            payload: {'error': '$error', 'stackTrace': '$stackTrace'},
+          );
+          return SleepQualityInferenceResult.insufficient(
+            reason: 'inference_exception',
+            modelVersion: _modelVersion,
+            selectedModel: _selectedModel,
+            nightsUsed: nights.length,
+            latestNight: _buildNightDiagnostics(latestNight),
+          );
+        }
+      },
+      payload: <String, Object?>{'sample_count': samples.length},
+    );
   }
 
   Future<void> _ensureInitialized() async {

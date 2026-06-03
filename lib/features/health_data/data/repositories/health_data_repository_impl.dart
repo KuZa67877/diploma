@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
-import '../../../../core/config/app_env.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/firebase/firebase_initializer.dart';
 import '../../domain/entities/health_data_source.dart';
 import '../../domain/entities/health_date_range.dart';
 import '../../domain/entities/health_data_source_type.dart';
@@ -245,7 +245,7 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
   }
 
   Future<void> _syncRemoteStateToLocal() async {
-    if (!AppEnv.isSupabaseConfigured) {
+    if (!isFirebaseReady) {
       return;
     }
 
@@ -277,7 +277,7 @@ class HealthDataRepositoryImpl implements HealthDataRepository {
   }
 
   Future<void> _syncLocalStateToRemote() async {
-    if (!AppEnv.isSupabaseConfigured) {
+    if (!isFirebaseReady) {
       return;
     }
 

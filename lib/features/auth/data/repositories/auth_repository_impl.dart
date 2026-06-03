@@ -4,7 +4,7 @@ import '../../../../core/logging/app_logger.dart';
 import '../../domain/entities/auth_credentials.dart';
 import '../../domain/entities/auth_result.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../../../core/config/app_env.dart';
+import '../../../../core/firebase/firebase_initializer.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
 import '../models/auth_credentials_model.dart';
@@ -29,7 +29,7 @@ class AuthRepositoryImpl implements AuthRepository {
         password: credentials.password,
         isLogin: credentials.isLogin,
       );
-      final result = AppEnv.isSupabaseConfigured
+      final result = isFirebaseReady
           ? await remoteDataSource.submit(model)
           : await localDataSource.submit(model);
       return Right(result);
@@ -55,8 +55,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, AuthResult>> signInWithGoogle() async {
-    if (!AppEnv.isSupabaseConfigured) {
-      return const Left(AuthFailure('Supabase не настроен'));
+    if (!isFirebaseReady) {
+      return const Left(AuthFailure('Firebase не настроен'));
     }
 
     try {
@@ -84,8 +84,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, AuthResult>> signInWithApple() async {
-    if (!AppEnv.isSupabaseConfigured) {
-      return const Left(AuthFailure('Supabase не настроен'));
+    if (!isFirebaseReady) {
+      return const Left(AuthFailure('Firebase не настроен'));
     }
 
     try {

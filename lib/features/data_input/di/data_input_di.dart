@@ -1,6 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/supabase/supabase_subject_resolver.dart';
 import '../data/datasources/data_input_local_data_source.dart';
 import '../data/datasources/data_input_remote_data_source.dart';
 import '../data/repositories/data_input_repository_impl.dart';
@@ -16,8 +16,8 @@ void registerDataInput(GetIt getIt) {
   );
   getIt.registerLazySingleton<DataInputRemoteDataSource>(
     () => DataInputRemoteDataSourceImpl(
-      clientProvider: getIt<SupabaseClient Function()>(),
-      subjectResolver: getIt<SupabaseSubjectResolver>(),
+      authProvider: getIt<FirebaseAuth Function()>(),
+      firestoreProvider: getIt<FirebaseFirestore Function()>(),
     ),
   );
 

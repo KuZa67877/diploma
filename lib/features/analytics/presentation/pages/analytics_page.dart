@@ -4,6 +4,7 @@ import '../../../../injection_container.dart';
 import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/gradient_background.dart';
 import '../bloc/analytics_cubit.dart';
+import 'analytics_metric_detail_page.dart';
 import '../widgets/analytics_content.dart';
 import '../widgets/analytics_error_state.dart';
 
@@ -75,6 +76,16 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   onOpenExport: widget.onOpenExport,
                   onFilterSelected: (filterId) =>
                       context.read<AnalyticsCubit>().selectFilter(filterId),
+                  onOpenMetricDetail: (metricId) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AnalyticsMetricDetailPage(
+                          initialMetricId: metricId,
+                          initialFilterId: viewData.selectedFilterId,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

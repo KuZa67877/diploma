@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/health_data_source_model.dart';
 import '../models/health_metric_sample_model.dart';
 
@@ -36,13 +35,17 @@ class HealthDataLocalDataSourceImpl implements HealthDataLocalDataSource {
       'health_cached_external_samples_v1';
   static const String _assetPath = 'assets/data/health_data.json';
   final SharedPreferences sharedPreferences;
+  final String? Function() _currentUserIdProvider;
   String? _activeScopeId;
   Set<String>? _connectedSourceIds;
   List<HealthDataSourceModel>? _cachedSources;
   List<HealthMetricSampleModel>? _cachedSamples;
   List<HealthMetricSampleModel>? _cachedExternalSamples;
 
-  HealthDataLocalDataSourceImpl({required this.sharedPreferences});
+  HealthDataLocalDataSourceImpl({
+    required this.sharedPreferences,
+    required String? Function() currentUserIdProvider,
+  }) : _currentUserIdProvider = currentUserIdProvider;
 
   @override
   Future<List<HealthDataSourceModel>> getSources() async {
@@ -159,14 +162,15 @@ class HealthDataLocalDataSourceImpl implements HealthDataLocalDataSource {
   }
 
   String _currentScopeId() {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final userId = _currentUserIdProvider();
     if (userId != null && userId.isNotEmpty) {
       return userId;
     }
     return 'anonymous';
   }
 
-  String _scopedKey(String base) => '${base}_${_activeScopeId ?? _currentScopeId()}';
+  String _scopedKey(String base) =>
+      '${base}_${_activeScopeId ?? _currentScopeId()}';
 
   Future<List<HealthDataSourceModel>> _loadSources() async {
     final raw = await rootBundle.loadString(_assetPath);

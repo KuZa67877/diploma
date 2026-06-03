@@ -23,22 +23,46 @@ class ExportFileService {
     required ExportFormat format,
     required ExportDataRange range,
   }) async {
+    final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
+    final period = '${_datePart(range.start)}_${_datePart(range.end)}';
+    final extension = _extension(format);
+    final fileName = 'medi_ai_export_${period}_$timestamp.$extension';
+    return saveTextFile(
+      content: content,
+      fileName: fileName,
+      mimeType: _mimeType(format),
+    );
+  }
+
+  Future<ExportedFile> saveTextFile({
+    required String content,
+    required String fileName,
+    required String mimeType,
+  }) async {
     final directory = Directory('${Directory.systemTemp.path}/medi_ai_exports');
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
 
-    final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final period = '${_datePart(range.start)}_${_datePart(range.end)}';
-    final extension = _extension(format);
-    final fileName = 'medi_ai_export_${period}_$timestamp.$extension';
     final file = File('${directory.path}/$fileName');
     await file.writeAsString(content, flush: true);
 
     return ExportedFile(
       path: file.path,
       fileName: fileName,
-      mimeType: _mimeType(format),
+      mimeType: mimeType,
+    );
+  }
+
+  Future<ExportedFile> saveDebugJson({
+    required String content,
+    String fileNamePrefix = 'medi_ai_perf_report',
+  }) async {
+    final timestamp = DateTime.now().toUtc().millisecondsSinceEpoch;
+    return saveTextFile(
+      content: content,
+      fileName: '${fileNamePrefix}_$timestamp.json',
+      mimeType: 'application/json',
     );
   }
 

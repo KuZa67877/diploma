@@ -5,6 +5,7 @@ import '../../domain/entities/activity_sample.dart';
 import '../../domain/entities/analytics_data.dart';
 import '../../domain/entities/analytics_filter_option.dart';
 import '../../domain/entities/analytics_insight.dart';
+import '../../domain/entities/analytics_metric_series.dart';
 import '../../domain/entities/heart_rate_sample.dart';
 import '../../domain/usecases/get_analytics_data.dart';
 import '../models/analytics_ui_models.dart';
@@ -41,6 +42,8 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
       selectedFilterId: data.selectedFilterId,
       heartRate: _mapHeartRate(data.heartRate),
       activity: _mapActivity(data.activity),
+      metricSeries: _mapMetricSeries(data.metricSeries),
+      featuredMetricIds: data.featuredMetricIds,
       insights: _mapInsights(data.insights),
       recordsCount: data.recordsCount,
       sourceCount: data.sourceCount,
@@ -71,6 +74,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
           (sample) => AnalyticsChartPoint(
             x: sample.hour.toDouble(),
             y: sample.bpm.toDouble(),
+            label: sample.hour.toString().padLeft(2, '0'),
           ),
         )
         .toList(growable: false);
@@ -80,7 +84,44 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
     return data
         .map(
           (sample) =>
-              AnalyticsBarData(label: sample.label, steps: sample.steps),
+              AnalyticsBarData(
+                label: sample.label,
+                value: sample.steps.toDouble(),
+              ),
+        )
+        .toList(growable: false);
+  }
+
+  List<AnalyticsMetricUiModel> _mapMetricSeries(
+    List<AnalyticsMetricSeries> data,
+  ) {
+    return data
+        .map(
+          (series) => AnalyticsMetricUiModel(
+            id: series.id,
+            titleKey: series.titleKey,
+            unit: series.unit,
+            chartStyle: switch (series.chartStyle) {
+              AnalyticsMetricChartStyle.bar => AnalyticsMetricChartStyleUi.bar,
+              AnalyticsMetricChartStyle.line =>
+                AnalyticsMetricChartStyleUi.line,
+            },
+            points: series.points
+                .map(
+                  (point) => AnalyticsChartPoint(
+                    x: point.x,
+                    y: point.value,
+                    label: point.label,
+                  ),
+                )
+                .toList(growable: false),
+            relatedMetricIds: series.relatedMetricIds,
+            visibleByDefault: series.visibleByDefault,
+            latestValue: series.latestValue,
+            averageValue: series.averageValue,
+            minValue: series.minValue,
+            maxValue: series.maxValue,
+          ),
         )
         .toList(growable: false);
   }
