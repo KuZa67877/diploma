@@ -139,7 +139,7 @@ flutter run --dart-define=ENABLE_FIREBASE_SYNC=false
 - `ENABLE_FIREBASE_SYNC` - включает Firebase Auth/Firestore sync, по умолчанию `true`
 - `ENABLE_SOCIAL_AUTH` - показывает вход через Google/Apple, по умолчанию `false`
 - `ENABLE_AUTH_BYPASS` - dev-режим мгновенной авторизации, по умолчанию `false`
-- `ENABLE_FIREBASE_PERFORMANCE` - отправка custom traces в Firebase Performance, по умолчанию `true`
+- `ENABLE_FIREBASE_PERFORMANCE` - отправка трейсов в Firebase Performance, по умолчанию `true`
 - `GROQ_API_KEY` - ключ для прямых вызовов Groq
 - `GROQ_BASE_URL` - по умолчанию `https://api.groq.com/openai/v1`
 - `GROQ_TEXT_MODEL` - текстовая модель, по умолчанию `llama-3.1-8b-instant`
@@ -148,12 +148,12 @@ flutter run --dart-define=ENABLE_FIREBASE_SYNC=false
 
 Примечания:
 
-- При `ENABLE_FIREBASE_SYNC=false` приложение работает в local/mock режиме без удалённой auth/sync.
+- При `ENABLE_FIREBASE_SYNC=false` приложение работает в local/mock режиме без удалённой синхронизации.
 - Если `AI_PROXY_URL` пустой, клиент ходит в Groq напрямую.
 
 ## Firebase
 
-Firebase инициализируется в [`lib/core/firebase/firebase_initializer.dart`](./lib/core/firebase/firebase_initializer.dart). В проекте уже лежат platform-specific конфиги:
+Firebase инициализируется в [`lib/core/firebase/firebase_initializer.dart`](./lib/core/firebase/firebase_initializer.dart). В проекте уже лежат  конфиги:
 
 - `lib/firebase_options.dart`
 - `lib/firebase_options_dev.dart`
